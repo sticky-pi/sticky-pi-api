@@ -1,4 +1,4 @@
-# The API for the [Sticky Pi project](https://sticky-pi.github.io).
+# The API for the [Sticky Pi project](https://sticky-pi.github.io)
 
 
 * `client` a Python package (`sticky-pi`) to interact with the API. Complete doumentation [here](https://sticky-pi.github.io/client).
