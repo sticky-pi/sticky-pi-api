@@ -1,0 +1,52 @@
+version: "3.3"
+
+
+networks:
+  api_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+
+services:
+  api_editor:
+    image: swaggerapi/swagger-editor
+    container_name: api_editor
+    hostname: api_editor
+    environment:
+      - URL=/specs/openapi.yml
+    volumes:
+      - ./v1/openapi.yml:/usr/share/nginx/html/specs/openapi.yml
+      - ./mock.editor.sh:/usr/share/nginx/docker-run.sh
+    networks:
+      - api_network
+    ports:
+      - "8081:8080"
+
+  api_mock:
+    image: stoplight/prism:3
+    container_name: api_mock
+    hostname: api_mock
+    environment:
+      - URL=/specs/openapi.yml
+    volumes:
+      - ./v1/openapi.yml:/api/openapi.yml
+    networks:
+      - api_network
+    command: mock -h 0.0.0.0 "/api/openapi.yml"
+
+  api_proxy:
+    image: nginx
+    container_name: api_proxy
+    hostname: api_proxy
+    volumes:
+      - ./mock.nginx-proxy.conf:/etc/nginx/nginx.conf
+    networks:
+      - api_network
+    depends_on:
+      - api_editor
+      - api_mock
+    ports:
+      - 80:80
+

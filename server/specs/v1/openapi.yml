@@ -1,0 +1,258 @@
+openapi: 3.0.1
+info:
+  title: Sticky PI API
+  description: API for open source insect detector
+  version: '1.0'
+servers:
+  - url: 'http://localhost/v1'
+paths:
+  /users:
+    get:
+      tags:
+        - $#test
+      summary: Access a list of all available currencies.
+      description: This endpoint will return a list of all users
+      parameters: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+              examples:
+                example-1:
+                  value:
+                    - id: 1
+                      name: Joyce Liang
+                      username: SafeGenericName
+                      active: true
+                    - id: 2
+                      name: Alice Zhou
+                      username: YiLin-Zhou
+                      active: true
+                    - id: 3
+                      name: Quentin Geissmann
+                      username: qgeissmann
+                      active: true
+        '304':
+          description: Not Modified
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: 401
+                message: error
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    parameters: []
+    post:
+      summary: ''
+      operationId: post-users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+            examples:
+              example-1:
+                value:
+                  name: Joyce Liang
+                  username: SafeGenericName
+                  active: true
+              example-2:
+                value:
+                  name: Joyce Liang
+                  username: SafeGenericName
+                  active: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                example-1:
+                  value:
+                    id: 1
+                    name: Joyce Liang
+                    username: SafeGenericName
+                    active: true
+        '422':
+          description: Unprocessable Entity (WebDAV)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                example-2:
+                  value:
+                    code: 422
+                    message: Already Exists
+  '/users/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+    get:
+      summary: Your GET endpoint
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                example-1:
+                  value:
+                    id: 1
+                    name: Joyce Liang
+                    username: SafeGenericName
+                    active: true
+      operationId: get-users-id
+      parameters: []
+    put:
+      summary: ''
+      operationId: put-users-id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                example-1:
+                  value:
+                    id: 1
+                    name: Joyc Liang
+                    username: SafeGenericName
+                    active: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+            examples:
+              example-1:
+                value:
+                  name: Joyc Liang
+                  username: SafeGenericName
+                  active: false
+  /users/authentication:
+    post:
+      summary: ''
+      operationId: post-users-authentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+                $ref: '#/components/schemas/User'
+            examples:
+                example-1:
+                  value:
+                    username: SafeGenericName
+                    password: secretpassword
+                example-2:
+                  value:
+                    username: SafeGenericName
+                    password: invalidpassword             
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                example-1:
+                  value:
+                    name: Joyc Liang
+                    username: SafeGenericName
+                    access_token: DE5MDY2MTkwMGRlNjAxYmI3ODc1MTBiNGY3YmIyODgK
+                    expires_in: 1609328520
+                    token_type: Bearer
+        '401':
+          description: Invalid Credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                example-2:
+                  value:
+                    code: 401
+                    message: Invalid Credentials
+      parameters: []
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        active:
+          type: boolean
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: number
+        message:
+          type: string
+        documentationUrl:
+          type: string
+    AuthenticatedUser:
+      title: AuthenticatedUser
+      type: object
+      properties:
+        username:
+          type: string
+        name:
+          type: string
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
