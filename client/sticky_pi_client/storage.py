@@ -19,7 +19,7 @@ class LocalDBStorage(object):
         if what == 'metadata':
             return ""
 
-        url = os.path.join(self._local_dir, self._raw_images_dirname, image.filename)
+        url = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
         if what == "thumbnail":
             url += ".thumbnail"
         elif what == "thumbnail_mini":

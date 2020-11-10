@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer,  DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, CHAR
+from sqlalchemy import Column, Integer,  DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
 from sticky_pi_client.image_parser import ImageParser
 from sticky_pi_client.database.utils import Base, BaseCustomisations
 
@@ -44,17 +44,16 @@ class Images(Base, BaseCustomisations):
         return self._thumbnail_mini
 
     id = Column(Integer, primary_key=True)
+    __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'),)
 
-    image_id = UniqueConstraint('device_id', 'datetime')
-
-    device = Column(CHAR(8), nullable=False)
+    device = Column(String(8), nullable=False)
     datetime = Column(DateTime, nullable=False)
-    md5 = Column(CHAR(32), nullable=False)
+    md5 = Column(String(32), nullable=False)
     datetime_created = Column(DateTime,  nullable=False)
 
-    device_version = Column(CHAR(10), default="1.0.0", nullable=True)
-    api_version = Column(CHAR(10), default="1.0.0", nullable=True)
-    uploader = Column(CHAR(10), nullable=True)
+    device_version = Column(String(8), default="1.0.0", nullable=True)
+    api_version = Column(String(8), default="1.0.0", nullable=True)
+    uploader = Column(Integer, nullable=True)  # the user_id of the user who uploaded the data
 
     width = Column(SmallInteger, nullable=False)
     height = Column(SmallInteger, nullable=False)
@@ -68,7 +67,7 @@ class Images(Base, BaseCustomisations):
     temp = Column(Float, nullable=True)
     hum = Column(Float, nullable=True)
 
-    no_flash_shutter_speed  = Column(Float, nullable=False)
+    no_flash_shutter_speed = Column(Float, nullable=False)
     no_flash_exposure_time = Column(Float, nullable=False)
     no_flash_bv = Column(Float, nullable=False)
     no_flash_iso = Column(Float, nullable=False)

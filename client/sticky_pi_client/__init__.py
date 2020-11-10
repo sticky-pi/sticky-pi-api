@@ -1,5 +1,5 @@
 """
-this is the __init__ of client
+this is the __init__ of sticky_pi_client
 """
-from .api_client import *
+from .client import *
 
