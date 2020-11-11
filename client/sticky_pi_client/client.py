@@ -18,18 +18,24 @@ from sticky_pi_client.database.utils import Base
 from sticky_pi_client.database.images_table import Images
 from sticky_pi_client.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_client.storage import LocalDBStorage
-from typing import List, Dict, Any
+
+from typeguard import typechecked
+from typing import List, Dict, Union, Any
+
 
 # for doc
 InfoType = List[Dict[str, str]]
-MetadataType = List[Dict[str, Any]]
-AnnotType = List[Dict[str, Dict[str, Any]]]
+MetadataType = List[Dict[str, Union[float, int, str]]]
+AnnotType = List[Dict[str, Union[List, Dict[str, Any]]]]
+
+
 
 class BaseClient(object):
-    _put_chunk_size = 16
+
+    _put_chunk_size = 16 # number of images to handle at the same time during upload
     def __init__(self):
         """
-        Abstract class that defines the methods of the client.
+        Abstract class that defines the methods of the client (common between remote and local).
         """
         pass
 
@@ -75,7 +81,7 @@ class BaseClient(object):
 
         raise NotImplemented()
 
-    def put_image_uid_annotations(self, info : AnnotType) -> MetadataType:
+    def put_uid_annotations(self, info : AnnotType) -> MetadataType:
         """
         :param info: A list of dictionaries corresponding to annotations (one list element per image).
             The annotations are formatted as a dictionaries with two keys: ``'annotations'`` and ``'metadata'``.
@@ -97,9 +103,9 @@ class BaseClient(object):
         """
         raise NotImplementedError()
 
-    def get_image_uid_annotations(self, info :InfoType, what:str = 'metadata') -> MetadataType:
+    def get_uid_annotations(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
-        Voila
+        Reteives annotations for a given set of images.
 
         :param info: A list of dict with keys: ``'device'`` and ``'datetime'``
         :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
@@ -109,6 +115,51 @@ class BaseClient(object):
             Otherwise, it contains a json string with the actual annotation data.
         """
         raise NotImplementedError()
+
+    def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+        """
+        Retrieves annotations for images within a given datetime range
+
+        :param info: A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
+        :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
+        :return: A list of dictionaries with one element for each queried value.
+            Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
+            In the case of ``what='metadata'``, the field ``json=''``.
+            Otherwise, it contains a json string with the actual annotation data.
+        """
+        # we first fetch the parent images matching a series
+        parent_images = self.get_image_series(info, what="metadata")
+        # we filter the metadata as only these two fields are necessary
+        info = [{k:v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
+
+        return self.get_uid_annotations(info, what=what)
+
+    def get_images_with_uid_annotations_series(self, info: InfoType, what_image: str = 'metadata', what_annotation: str = 'metadata') -> MetadataType:
+        """
+        Retrieves images alongside their annotations (if available)  for images from a given device and
+        within a given datetime range
+
+        :param info: A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
+        :param what_image: The nature of the image objects to retrieve.
+            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
+        :param what_annotation: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
+        :return: A list of dictionaries with one element for each queried value.
+            Each dictionary contains the fields present in the underlying database tables (see ``UIDAnnotations`` and ``Images``).
+        """
+        # we first fetch the parent images matching a series
+        parent_images = self.get_image_series(info, what=what_image)
+        # we filter the metadata as only these two fields are necessary
+        info = [{k:v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
+        parent_images = pd.DataFrame(parent_images)
+        annots = self.get_uid_annotations(info, what=what_annotation)
+        annots = pd.DataFrame(annots)
+
+        out = pd.merge(parent_images, annots, how='left', left_on=['id'], right_on=['parent_image_id'], suffixes=('', '_annot'))
+        # NaN -> None
+        out = out.where(pd.notnull(out), None)
+        return out.to_dict(orient='records')
 
     def put_images(self, files : List[str]) -> MetadataType:
         """
@@ -122,11 +173,15 @@ class BaseClient(object):
             return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
         # All the uploadable files
+
+        logging.info("Total files submitted: %i" % len(files))
         files = self._diff_images_to_upload(files)
+        logging.info("Files to upload: %i" % len(files))
 
         out = []
         # upload by chunks now
-        for group in chunker(files, self._put_chunk_size):
+        for i, group in enumerate(chunker(files, self._put_chunk_size)):
+            logging.info("Uploading files %i-%i" % (i*self._put_chunk_size, i*self._put_chunk_size + len(group)))
             out += self._put_new_images(group)
         return out
 
@@ -169,7 +224,7 @@ class BaseClient(object):
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
         return out
 
-
+@typechecked
 class LocalClient(BaseClient):
     _database_filename = 'database.db'
 
@@ -189,7 +244,7 @@ class LocalClient(BaseClient):
         self._db_engine = sqlalchemy.create_engine(engine_url)
         Base.metadata.create_all(self._db_engine, Base.metadata.tables.values(), checkfirst=True)
 
-    def _put_new_images(self, files):
+    def _put_new_images(self, files: List[str]):
         session = sessionmaker(bind=self._db_engine)()
         # store the uploaded images
         out = []
@@ -212,18 +267,24 @@ class LocalClient(BaseClient):
                 raise e
         return out
 
-    def put_image_uid_annotations(self, info):
+    def put_uid_annotations(self, info: AnnotType):
+        info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         out = []
         # for each image
         for data in info:
-            data = json.loads(data)
+            json_str = json.dumps(data)
+            # print(json_str)
             dic = data['metadata']
             annotations = data['annotations']
 
             n_objects = len(annotations)
-            dic['json'] = json.dumps(data)
-            parent_img = self.get_images([dic])[0]
+            dic['json'] = json_str
+
+            parent_img_list = self.get_images([dic])
+            if len(parent_img_list) != 1:
+                raise ValueError("could not find parent image for %s" % str(dic))
+            parent_img = parent_img_list[0]
             dic['parent_image_id'] = parent_img["id"]
             dic['n_objects'] = n_objects
             if dic['md5'] != parent_img['md5']:
@@ -232,12 +293,12 @@ class LocalClient(BaseClient):
             annot = UIDAnnotations(dic)
             o = annot.to_dict()
             del o["json"]
-            out.append()
+            out.append(o)
             session.add(annot)
             session.commit()
         return out
 
-    def get_image_uid_annotations(self, info, what='metadata'):
+    def get_uid_annotations(self, info: MetadataType, what: str = 'metadata'):
         images = self.get_images(info)
         image_ids = [Images.id == img['id'] for img in images]
         session = sessionmaker(bind=self._db_engine)()
@@ -247,9 +308,9 @@ class LocalClient(BaseClient):
 
         out = []
         parent_img_ids = [i[0] for i in q.all()]
+        q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
+        # q = session.query(UIDAnnotations)
 
-        # q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
-        q = session.query(UIDAnnotations)
         for annots in q:
             annot_dict = annots.to_dict()
             if what == 'metadata':
@@ -261,7 +322,7 @@ class LocalClient(BaseClient):
             out.append(annot_dict)
         return out
 
-    def get_images(self, info, what='metadata'):
+    def get_images(self, info: MetadataType, what: str = 'metadata'):
         out = []
         info = copy.deepcopy(info)
         for i in info:
@@ -297,7 +358,7 @@ class LocalClient(BaseClient):
 
         return out
 
-    def get_image_series(self, info, what='metadata'):
+    def get_image_series(self, info: MetadataType, what: str = 'metadata'):
         session = sessionmaker(bind=self._db_engine)()
         out = []
 

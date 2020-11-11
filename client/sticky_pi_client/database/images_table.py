@@ -3,6 +3,9 @@ from sqlalchemy import Column, Integer,  DateTime, UniqueConstraint, SmallIntege
 from sticky_pi_client.image_parser import ImageParser
 from sticky_pi_client.database.utils import Base, BaseCustomisations
 
+# import warnings
+# from sqlalchemy.exc import SAWarning
+# warnings.filterwarnings('ignore', r".*support Decimal objects natively", SAWarning, r'^sqlalchemy\.sql\.sqltypes$')
 
 class Images(Base, BaseCustomisations):
     __tablename__ = 'images'

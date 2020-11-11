@@ -27,7 +27,6 @@ class UIDAnnotations(Base, BaseCustomisations):
     __table_args__ = (UniqueConstraint('parent_image_id', 'algo_name', 'algo_version', name='annotation_id'),
                       )
 
-
     parent_image_id = Column(Integer, ForeignKey('images.id'), nullable=False)
     algo_name = Column(String(32), nullable=False) # something like "sticky-pi-universal-insect-detector")
     algo_version = Column(String(46), nullable=False) # something like "1598113346-ad2cd78dfaca12821046dfb8994724d5" ( `X-Y` X:timestamp of the model, Y:md5 of the model)
