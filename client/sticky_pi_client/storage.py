@@ -4,8 +4,10 @@ import os
 class LocalDBStorage(object):
     _raw_images_dirname = 'raw_images'
 
-    def __init__(self, local_dir):
+    def __init__(self, local_dir: str):
+        assert os.path.isdir(local_dir)
         self._local_dir = local_dir
+
 
     def store_image_files(self, image):
         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)

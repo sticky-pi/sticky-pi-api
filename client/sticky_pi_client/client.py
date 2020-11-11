@@ -13,7 +13,10 @@ import pandas as pd
 import sqlalchemy
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
-from sticky_pi_client.utils import string_to_datetime
+import shutil
+from joblib import Memory, Parallel, delayed
+from sticky_pi_client.image_parser import ImageParser
+from sticky_pi_client.utils import string_to_datetime, datetime_to_string
 from sticky_pi_client.database.utils import Base
 from sticky_pi_client.database.images_table import Images
 from sticky_pi_client.database.uid_annotations_table import UIDAnnotations
@@ -32,12 +35,18 @@ AnnotType = List[Dict[str, Union[List, Dict[str, Any]]]]
 
 class BaseClient(object):
 
-    _put_chunk_size = 16 # number of images to handle at the same time during upload
-    def __init__(self):
+    _put_chunk_size = 16  # number of images to handle at the same time during upload
+    def __init__(self, local_dir: str, n_threads: int = 8):
         """
         Abstract class that defines the methods of the client (common between remote and local).
+
+        :param local_dir: The path to a local directory that acts as a local storage
+        :param n_threads: The number of parallel threads to use to compute statistics on the image (md5 and such)
         """
-        pass
+        self._local_dir = local_dir
+        self._n_threads = n_threads
+        self._cache = Memory(local_dir, verbose=0)
+
 
     def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
@@ -172,17 +181,24 @@ class BaseClient(object):
         def chunker(seq, size):
             return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-        # All the uploadable files
-
-        logging.info("Total files submitted: %i" % len(files))
-        files = self._diff_images_to_upload(files)
-        logging.info("Files to upload: %i" % len(files))
+        # first find which files need to be uploaded
+        to_upload = []
+        chunk_size = self._put_chunk_size * self._n_threads
+        for i, group in enumerate(chunker(files, chunk_size)):
+            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i*chunk_size,
+                                                                                         i * chunk_size + len(group),
+                                                                                         len(files)))
+            to_upload += self._diff_images_to_upload(group)
 
         out = []
         # upload by chunks now
-        for i, group in enumerate(chunker(files, self._put_chunk_size)):
-            logging.info("Uploading files %i-%i" % (i*self._put_chunk_size, i*self._put_chunk_size + len(group)))
+        for i, group in enumerate(chunker(to_upload, self._put_chunk_size)):
+            logging.info("Putting images... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
+                                                                           i * self._put_chunk_size + len(group),
+                                                                           len(to_upload)))
+
             out += self._put_new_images(group)
+        logging.info("Putting images... Complete!")
         return out
 
     def _diff_images_to_upload(self, files):
@@ -197,15 +213,17 @@ class BaseClient(object):
         :rtype: List()
         """
 
-        img_dicts = []
-            # we prepare a dict of images key for each chunk
-        for f in files:
-            im = Images(f)
-            i = im.to_dict()
-            img_dicts.append({'device': i['device'],
-                              'datetime': i['datetime'],
-                              'md5': i['md5'],
-                              'url': f})
+        # this is a cached parser so we don't need to recompute md5 etc on local files unless they have changed
+        @self._cache.cache
+        def local_img_stats(file: str, file_stats: Dict):
+            i = ImageParser(file)
+            out = {'device': i['device'],
+                          'datetime': datetime_to_string(i['datetime']),
+                          'md5': i['md5'],
+                          'url': file}
+            return out
+        # we can compute the stats in parallel
+        img_dicts = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(f, os.stat(f)) for f in files)
 
         # we request these images from the database
         matches = self.get_images(img_dicts, what='metadata')
@@ -224,11 +242,15 @@ class BaseClient(object):
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
         return out
 
+    def delete_cache(self):
+        cachedir =  os.path.join(self._cache.location, 'joblib')
+        shutil.rmtree(cachedir)
+
 @typechecked
 class LocalClient(BaseClient):
     _database_filename = 'database.db'
 
-    def __init__(self, local_dir : str):
+    def __init__(self, local_dir: str):
         """
         A local API client that emulates its own API/Database. It has two main purposes:
 
@@ -238,7 +260,9 @@ class LocalClient(BaseClient):
         :param local_dir: The path to a local directory that acts as a local storage
         """
 
+        super().__init__(local_dir)
         self._local_dir = local_dir
+        os.makedirs(self._local_dir,exist_ok=True)
         self._storage = LocalDBStorage(local_dir)
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
         self._db_engine = sqlalchemy.create_engine(engine_url)
