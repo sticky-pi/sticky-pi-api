@@ -1,8 +1,5 @@
 """
-a module
-document me please
-s
-dd
+Main module of the client. Implements classes to interact with the API.
 """
 
 import copy
