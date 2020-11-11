@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# sticky_pi documentation build configuration file, created by
+# sticky_pi_client documentation build configuration file, created by
 # sphinx-quickstart on Mon Jul 14 19:30:54 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -18,7 +18,10 @@ import os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('..'))
+code_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, code_dir)
+
 
 
 # -- General configuration ------------------------------------------------
@@ -31,19 +34,22 @@ sys.path.insert(0, os.path.abspath('../'))
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.extlinks',
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
+    'sphinx_autodoc_typehints',
+    'recommonmark'
 ]
 
 intersphinx_mapping = {
-    'python':('http://docs.python.org/2.7',None),
+    'python':('http://docs.python.org/3',None),
     #'opencv': ('http://docs.scipy.org/doc/scipy/reference/', None)
     'numpy':('http://docs.scipy.org/doc/numpy',None),
-    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None)
+    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
     # 'matplotlib':('http://matplotlib.sourceforge.net', None),
-    # 'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
+    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
     # 'samplerate': ('http://www.ar.media.kyoto-u.ac.jp/members/david/softwares/samplerate/sphinx/', None),
     # 'pywt': ('http://www.pybytes.com/pywavelets/', None),
     #'sklearn': ('http://scikit-learn.org/stable/documentation.html', None),
@@ -53,7 +59,11 @@ intersphinx_mapping = {
 templates_path = ['_templates']
 
 # The suffix of source filenames.
-source_suffix = '.rst'
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'markdown',
+    '.md': 'markdown',
+}
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
@@ -62,8 +72,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'ethoscope'
-copyright = '2015, Quentin Geissmann'
+project = 'Sticky Pi Client'
+copyright = '2020, Quentin Geissmann'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -139,12 +149,12 @@ html_theme = 'sphinx_rtd_theme'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+html_logo = "_static/img/sticky_logo-128.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = "_static/img/sticky_logo.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -219,7 +229,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'ethoscope.tex', 'ethoscope Documentation',
+  ('index', 'sticky-pi.tex', 'Sticky Pi Client Documentation',
    'Quentin Geissmann', 'manual'),
 ]
 
@@ -249,7 +259,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'ethoscope', 'ethoscope Documentation',
+    ('index', 'sticky pi', 'Sticky Pi Client Documentation',
      ['Quentin Geissmann'], 1)
 ]
 
@@ -284,10 +294,10 @@ texinfo_documents = [
 # -- Options for Epub output ----------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = 'ethoscope'
+epub_title = 'Sticky Pi Client'
 epub_author = 'Quentin Geissmann'
 epub_publisher = 'Quentin Geissmann'
-epub_copyright = '2015, Quentin Geissmann'
+epub_copyright = '2020, Quentin Geissmann'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'pyrem'
@@ -362,5 +372,5 @@ class Mock(MagicMock):
 
 MOCK_MODULES = [
     'cv2', 'cv', 'cv2.cv',
-    'numpy', 'scipy']
+    'numpy', 'scipy', 'pandas', 'imread']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
