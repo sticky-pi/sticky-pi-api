@@ -24,6 +24,6 @@ setup(
                       'tqdm',
                       'networkx'],
     tests_require=['nose'],
-    docs_require=['sphinx', 'sphinx_rtd_theme', 'recommonmark'],
+    docs_require=['sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock', 'sphinx-autodoc-typehints'],
     test_suite='nose.collector'
 )

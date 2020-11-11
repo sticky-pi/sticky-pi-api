@@ -5,8 +5,6 @@ s
 dd
 """
 
-
-
 import copy
 import logging
 import os
@@ -20,107 +18,105 @@ from sticky_pi_client.database.utils import Base
 from sticky_pi_client.database.images_table import Images
 from sticky_pi_client.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_client.storage import LocalDBStorage
+from typing import List, Dict, Any
 
+# for doc
+InfoType = List[Dict[str, str]]
+MetadataType = List[Dict[str, Any]]
+AnnotType = List[Dict[str, Dict[str, Any]]]
 
 class BaseClient(object):
     _put_chunk_size = 16
-
-
     def __init__(self):
         """
         Abstract class that defines the methods of the client.
         """
         pass
 
-    def get_images(self, info, what='metadata'):
+    def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
         Retrieves information about a given set of images, defined by their parent device and the
-        datetime of the picture. Importantly, If an image is not available, no data is returned for this image.
+        datetime of the picture. *If an image is not available, no data is returned for this image*.
 
-        :param info: A list of dicts. each dicts has, at least, keys: 'device' and 'datetime'
-        :type info: List(Dict())
-        :param what: The nature of the objects to retrieve. One of {'metadata','image','thumbnail','thumbnail_mini'}.
-        what only affects the "url" fields of the result. In the case of 'metadata', `url=""`.
-        Otherwise, it contains a string that point to the location of the requested object
-        :type what: str
+        :param info: A list of dicts. each dicts has, at least, keys: ``'device'`` and ``'datetime'``
+        :param what: The nature of the objects to retrieve.
+            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
-        the fields present in the underlying database plus a url fields to retrieve the actual image.
-        :rtype: List(Dict())
+            the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
+            (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is genenrated).
         """
         raise NotImplemented()
 
-    def _put_new_images(self, files):
+    def _put_new_images(self, files: List[str]) -> MetadataType:
         """
-        Incrementally upload a set of local files as database image.
-        The user would use `BaseClient.put_images(files)`,
-        which first discovers which files are to be uploaded.
+        Uploads a set of local image files to the API.
+        The user would use ``BaseClient.put_images(files)``,
+        which first discovers which files are to be uploaded for incremental upload.
 
         :param files: A list of path to local files
-        :type files: List()
-        :return: the metadata of the files that were actually uploaded
-        :rtype: List(Dict())
+
+        :return: The metadata of the files that were actually uploaded
         """
         raise NotImplemented()
 
-    def get_image_series(self, info, what='metadata'):
+    def get_image_series(self, info, what: str = 'metadata') -> MetadataType:
         """
-        Retrieves information about a given set of images, defined by their parent device and the
-        datetime of the picture. Importantly, If an image is not available, no data is returned for this image.
+        Retrieves image sequences (i.e. series).
+        A series contains all images from a given device within a datetime range.
 
-        :param info: A list of dicts. each dicts has, at least, keys: 'device' and 'datetime'
-        :type info: List(Dict())
-        :param what: The nature of the objects to retrieve. One of {'metadata','image','thumbnail','thumbnail_mini'}.
-        what only affects the "url" fields of the result. In the case of 'metadata', `url=""`.
-        Otherwise, it contains a string that point to the location of the requested object
-        :type what: str
+        :param info: A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
+        :param what: The nature of the objects to retrieve.
+            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
-        the fields present in the underlying database plus a url fields to retrieve the actual image.
-        :rtype: List(Dict())
+            the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
+            (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
         """
 
         raise NotImplemented()
 
-    def put_image_uid_annotations(self, info):
+    def put_image_uid_annotations(self, info : AnnotType) -> MetadataType:
         """
         :param info: A list of dictionaries corresponding to annotations (one list element per image).
-        The annotations are formatted as a dictionaries with two keys: `"annotations"` and `"metadata"`.
-        `metadata` must have the fields:
-            * "algo_name": the name of the algorithm used to find the object (e.g. "sticky-pi-universal-insect-detector")
-            * "algo_version": The version of the algorithm as `timestamp-md5` (e.g. 1598113346-ad2cd78dfaca12821046dfb8994724d5)
-            * "device": The device that took the annotated image (e.g. "5c173ff2")
-            * "datetime" The datetime at which the image was taken (e.g. "2020-06-20_21-33-24")
-             * "md5": The md5 of the image that was analysed (e.g. "9e6e908d9c29d332b511f8d5121857f8")
+            The annotations are formatted as a dictionaries with two keys: ``'annotations'`` and ``'metadata'``.
 
-        `annotations` is a list where each element represent an object. It has the feilds:
-            * "contour": a 3d array encoding the position of the vertices (as convention in opencv)
-            * "name": the name/type of the object (e.g. insect)
-            * "fill_colour" and  "stroke_colour": the colours of the contour (if it is to be drawn -- e.g. "#0000ff")
-            * "value": an optional integer further describing the contour
+            * ``'metadata'`` must have the fields:
+                * ``'algo_name'``: the name of the algorithm used to find the object (e.g. ``'sticky-pi-universal-insect-detector'``)
+                * ``'algo_version'``: The version of the algorithm as `timestamp-md5` (e.g. ``'1598113346-ad2cd78dfaca12821046dfb8994724d5'``)
+                * ``'device'``: The device that took the annotated image (e.g. ``'5c173ff2'``)
+                * ``'datetime'``: The datetime at which the image was taken (e.g. ``'2020-06-20_21-33-24'``)
+                * ``'md5'``: The md5 of the image that was analysed (e.g. ``'9e6e908d9c29d332b511f8d5121857f8'``)
+            * ``'annotations'`` is a list where each element represent an object. It has the fields:
+                * ``'contour'``: a 3d array encoding the position of the vertices (as convention in OpenCV)
+                * ``'name'``: the name/type of the object (e.g. ``'insect'``)
+                * ``'fill_colour'`` and  ``'stroke_colour'``: the colours of the contour (if it is to be drawn -- e.g. ``'#0000ff'``)
+                * ``'value'``: an optional integer further describing the contour (e.g. ``1``)
 
-        {"annotations": [],
-        "metadata": }
-        :type info: List(Dict())
-        :return: The metadata of the uploaded annotations (i.e. a list od dicts. each field of the dict
-        naming a column in the database). This corresponds to the annotation data as represented in `UIDAnnotations`
-        :rtype: List(Dict())
+        :return: The metadata of the uploaded annotations (i.e. a list od dicts. each field of the dict naming a column in the database).
+            This corresponds to the annotation data as represented in ``UIDAnnotations``
         """
         raise NotImplementedError()
 
-    def get_image_uid_annotations(self, info, what=''):
+    def get_image_uid_annotations(self, info :InfoType, what:str = 'metadata') -> MetadataType:
         """
-        :param info: A list of dict with keys: 'device' and 'datetime'
-        :type info: List(Dict())
-        :param what: The nature of the object to retrieve. One of {'metadata','json'}.
-        what only impact the "json" fields of the result. In the case of 'metadata', "json"="".
-        Otherwise, it contains a json string with the actual annotation data.
-        :type what: str
+        Voila
+
+        :param info: A list of dict with keys: ``'device'`` and ``'datetime'``
+        :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
         :return: A list of dictionaries with one element for each queried value.
-        Each dictionary contains the fields present in the underlying database table (see `UIDAnnotations`).
-        :rtype: List(Dict())
+            Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
+            In the case of ``what='metadata'``, the field ``json=''``.
+            Otherwise, it contains a json string with the actual annotation data.
         """
         raise NotImplementedError()
 
-    def put_images(self, files):
+    def put_images(self, files : List[str]) -> MetadataType:
+        """
+        Incrementally upload a list of local files
+
+        :param files: the paths to the local files
+        :return: the data of the uploaded files, as represented in by API
+        """
         # instead of dealing with images one by one, we send them by chunks
         def chunker(seq, size):
             return (seq[pos:pos + size] for pos in range(0, len(seq), size))
@@ -177,7 +173,16 @@ class BaseClient(object):
 class LocalClient(BaseClient):
     _database_filename = 'database.db'
 
-    def __init__(self, local_dir):
+    def __init__(self, local_dir : str):
+        """
+        A local API client that emulates its own API/Database. It has two main purposes:
+
+            1. Allowing users to store data fully locally
+            2.  Serving as a cache for the remote API (so the remote resources do not need to be fetched every time)
+
+        :param local_dir: The path to a local directory that acts as a local storage
+        """
+
         self._local_dir = local_dir
         self._storage = LocalDBStorage(local_dir)
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
