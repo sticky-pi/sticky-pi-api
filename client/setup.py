@@ -19,7 +19,10 @@ setup(
                       'opencv_python',
                       'psutil',
                       'tqdm',
-                      'joblib'],
+                      'joblib',
+                      'sqlalchemy',
+                      'imread',
+                      'typeguard'],
     tests_require=['nose'],
     docs_require=['sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock', 'sphinx-autodoc-typehints'],
     test_suite='nose.collector'
