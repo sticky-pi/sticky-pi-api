@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 import shutil
 from joblib import Memory, Parallel, delayed
 from sticky_pi_client.image_parser import ImageParser
-from sticky_pi_client.utils import string_to_datetime, datetime_to_string
+from sticky_pi_client.utils import string_to_datetime, datetime_to_string, multipart_etag
 from sticky_pi_client.database.utils import Base
 from sticky_pi_client.database.images_table import Images
 from sticky_pi_client.database.uid_annotations_table import UIDAnnotations
@@ -33,6 +33,10 @@ AnnotType = List[Dict[str, Union[List, Dict[str, Any]]]]
 class BaseClient(object):
 
     _put_chunk_size = 16  # number of images to handle at the same time during upload
+    _multipart_chunk_size = 8 * 1024 * 1024
+    _allowed_ml_bundle_suffixes = ['.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg']
+    _ml_bundle_ml_data_subdir = ['data', 'config']
+    _ml_bundle_ml_model_subdir = ['output', 'config']
     def __init__(self, local_dir: str, n_threads: int = 8):
         """
         Abstract class that defines the methods of the client (common between remote and local).
@@ -44,6 +48,9 @@ class BaseClient(object):
         self._n_threads = n_threads
         self._cache = Memory(local_dir, verbose=0)
 
+    @property
+    def local_dir(self):
+        return self._local_dir
 
     def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
@@ -77,7 +84,8 @@ class BaseClient(object):
         A series contains all images from a given device within a datetime range.
 
         :param info: A list of dicts. each dicts has, at least, the keys:
-            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
+            For instance,one can match all devices with ``device="%"``.
         :param what: The nature of the objects to retrieve.
             One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
@@ -167,6 +175,100 @@ class BaseClient(object):
         out = out.where(pd.notnull(out), None)
         return out.to_dict(orient='records')
 
+    def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
+        """
+        Download locally the content of an `ML bundle'.
+        A ML bundle contains files necessary to train and run a ML training/inference (data, configs and model).
+
+        :param bundle_name: the name of the machine learning buncle to fetch the files from
+        :param what: One of {``'all'``, ``'data'``,``'model'`` }, to return all files, only the training data(training),
+        or only the model (inference), respectively.
+        :return: A list of dict containing the fields ``key`` and ``url`` of the files to be downloaded,
+         which can be used to download the files
+        """
+        raise NotImplementedError()
+
+    def _get_ml_bundle_upload_link(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
+            List[Dict[str, Union[float, str]]]:
+        """
+        Ask the client for a list of upload url for the files described in info.
+
+
+        :param bundle_name: the name of the machine learning buncle to fetch the files from
+        :param info: a list of dict with fields {``'key'``, ``'md5'``, ``'mtime'``}.
+        ``'key'`` is the file path, relative to the storage root (e.g. ``data/mydata.jpg``)
+        :return: The same list of dictionaries as ``info``, with an extra field pointing to a destination url ``'url'``,
+        where the client can then upload their data.
+        """
+        raise NotImplementedError()
+
+    def _put_ml_bundle_file(self, path: str, key: str):
+        raise NotImplementedError()
+
+    def _get_ml_bundle_file(self, url: str, target: str):
+        raise NotImplementedError()
+
+    def get_ml_bundle_dir(self, bundle_dir: str, what: str) -> List[Dict[str, Union[float, str]]]:
+        bundle_name = os.path.basename(os.path.normpath(bundle_dir))
+        local_files = self._local_bundle_files_info(bundle_dir, what)
+        remote_files = self._get_ml_bundle_file_list(bundle_name, what)
+        already_downloaded_dict = {au['key']: au for au in local_files}
+        files_to_download = []
+        for r in remote_files:
+            to_download = False
+            # file does not exists on remote
+            if r['key'] not in already_downloaded_dict:
+                to_download = True
+            else:
+                local_info = already_downloaded_dict[r['key']]
+                if r['md5'] == local_info['md5']:
+                    to_download = False
+                elif r['mtime'] > local_info['mtime']:
+                    to_download = True
+            if to_download:
+                #r['url'] = os.path.join()
+                files_to_download.append(r)
+
+            else:
+                logging.info("Skipping %s (already on local)" % str(r['key']))
+
+        for f in files_to_download:
+            self._get_ml_bundle_file(f['url'], os.path.join(bundle_dir, f['key']))
+
+        return files_to_download
+
+    def _local_bundle_files_info(self, bundle_dir, what='all'):
+        out = []
+        for root, dirs, files in os.walk(bundle_dir, topdown=True, followlinks=True):
+            for name in files:
+                matches = [s for s in self._allowed_ml_bundle_suffixes if name.endswith(s)]
+                if len(matches) == 0:
+                    continue
+
+                # fixme filter for data vs model vs ALL
+
+                subdir = os.path.relpath(root, bundle_dir)
+                in_data = subdir in self._ml_bundle_ml_data_subdir
+                in_model = subdir in self._ml_bundle_ml_model_subdir
+
+                path = os.path.join(root, name)
+                key = os.path.relpath(path, bundle_dir)
+                local_md5 = multipart_etag(path, chunk_size=self._multipart_chunk_size)
+                local_mtime = os.path.getmtime(path)
+                if what == 'all' or (in_data and what == 'data') or (in_model and what == 'model'):
+                    out.append({'key': key, 'path': path, 'md5': local_md5, 'mtime': local_mtime})
+        return out
+
+    def put_ml_bundle_dir(self, bundle_dir: str, what: str= 'all') -> List[Dict[str, Union[float, str]]]:
+        bundle_name = os.path.basename(os.path.normpath(bundle_dir))
+        files_to_upload = self._local_bundle_files_info(bundle_dir, what)
+        files_to_upload = self._get_ml_bundle_upload_link(bundle_name, files_to_upload)
+
+        for f in files_to_upload:
+            if f['url'] is not None:
+                self._put_ml_bundle_file(f['path'], f['url'])
+        return files_to_upload
+
     def put_images(self, files : List[str]) -> MetadataType:
         """
         Incrementally upload a list of local files
@@ -246,6 +348,7 @@ class BaseClient(object):
 @typechecked
 class LocalClient(BaseClient):
     _database_filename = 'database.db'
+    _ml_storage_dirname = 'ml'
 
     def __init__(self, local_dir: str):
         """
@@ -295,7 +398,6 @@ class LocalClient(BaseClient):
         # for each image
         for data in info:
             json_str = json.dumps(data)
-            # print(json_str)
             dic = data['metadata']
             annotations = data['annotations']
 
@@ -313,7 +415,7 @@ class LocalClient(BaseClient):
 
             annot = UIDAnnotations(dic)
             o = annot.to_dict()
-            del o["json"]
+            o["json"] = ""
             out.append(o)
             session.add(annot)
             session.commit()
@@ -391,7 +493,7 @@ class LocalClient(BaseClient):
         for i in info:
             q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                              Images.datetime < i['end_datetime'],
-                                             Images.device == i['device'])
+                                             Images.device.like(i['device']))
 
             if q.count() == 0:
                 logging.warning('No data for series %s' % str(i))
@@ -409,6 +511,54 @@ class LocalClient(BaseClient):
             #     logging.warning("No image for %s at %s" % (i['device'], i['datetime']))
 
         return out
+
+    def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
+        bundle_dir = os.path.join(self._local_dir, self._ml_storage_dirname, bundle_name)
+
+        if not os.path.isdir(bundle_dir):
+            return []
+        out = self._local_bundle_files_info(bundle_dir, what)
+        for o in out:
+            o['url'] = o['path']
+        return out
+
+    def _put_ml_bundle_file(self, path: str, url: str):
+        if not os.path.isdir(os.path.dirname(url)):
+            os.makedirs(os.path.dirname(url), exist_ok=True)
+        logging.info("%s => %s" % (os.path.basename(path), url))
+        shutil.copy(path, url)
+
+    def _get_ml_bundle_file(self, url: str, target: str):
+        if not os.path.isdir(os.path.dirname(target)):
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+        logging.info("%s => %s" % (url, target))
+        shutil.copy(url, target)
+
+    def _get_ml_bundle_upload_link(self, bundle_name: str, info: List[Dict[str, Union[float, str]]])\
+            -> List[Dict[str, Union[float, str]]]:
+        already_uploaded = self._get_ml_bundle_file_list(bundle_name, 'all')
+        already_uploaded_dict = {au['key']: au for au in already_uploaded}
+
+        out = []
+        for i in info:
+            to_upload = False
+            # file does not exists on remote
+            if i['key'] not in already_uploaded_dict:
+                to_upload = True
+            else:
+                remote_info = already_uploaded_dict[i['key']]
+                if i['md5'] == remote_info['md5']:
+                    to_upload = False
+                elif i['mtime'] > remote_info['mtime']:
+                    to_upload = True
+            if to_upload:
+                i['url'] = os.path.join(self._local_dir, self._ml_storage_dirname, bundle_name, i['key'])
+                out.append(i)
+            else:
+                logging.info("Skipping %s (already on remote)" % str(i))
+        return out
+
+
 
 
 class RemoteClient(LocalClient):

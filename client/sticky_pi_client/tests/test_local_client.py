@@ -1,3 +1,5 @@
+import copy
+import os
 import tempfile
 import json
 import unittest
@@ -10,6 +12,9 @@ from contextlib import redirect_stderr
 from io import StringIO
 import shutil
 import glob
+
+import logging
+logging.getLogger().setLevel(logging.INFO)
 
 class TestImageParser(unittest.TestCase):
     _test_images = [i for i in sorted(glob.glob("raw_images/**/*.jpg"))]
@@ -202,3 +207,34 @@ class TestImageParser(unittest.TestCase):
 
         finally:
             shutil.rmtree(temp_dir)
+
+
+    def test_ml_bundle(self):
+
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            db = LocalClient(temp_dir)
+            # db2 = LocalClient(temp_dir2)
+            out = db.put_ml_bundle_dir('./ml_bundle')
+            self.assertEqual(len(out), 8)
+            out = db.put_ml_bundle_dir('./ml_bundle')
+
+            self.assertEqual(len(out), 0)
+
+            bundle_dir = os.path.join(temp_dir2, 'ml_bundle')
+
+            out = db.get_ml_bundle_dir(bundle_dir, 'model')
+            self.assertEqual(len(out), 3)
+
+            out = db.get_ml_bundle_dir(bundle_dir, 'data')
+            self.assertEqual(len(out), 5)
+
+            out = db.get_ml_bundle_dir(bundle_dir, 'all')
+            self.assertEqual(len(out), 0)
+
+
+        finally:
+            shutil.rmtree(temp_dir)
+            shutil.rmtree(temp_dir2)
