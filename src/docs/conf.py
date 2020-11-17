@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# sticky_pi_client documentation build configuration file, created by
+# sticky_pi_api documentation build configuration file, created by
 # sphinx-quickstart on Mon Jul 14 19:30:54 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -72,7 +72,7 @@ source_suffix = {
 master_doc = 'index'
 
 # General information about the project.
-project = 'Sticky Pi Client'
+project = 'Sticky Pi API'
 copyright = '2020, Quentin Geissmann'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -229,7 +229,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'sticky-pi.tex', 'Sticky Pi Client Documentation',
+  ('index', 'sticky-pi.tex', 'Sticky Pi API Documentation',
    'Quentin Geissmann', 'manual'),
 ]
 
@@ -259,7 +259,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'sticky pi', 'Sticky Pi Client Documentation',
+    ('index', 'sticky pi', 'Sticky Pi API Documentation',
      ['Quentin Geissmann'], 1)
 ]
 
@@ -294,7 +294,7 @@ texinfo_documents = [
 # -- Options for Epub output ----------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = 'Sticky Pi Client'
+epub_title = 'Sticky Pi API'
 epub_author = 'Quentin Geissmann'
 epub_publisher = 'Quentin Geissmann'
 epub_copyright = '2020, Quentin Geissmann'

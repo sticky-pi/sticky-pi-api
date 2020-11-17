@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
-exec(open('sticky_pi_client/_version.py').read())
+exec(open('sticky_pi_api/_version.py').read())
 
 setup(
-    name='sticky_pi_client',
+    name='sticky_pi_api',
     version=__version__,
     long_description=__doc__,
     packages=find_packages(),

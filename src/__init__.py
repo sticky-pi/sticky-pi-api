@@ -3,4 +3,4 @@ Sticky Pi is ... A general documentation of the project is available `here <http
 This is the documentation for the API client...
 """
 
-from .sticky_pi_client import *
+from .sticky_pi_api import *
