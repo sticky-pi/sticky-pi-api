@@ -2,7 +2,7 @@ import os
 import tempfile
 import json
 import unittest
-from sticky_pi_client.client import LocalClient
+from sticky_pi_api.client import LocalClient
 from sqlalchemy.exc import IntegrityError
 from contextlib import redirect_stderr
 from io import StringIO
@@ -29,6 +29,28 @@ class TestImageParser(unittest.TestCase):
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
 
     _test_image_for_annotation = "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg"
+
+
+    def test_users(self):
+
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            users = [
+                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+                    ]
+            cli = LocalClient(temp_dir)
+            cli.put_users(users)
+
+            # cannot add same users twice
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(IntegrityError) as context:
+                    cli.put_users(users)
+
+            out = cli.get_users()
+            self.assertEqual(len(out), 2)
+        finally:
+            shutil.rmtree(temp_dir)
 
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -66,7 +88,7 @@ class TestImageParser(unittest.TestCase):
             self.assertEqual(len(out), 1)
 
             # we try to parse the image from its url
-            from sticky_pi_client.image_parser import ImageParser
+            from sticky_pi_api.image_parser import ImageParser
             img_dict = ImageParser(out[0]['url'])
             self.assertEqual(out[0]['md5'], img_dict['md5'])
         finally:
@@ -142,8 +164,8 @@ class TestImageParser(unittest.TestCase):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = LocalClient(temp_dir)
-            from sticky_pi_client.image_parser import ImageParser
-            from sticky_pi_client.utils import datetime_to_string
+            from sticky_pi_api.image_parser import ImageParser
+            from sticky_pi_api.utils import datetime_to_string
 
             to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
             db.put_images(to_upload)
@@ -176,8 +198,8 @@ class TestImageParser(unittest.TestCase):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = LocalClient(temp_dir)
-            from sticky_pi_client.image_parser import ImageParser
-            from sticky_pi_client.utils import datetime_to_string
+            from sticky_pi_api.image_parser import ImageParser
+            from sticky_pi_api.utils import datetime_to_string
 
             to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
             db.put_images(to_upload)

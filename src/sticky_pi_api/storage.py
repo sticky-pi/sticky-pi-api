@@ -1,13 +1,14 @@
-import logging
 import os
-from sticky_pi_client.database.images_table import Images
-from sticky_pi_client.utils import local_bundle_files_info
-from typing import List, Dict, Union
+import logging
+from sticky_pi_api.types import List, Dict, Union
+from sticky_pi_api.database.images_table import Images
+from sticky_pi_api.utils import local_bundle_files_info
+from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf
 
 
 class BaseStorage(object):
-    def __init__(self, *args, **kwargs):
-        pass
+    def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
+        self._api_conf = api_conf
 
     def get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         """
@@ -37,10 +38,10 @@ class DiskStorage(BaseStorage):
     _raw_images_dirname = 'raw_images'
     _ml_storage_dirname = 'ml'
 
-    def __init__(self, local_dir: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        assert os.path.isdir(local_dir)
-        self._local_dir = local_dir
+    def __init__(self, api_conf: LocalAPIConf,  *args, **kwargs):
+        super().__init__(api_conf, *args, **kwargs)
+        self._local_dir = self._api_conf.LOCAL_DIR
+        assert os.path.isdir(self._local_dir)
 
     def store_image_files(self, image: Images) -> None:
         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)

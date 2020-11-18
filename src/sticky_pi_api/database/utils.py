@@ -1,10 +1,12 @@
 import datetime
 from sqlalchemy.ext.declarative import declarative_base
-from sticky_pi_client.utils import datetime_to_string
+from sqlalchemy import Column
+from sticky_pi_api.utils import datetime_to_string
+
+Base = declarative_base()
 
 
 # A base class to add our own customisation to Base, using mixin
-
 class BaseCustomisations(object):
     __table__ = None
 
@@ -22,4 +24,10 @@ class BaseCustomisations(object):
         return cls.__table__.columns.keys()
 
 
-Base = declarative_base()
+
+class DescribedColumn(Column):
+    def __init__(self,  col_type, description="", *args, **kwargs):
+        super().__init__(col_type, *args, **kwargs)
+        self._description = description
+
+

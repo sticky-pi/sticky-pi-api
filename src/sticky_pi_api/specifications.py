@@ -5,18 +5,21 @@ import json
 import sqlalchemy
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
-from sticky_pi_client.utils import string_to_datetime
-from sticky_pi_client.database.utils import Base
-from sticky_pi_client.api.storage import DiskStorage
-from sticky_pi_client.database.images_table import Images
-from sticky_pi_client.database.uid_annotations_table import UIDAnnotations
-from sticky_pi_client.api.storage import BaseStorage
-from sticky_pi_client.api.types import InfoType, MetadataType, AnnotType, List, Union, Dict
+from sticky_pi_api.utils import string_to_datetime
+from sticky_pi_api.database.utils import Base
+from sticky_pi_api.storage import DiskStorage, BaseStorage
+from sticky_pi_api.configuration import BaseAPIConf
+from sticky_pi_api.database.images_table import Images
+from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
+from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, Dict, Any
+from sticky_pi_api.database.users_tables import Users
+
+
 
 
 class BaseAPISpec(object):
-    def __init__(self, *args, **kwargs):
-        pass
+    # def __init__(self, *args, **kwargs):
+    #     pass
 
     def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
@@ -28,7 +31,7 @@ class BaseAPISpec(object):
             One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
             the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
-            (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is genenrated).
+            (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
         """
         raise NotImplementedError()
 
@@ -121,14 +124,30 @@ class BaseAPISpec(object):
         """
         raise NotImplementedError()
 
+    def get_users(self) -> List[Dict[str, Any]]:
+        """
+        :return: TODO
+        """
+        raise NotImplementedError()
+
+    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        :return: TODO
+        """
+        raise NotImplementedError()
+
+
+
 
 class BaseAPI(BaseAPISpec):
     _storage_class = BaseStorage
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._storage = self._storage_class(*args, **kwargs)
-        self._db_engine = self._create_db_engine(*args, **kwargs)
+        self._configuration = api_conf
+        self._storage = self._storage_class(api_conf = api_conf, *args, **kwargs)
+        self._db_engine = self._create_db_engine()
+
         Base.metadata.create_all(self._db_engine, Base.metadata.tables.values(), checkfirst=True)
 
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
@@ -285,12 +304,34 @@ class BaseAPI(BaseAPISpec):
 
         return out
 
+    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+        out = []
+        for data in info:
+            user = Users(**data)
+            out.append(user.to_dict())
+            user.hash_password(data["password"])
+            session.add(user)
+            session.commit()
+        return out
+
+    def get_users(self) -> List[Dict[str, Any]]:
+        session = sessionmaker(bind=self._db_engine)()
+        out = []
+        q = session.query(Users)
+        for user in q.all():
+            user.password_hash = "***********"
+            user_dict = user.to_dict()
+            out.append(user_dict)
+        return out
 
 class LocalAPI(BaseAPI):
     _storage_class = DiskStorage
     _database_filename = 'database.db'
 
-    def _create_db_engine(self, local_dir):
+    def _create_db_engine(self):
+        local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
         return sqlalchemy.create_engine(engine_url)
 

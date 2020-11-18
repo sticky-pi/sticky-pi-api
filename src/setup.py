@@ -22,7 +22,9 @@ setup(
                       'joblib',
                       'sqlalchemy',
                       'imread',
-                      'typeguard'],
+                      'typeguard',
+                      'passlib',
+                      'itsdangerous'],
     tests_require=['nose'],
     docs_require=['sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock', 'sphinx-autodoc-typehints'],
     test_suite='nose.collector'

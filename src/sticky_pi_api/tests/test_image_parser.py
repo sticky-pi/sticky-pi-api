@@ -1,6 +1,5 @@
-
 import unittest
-from sticky_pi_client.image_parser import ImageParser
+from sticky_pi_api.image_parser import ImageParser
 import datetime
 import pytz
 

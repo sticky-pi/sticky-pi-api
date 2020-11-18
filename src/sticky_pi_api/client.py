@@ -7,13 +7,12 @@ import os
 import pandas as pd
 import shutil
 from joblib import Memory, Parallel, delayed
-from sticky_pi_client.image_parser import ImageParser
-from sticky_pi_client.utils import datetime_to_string, local_bundle_files_info
-from sticky_pi_client.api.api_spec import BaseAPISpec
+from sticky_pi_api.image_parser import ImageParser
+from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info
 
-from typing import List, Dict, Union
-from sticky_pi_client.api.types import InfoType, MetadataType
-from sticky_pi_client.api.api_spec import LocalAPI, BaseAPISpec
+from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType
+from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
+from sticky_pi_api.configuration import LocalAPIConf
 
 
 class BaseClient(BaseAPISpec):
@@ -26,8 +25,9 @@ class BaseClient(BaseAPISpec):
         :param local_dir: The path to a client directory that acts as a client storage
         :param n_threads: The number of parallel threads to use to compute statistics on the image (md5 and such)
         """
-        super().__init__(local_dir, *args, **kwargs)
+
         self._local_dir = local_dir
+
         self._n_threads = n_threads
         self._local_dir = local_dir
         os.makedirs(self._local_dir, exist_ok=True)
@@ -204,6 +204,14 @@ class BaseClient(BaseAPISpec):
 
 
 class LocalClient(BaseClient, LocalAPI):
+
+    def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
+        # ad hoc API config for the local API. define the local_dir variable
+        api_conf = LocalAPIConf(LOCAL_DIR=local_dir)
+        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads, *args, **kwargs)
+        # use this config for the local/internal mock API
+        LocalAPI.__init__(self, api_conf, *args, **kwargs)
+
     def _put_ml_bundle_file(self, path: str, url: str):
         if not os.path.isdir(os.path.dirname(url)):
             os.makedirs(os.path.dirname(url), exist_ok=True)

@@ -1,12 +1,11 @@
+import os
 import PIL
 import PIL.Image
 import PIL.ExifTags
 from imread import imread_from_blob
 from ast import literal_eval
 import datetime
-import pytz
-from sticky_pi_client.utils import md5
-import os
+from sticky_pi_api.utils import md5
 
 
 class ImageParser(dict):

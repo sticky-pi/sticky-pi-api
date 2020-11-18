@@ -1,8 +1,8 @@
 import json
 import datetime
 from sqlalchemy import Column, Integer,  DateTime, UniqueConstraint, String, Text, ForeignKey
-from sticky_pi_client.image_parser import ImageParser
-from sticky_pi_client.database.utils import Base, BaseCustomisations
+# from sticky_pi_client.image_parser import ImageParser
+from sticky_pi_api.database.utils import Base, BaseCustomisations
 
 
 class UIDAnnotations(Base, BaseCustomisations):
