@@ -124,9 +124,17 @@ class BaseAPISpec(object):
         """
         raise NotImplementedError()
 
-    def get_users(self) -> List[Dict[str, Any]]:
+    def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
         """
-        :return: TODO
+        Get a list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
+        In the latter case, the union of all matched users is returned.
+
+         :param info: A dictionary acting as a filter, using an SQL like-type match.
+         For instance ``{'username': '%'}`` return all users.
+
+        :return: A list of users as represented in the underlying database, as one dictionary [per user,
+        with the keys being database column names. Note that the crypo/sensitive
+         fields are not returned (e.g. password_hash)
         """
         raise NotImplementedError()
 
@@ -316,10 +324,15 @@ class BaseAPI(BaseAPISpec):
             session.commit()
         return out
 
-    def get_users(self) -> List[Dict[str, Any]]:
+    def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
+        if info is None:
+            info = {}
+
         session = sessionmaker(bind=self._db_engine)()
         out = []
-        q = session.query(Users)
+        conditions = [and_(getattr(Users, i).like(info[i]) for i in info.keys())]
+        q = session.query(Users).filter(or_(*conditions))
+
         for user in q.all():
             user.password_hash = "***********"
             user_dict = user.to_dict()
