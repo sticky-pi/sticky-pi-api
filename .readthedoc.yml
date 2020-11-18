@@ -19,4 +19,4 @@ python:
       path: src
       extra_requirements:
         - docs
-  system_packages: true
+  system_packages: false
