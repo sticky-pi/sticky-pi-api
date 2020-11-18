@@ -12,25 +12,45 @@ class BaseStorage(object):
 
     def get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         """
-        Download locally the content of an `ML bundle'.
-        A ML bundle contains files necessary to train and run a ML training/inference (data, configs and model).
+        List and describes the files present in a ML bundle.
 
-        :param bundle_name: the name of the machine learning buncle to fetch the files from
+        :param bundle_name: the name of the machine learning bundle to fetch the files from
         :param what: One of {``'all'``, ``'data'``,``'model'`` }, to return all files, only the training data(training),
-        or only the model (inference), respectively.
+            or only the model (inference), respectively.
         :return: A list of dict containing the fields ``key`` and ``url`` of the files to be downloaded,
-         which can be used to download the files
+            which can be used to download the files
         """
         raise NotImplementedError()
 
     def get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
             List[Dict[str, Union[float, str]]]:
+        """
+        Request a list of upload links to put files in a given ML bundle
+
+        :param bundle_name:
+        :param info: A list of dict containing the fields ``key``, ``md5`` ``mtime`` describing the upload candidates.
+        :return: A list like ``info`` with the extra key ``url`` pointing to a destination where the file
+            can be copied/posted. The list contains only files that did not exist on remote -- hence can be empty.
+        """
         raise NotImplementedError()
 
     def store_image_files(self, image: Images) -> None:
+        """
+        Saves the files corresponding to a an image.
+        Those are generally the original JPEG plus thumbnail and thumbnail-mini
+
+        :param image: an image object
+        """
         raise NotImplementedError()
 
     def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
+        """
+        Retrieves the URL to the file corresponding to an image in the database.
+
+        :param image: an image object
+        :param what:  One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
+        :return: a url/path as a string. For ``what='metadata'``, an empty string is returned. for consistency
+        """
         raise NotImplementedError()
 
 

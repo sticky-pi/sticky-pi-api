@@ -1,7 +1,8 @@
 import datetime
-from sqlalchemy import Integer,  DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
+from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
+
 
 # import warnings
 # from sqlalchemy.exc import SAWarning
@@ -16,12 +17,12 @@ class Images(Base, BaseCustomisations):
                          description="The unique identifier of each image")
     device = DescribedColumn(String(8), nullable=False,
                              description="An 8 char hexadecimal code describing the hardware chip of the device that"
-                                  "acquired the image")
+                                         "acquired the image")
     datetime = DescribedColumn(DateTime, nullable=False,
                                description="The UTC date and time at which the image was taken")
     md5 = DescribedColumn(String(32), nullable=False,
                           description="An md5 checksum of the whole JPEG image. Used internally for"
-                               "sanity checks and  incremental transfers")
+                                      "sanity checks and  incremental transfers")
     datetime_created = DescribedColumn(DateTime, nullable=False,
                                        description="UTC datetime of the upload of the image to the DB")
 
@@ -70,8 +71,6 @@ class Images(Base, BaseCustomisations):
 
         Base.__init__(self, **i_dict)
 
-
-
     @property
     def filename(self):
         return "%s.%s.jpg" % (self.device, self.datetime.strftime('%Y-%m-%d_%H-%M-%S'))
@@ -90,4 +89,4 @@ class Images(Base, BaseCustomisations):
 
     def __repr__(self):
         return "<Image(device='%s', datetime='%s', md5='%s')>" % (
-                                    self.device, self.datetime, self.md5)
+            self.device, self.datetime, self.md5)

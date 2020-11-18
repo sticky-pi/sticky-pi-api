@@ -10,7 +10,7 @@ Welcome to SphinxDemo's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   sticky_pi_client
+   sticky_pi_api
 
 
 

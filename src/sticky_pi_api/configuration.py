@@ -47,5 +47,5 @@ class BaseAPIConf(dict):
 class LocalAPIConf(BaseAPIConf):
     _config_vars = {
         'SECRET_API_KEY': "endjlwenmfkwe",
-        'LOCAL_DIR': None
+        'LOCAL_DIR': RequiredConfVar()
     }

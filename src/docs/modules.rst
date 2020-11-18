@@ -1,7 +1,7 @@
-sticky_pi_client
-================
+sticky_pi_api
+=============
 
 .. toctree::
    :maxdepth: 4
 
-   sticky_pi_client
+   sticky_pi_api

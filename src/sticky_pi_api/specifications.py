@@ -106,7 +106,7 @@ class BaseAPISpec(object):
         A ML bundle contains files necessary to train and run a ML training/inference (data, configs and model).
         :param bundle_name: the name of the machine learning buncle to fetch the files from
         :param what: One of {``'all'``, ``'data'``,``'model'`` }, to return all files, only the training data(training),
-        or only the model (inference), respectively.
+            or only the model (inference), respectively.
         :return: A list of dict containing the fields ``key`` and ``url`` of the files to be downloaded,
          which can be used to download the files
         """
@@ -116,11 +116,12 @@ class BaseAPISpec(object):
             List[Dict[str, Union[float, str]]]:
         """
         Ask the client for a list of upload url for the files described in info.
-        :param bundle_name: the name of the machine learning buncle to fetch the files from
+
+        :param bundle_name: the name of the machine learning bundle to fetch the files from
         :param info: a list of dict with fields {``'key'``, ``'md5'``, ``'mtime'``}.
-        ``'key'`` is the file path, relative to the storage root (e.g. ``data/mydata.jpg``)
+            ``'key'`` is the file path, relative to the storage root (e.g. ``data/mydata.jpg``)
         :return: The same list of dictionaries as ``info``, with an extra field pointing to a destination url ``'url'``,
-        where the client can then upload their data.
+            where the client can then upload their data.
         """
         raise NotImplementedError()
 
@@ -129,18 +130,21 @@ class BaseAPISpec(object):
         Get a list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
         In the latter case, the union of all matched users is returned.
 
-         :param info: A dictionary acting as a filter, using an SQL like-type match.
-         For instance ``{'username': '%'}`` return all users.
-
+        :param info: A dictionary acting as a filter, using an SQL like-type match.
+            For instance ``{'username': '%'}`` return all users.
         :return: A list of users as represented in the underlying database, as one dictionary [per user,
-        with the keys being database column names. Note that the crypo/sensitive
-         fields are not returned (e.g. password_hash)
+            with the keys being database column names. Note that the crypo/sensitive
+            fields are not returned (e.g. password_hash)
         """
         raise NotImplementedError()
 
     def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        :return: TODO
+        Add a list of users defined by a dict of proprieties.
+
+        :param info: A list of dictionary each dictionary has the fields  {``'username'``, ``'password'``},
+            and optionally: {``'email'``, ``'is_admin'``,``'model'`` },
+        :return: A list of dictionaries describing the users that were created
         """
         raise NotImplementedError()
 
@@ -338,6 +342,7 @@ class BaseAPI(BaseAPISpec):
             user_dict = user.to_dict()
             out.append(user_dict)
         return out
+
 
 class LocalAPI(BaseAPI):
     _storage_class = DiskStorage

@@ -24,7 +24,6 @@ class BaseCustomisations(object):
         return cls.__table__.columns.keys()
 
 
-
 class DescribedColumn(Column):
     def __init__(self,  col_type, description="", *args, **kwargs):
         super().__init__(col_type, *args, **kwargs)
