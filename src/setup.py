@@ -25,7 +25,10 @@ setup(
                       'typeguard',
                       'passlib',
                       'itsdangerous'],
-    tests_require=['nose'],
-    docs_require=['sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock', 'sphinx-autodoc-typehints'],
+    extras_require={
+        'test': ['nose', 'pytest', 'codecov'],
+        'docs': ['sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock',
+                                        'sphinx-autodoc-typehints']
+    },
     test_suite='nose.collector'
 )
