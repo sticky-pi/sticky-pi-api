@@ -1,0 +1,63 @@
+_BASE_: "mask_rcnn_R_101_C4_3x.yaml"
+
+MODEL:
+  RPN:
+    NMS_THRESH: 0.9
+  ANCHOR_GENERATOR:
+    # the featuremap is 256 x 256, and the original image is 1024 x 1024, so a scale of 1/4.
+    # the smallest discernible objects are about 32px wide so the smallest anchor is 8 as 8*4 = 32
+    SIZES:
+    - - 8
+      - 16
+      - 32
+      - 64
+      - 128
+  ROI_HEADS:
+      BATCH_SIZE_PER_IMAGE: 256
+
+  PIXEL_MEAN:
+  - 200.0
+  - 100.0
+  - 1.0
+
+DATALOADER:
+  NUM_WORKERS:  8
+SOLVER:
+  IMS_PER_BATCH: 14
+  BASE_LR:  0.05
+  MAX_ITER: 550000
+  GAMMA: 0.8
+  STEPS:
+  - 10000
+  - 20000
+  - 30000
+  - 40000
+  - 50000
+  - 60000
+  - 70000
+  - 80000
+  - 90000
+  - 100000
+
+
+TEST:
+  DETECTIONS_PER_IMAGE: 500
+
+# the featuremap is 256 x 256, and the original image is 1024 x 1024, so a scale of 1/4.
+# the smallest discernible objects are about 32px wide so the smallest anchor is 8 as 8*4 = 32
+
+INPUT:
+  CROP:
+    ENABLED: true
+    SIZE:
+    - 1024
+    - 1024
+    TYPE: absolute
+
+CLASSES:
+  - ['insect', '#0000ff']
+
+BASE_MODEL_PREFIX: 'COCO-InstanceSegmentation/'
+MIN_MAX_OBJ_SIZE:
+  - 20
+  - 600
