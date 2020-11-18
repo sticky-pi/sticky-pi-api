@@ -1,0 +1,52 @@
+Table "images" {
+  "id" INTEGER [pk, not null]
+  "device" VARCHAR(8) [not null]
+  "datetime" DATETIME [not null]
+  "md5" VARCHAR(32) [not null]
+  "datetime_created" DATETIME [not null]
+  "device_version" VARCHAR(8)
+  "api_version" VARCHAR(8)
+  "uploader" INTEGER
+  "width" SMALLINT [not null]
+  "height" SMALLINT [not null]
+  "alt" SMALLINT
+  "lat" DECIMAL(9,6)
+  "lng" DECIMAL(9,6)
+  "temp" FLOAT
+  "hum" FLOAT
+  "no_flash_shutter_speed" FLOAT [not null]
+  "no_flash_exposure_time" FLOAT [not null]
+  "no_flash_bv" FLOAT [not null]
+  "no_flash_iso" FLOAT [not null]
+}
+
+Table "users" {
+  "id" INTEGER [pk, not null]
+  "username" VARCHAR(32) [not null]
+  "email" VARCHAR(64)
+  "password_hash" VARCHAR(128)
+  "is_admin" BOOLEAN
+  "datetime_created" DATETIME [not null]
+
+Indexes {
+  username [unique]
+  email [unique]
+  username [name: "ix_users_username"]
+  email [name: "ix_users_email"]
+}
+}
+
+Table "uid_annotations" {
+  "id" INTEGER [pk, not null]
+  "parent_image_id" INTEGER [not null]
+  "algo_name" VARCHAR(32) [not null]
+  "algo_version" VARCHAR(46) [not null]
+  "datetime_created" DATETIME [not null]
+  "uploader" INTEGER
+  "n_objects" INTEGER [not null]
+  "json" TEXT(34) [not null]
+}
+
+Ref:"images"."id" < "uid_annotations"."parent_image_id"
+
+
