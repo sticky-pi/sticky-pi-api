@@ -13,7 +13,7 @@ python:
   version: 3.8
   install:
     - method: pip
-      path: .
+      path: src
       extra_requirements:
         - docs
 
