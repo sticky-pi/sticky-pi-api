@@ -1,15 +1,22 @@
 # The API for the [Sticky Pi project](https://sticky-pi.github.io)
 
-# The API for the [Sticky Pi project](https://sticky-pi.github.io)
-
-[![ReadTheDoc](https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest)](https://sticky_pi_api.readthedocs.io/en/latest/?badge=latest)
+`main` branch:
+[![readthedocs](https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest)](https://sticky_pi_api.readthedocs.io/en/latest/?badge=latest)
 [![Travis](https://travis-ci.org/sticky-pi/sticky-pi-api.svg?branch=main)](https://travis-ci.org/sticky-pi/sticky-pi-ap)
+[![codecov](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/main/graph/badge.svg)](https://codecov.io/gh/sticky-pi/sticky-pi-api)
+
+`develop` branch:
+[![readthedocs](https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest)](https://sticky_pi_api.readthedocs.io/en/latest/?badge=latest)
+[![Travis](https://travis-ci.org/sticky-pi/sticky-pi-api.svg?branch=develop)](https://travis-ci.org/sticky-pi/sticky-pi-ap)
+[![codecov](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/develop/graph/badge.svg)](https://codecov.io/gh/sticky-pi/sticky-pi-api)
+
+
 
 
 
 * `src` a Python package (`sticky_pi_api`) that defines the API and its client. 
 Complete documentation of the [client](https://sticky-pi.github.io/client) and 
-the [api][client](https://sticky-pi.github.io/api) is available on our website.
+the [api](https://sticky-pi.github.io/api) is available on our website.
 
 
 * `server` a docker-based server, deployed using `docker-compose`. Complete doumentation [here](https://sticky-pi.github.io/server). Contains the following services:

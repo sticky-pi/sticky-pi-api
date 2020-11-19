@@ -26,7 +26,7 @@ setup(
                       'passlib',
                       'itsdangerous'],
     extras_require={
-        'test': ['nose', 'pytest', 'codecov'],
+        'test': ['nose', 'pytest', 'pytest-cov', 'codecov'],
         'docs': ['sphinx_autodoc_typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },
     test_suite='nose.collector'

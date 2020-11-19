@@ -9,9 +9,8 @@ before_install:
 install:
   - cd src
   - pip install ".[test]" . # install package + test dependencies
-  - pip install ".[docs]" . # install package + test dependencies
-  - pip install "." . # install package + test dependencies
-script: pytest      # run tests
+  - pip install "." .       # install package + test dependencies
+script: pytest              # run tests
 after_success:
-  - codecov # submit coverage
+  - codecov                 # submit coverage
 
