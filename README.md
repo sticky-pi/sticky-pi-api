@@ -11,8 +11,8 @@
 [![codecov](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/develop/graph/badge.svg)](https://codecov.io/gh/sticky-pi/sticky-pi-api)
 
 
-
-
+--------------------------------
+## Project organisation:
 
 * `src` a Python package (`sticky_pi_api`) that defines the API and its client. 
 Complete documentation of the [client](https://sticky-pi.github.io/client) and 
