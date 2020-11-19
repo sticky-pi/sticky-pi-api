@@ -9,13 +9,12 @@ version: 2
 sphinx:
   configuration: docs/conf.py
 
-
 python:
   version: 3.8
   install:
-#    - requirements: src/docs/requirements.txt
     - method: pip
-        extra_requirements:
-          - docs
+      path: .
+      extra_requirements:
+        - docs
 
-system_packages: true
+  system_packages: true
