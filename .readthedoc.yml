@@ -15,8 +15,11 @@ version: 2
 python:
   version: 3.8
   install:
+    - requirements: docs/requirements.txt
+#    - method: setuptools
+#        path: sphinx-autodoc-typehints
     - method: pip
       path: src
       extra_requirements:
         - docs
-  system_packages: false
+  system_packages: true
