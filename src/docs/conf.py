@@ -39,7 +39,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
-    # 'sphinx_autodoc_typehints',
+    'sphinx_autodoc_typehints',
     'recommonmark'
 ]
 
@@ -53,6 +53,7 @@ intersphinx_mapping = {
     # 'samplerate': ('http://www.ar.media.kyoto-u.ac.jp/members/david/softwares/samplerate/sphinx/', None),
     # 'pywt': ('http://www.pybytes.com/pywavelets/', None),
     #'sklearn': ('http://scikit-learn.org/stable/documentation.html', None),
+    'sqlalchemy': ('https://docs.sqlalchemy.org/', None)
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -372,5 +373,5 @@ class Mock(MagicMock):
 
 MOCK_MODULES = [
     'cv2', 'cv', 'cv2.cv',
-    'numpy', 'scipy', 'pandas', 'imread', 'joblib']
+    'numpy', 'scipy', 'pandas', 'imread', 'joblib', 'sqlalchemy']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)

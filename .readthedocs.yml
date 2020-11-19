@@ -11,14 +11,11 @@ sphinx:
 
 
 python:
-  version: 3.7
+  version: 3.8
   install:
 #    - requirements: src/docs/requirements.txt
-    - method: setuptools
-        path: .
+    - method: pip
         extra_requirements:
           - docs
-#    - method: pip
-#      path: src
 
 system_packages: true
