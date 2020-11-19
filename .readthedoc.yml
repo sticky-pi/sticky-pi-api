@@ -10,16 +10,15 @@ sphinx:
   configuration: docs/conf.py
 
 
-version: 2
-
 python:
-  version: 3.8
+  version: 3.7
   install:
-    - requirements: docs/requirements.txt
-#    - method: setuptools
-#        path: sphinx-autodoc-typehints
-    - method: pip
-      path: src
-      extra_requirements:
-        - docs
-  system_packages: true
+#    - requirements: src/docs/requirements.txt
+    - method: setuptools
+        path: .
+        extra_requirements:
+          - docs
+#    - method: pip
+#      path: src
+
+system_packages: true
