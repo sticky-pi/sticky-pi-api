@@ -1,20 +1,10 @@
 # The API for the [Sticky Pi project](https://sticky-pi.github.io)
 
-|build-status| |docs| |coverage|
+# The API for the [Sticky Pi project](https://sticky-pi.github.io)
 
-.. |build-status| image:: https://circleci.com/gh/readthedocs/readthedocs.org.svg?style=svg
-    :alt: build status
-    :target: https://circleci.com/gh/readthedocs/readthedocs.org
+[![ReadTheDoc](https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest)](https://sticky_pi_api.readthedocs.io/en/latest/?badge=latest)
+[![Travis](https://travis-ci.org/sticky-pi/sticky-pi-api.svg?branch=main)](https://travis-ci.org/sticky-pi/sticky-pi-ap)
 
-.. |docs| image:: https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest
-    :alt: Documentation Status
-    :scale: 100%
-    :target: https://sticky_pi_api.readthedocs.io/en/latest/?badge=latest
-
-.. |coverage| image:: https://codecov.io/gh/readthedocs/readthedocs.org/branch/master/graph/badge.svg
-    :alt: Test coverage
-    :scale: 100%
-    :target: https://codecov.io/gh/readthedocs/readthedocs.org
 
 
 * `src` a Python package (`sticky_pi_api`) that defines the API and its client. 
