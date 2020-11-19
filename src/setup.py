@@ -27,7 +27,7 @@ setup(
                       'itsdangerous'],
     extras_require={
         'test': ['nose', 'pytest', 'codecov'],
-        'docs': ['sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
+        'docs': ['sphinx_autodoc_typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },
     test_suite='nose.collector'
 )
