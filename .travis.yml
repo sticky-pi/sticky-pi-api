@@ -1,12 +1,13 @@
 language: python
 python:
   - 3.8
-before_script: cd src
+
 
 before_install:
   - python --version
   - pip install -U pip
 install:
+  - cd src
   - pip install ".[test]" . # install package + test dependencies
   - pip install ".[docs]" . # install package + test dependencies
   - pip install "." . # install package + test dependencies
