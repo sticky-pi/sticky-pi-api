@@ -242,25 +242,26 @@ class TestLocalClient(unittest.TestCase):
 
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
+        dummy_bundle_name = 'dummy_bundle_name'
         try:
 
             db = LocalClient(temp_dir)
             # db2 = LocalClient(temp_dir2)
-            out = db.put_ml_bundle_dir(self._ml_bundle_dir)
+            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
             # self.assertEqual(len(out), 8)
-            out = db.put_ml_bundle_dir(self._ml_bundle_dir)
+            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
             # self.assertEqual(len(out), 0)
             # #
-            bundle_dir = os.path.join(temp_dir2, 'ml_bundle')
+            bundle_dir = os.path.join(dummy_bundle_name, temp_dir2, 'ml_bundle')
 
-            out = db.get_ml_bundle_dir(bundle_dir, 'model')
+            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
 
             self.assertEqual(len(out), 3)
 
-            out = db.get_ml_bundle_dir(bundle_dir, 'data')
+            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
             self.assertEqual(len(out), 5)
 
-            out = db.get_ml_bundle_dir(bundle_dir, 'all')
+            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
             self.assertEqual(len(out), 0)
 
 
