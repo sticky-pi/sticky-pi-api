@@ -1,12 +1,12 @@
 # The API for the [Sticky Pi project](https://sticky-pi.github.io)
 
 `main` branch:
-[![readthedocs](https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest)](https://sticky_pi_api.readthedocs.io/en/latest/?badge=latest)
+[![readthedocs](https://readthedocs.org/projects/sticky_pi_api/badge/?version=latest)](https://sticky-pi-api.readthedocs.io/en/main/)
 [![Travis](https://travis-ci.org/sticky-pi/sticky-pi-api.svg?branch=main)](https://travis-ci.org/sticky-pi/sticky-pi-ap)
 [![codecov](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/main/graph/badge.svg)](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/main)
 
 `develop` branch:
-[![readthedocs](https://readthedocs.org/projects/sticky_pi_api/badge/?version=develop)](https://sticky_pi_api.readthedocs.io/en/latest/?badge=develop)
+[![readthedocs](https://readthedocs.org/projects/sticky_pi_api/badge/?version=develop)](https://sticky-pi-api.readthedocs.io/en/develop/)
 [![Travis](https://travis-ci.org/sticky-pi/sticky-pi-api.svg?branch=develop)](https://travis-ci.org/sticky-pi/sticky-pi-ap)
 [![codecov](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/develop/graph/badge.svg)](https://codecov.io/gh/sticky-pi/sticky-pi-api/branch/develop)
 
