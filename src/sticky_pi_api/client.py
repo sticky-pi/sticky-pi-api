@@ -158,8 +158,8 @@ class BaseClient(BaseAPISpec):
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
         return out
 
-    def get_ml_bundle_dir(self, bundle_dir: str, what: str) -> List[Dict[str, Union[float, str]]]:
-        bundle_name = os.path.basename(os.path.normpath(bundle_dir))
+    def get_ml_bundle_dir(self, bundle_name: str, bundle_dir: str, what: str) -> List[Dict[str, Union[float, str]]]:
+        # bundle_name = os.path.basename(os.path.normpath(bundle_dir))
         local_files = local_bundle_files_info(bundle_dir, what)
         remote_files = self._get_ml_bundle_file_list(bundle_name, what)
         already_downloaded_dict = {au['key']: au for au in local_files}
@@ -187,8 +187,8 @@ class BaseClient(BaseAPISpec):
 
         return files_to_download
 
-    def put_ml_bundle_dir(self, bundle_dir: str, what: str = 'all') -> List[Dict[str, Union[float, str]]]:
-        bundle_name = os.path.basename(os.path.normpath(bundle_dir))
+    def put_ml_bundle_dir(self, bundle_name: str, bundle_dir: str, what: str = 'all') -> List[Dict[str, Union[float, str]]]:
+        # bundle_name = os.path.basename(os.path.normpath(bundle_dir))
         files_to_upload = local_bundle_files_info(bundle_dir, what)
         files_to_upload = self._get_ml_bundle_upload_links(bundle_name, files_to_upload)
         for f in files_to_upload:
