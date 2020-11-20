@@ -16,7 +16,6 @@ setup(
                       'python-dotenv',
                       'boto3',
                       'pillow',
-                      'opencv_python',
                       'psutil',
                       'tqdm',
                       'joblib',
