@@ -8,7 +8,7 @@ import pandas as pd
 import shutil
 from joblib import Memory, Parallel, delayed
 from sticky_pi_api.image_parser import ImageParser
-from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info
+from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info, chunker
 
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
@@ -105,19 +105,17 @@ class BaseClient(BaseAPISpec):
         :return: the data of the uploaded files, as represented in by API
         """
         # instead of dealing with images one by one, we send them by chunks
-        def chunker(seq, size):
-            return (seq[pos:pos + size] for pos in range(0, len(seq), size))
-
         # first find which files need to be uploaded
         to_upload = []
         chunk_size = self._put_chunk_size * self._n_threads
 
         for i, group in enumerate(chunker(files, chunk_size)):
-            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i*chunk_size,
+            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i * chunk_size,
                                                                                          i * chunk_size + len(group),
                                                                                          len(files)))
 
             to_upload += self._diff_images_to_upload(group)
+
         if len(to_upload) == 0:
             logging.warning('No image to upload!')
         out = []
