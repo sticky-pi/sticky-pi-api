@@ -1,3 +1,4 @@
+import datetime
 import copy
 import logging
 import os
@@ -201,7 +202,7 @@ class BaseAPI(BaseAPISpec):
         out = []
         # for each image
         for data in info:
-            json_str = json.dumps(data)
+            json_str = json.dumps(data, default=str)
             dic = data['metadata']
             annotations = data['annotations']
 
@@ -253,7 +254,8 @@ class BaseAPI(BaseAPISpec):
         out = []
         info = copy.deepcopy(info)
         for i in info:
-            i['datetime'] = string_to_datetime(i['datetime'])
+            if not isinstance(i['datetime'], datetime.datetime):
+                i['datetime'] = string_to_datetime(i['datetime'])
         session = sessionmaker(bind=self._db_engine)()
 
         # we can fetch all images at once
