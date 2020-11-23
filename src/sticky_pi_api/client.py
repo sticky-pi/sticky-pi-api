@@ -41,6 +41,8 @@ class BaseClient(BaseAPISpec):
         """
         Retrieves annotations for images within a given datetime range
 
+        TODO add ref to api specs, where params hould be inherited (so we don't write twice the same doc)
+
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
         :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
@@ -59,7 +61,9 @@ class BaseClient(BaseAPISpec):
     def get_images_with_uid_annotations_series(self, info: InfoType, what_image: str = 'metadata', what_annotation: str = 'metadata') -> MetadataType:
         """
         Retrieves images alongside their annotations (if available)  for images from a given device and
-        within a given datetime range
+        within a given datetime range.
+
+        TODO add ref to api specs, where params hould be inherited (so we don't write twice the same doc)
 
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
@@ -70,12 +74,23 @@ class BaseClient(BaseAPISpec):
             Each dictionary contains the fields present in the underlying database tables (see ``UIDAnnotations`` and ``Images``).
         """
         # we first fetch the parent images matching a series
+
         parent_images = self.get_image_series(info, what=what_image)
+
+        if len(parent_images) == 0:
+            logging.warning('No image found for provided info!')
+            return [{}]
+
         # we filter the metadata as only these two fields are necessary
         info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
         parent_images = pd.DataFrame(parent_images)
+
         annots = self.get_uid_annotations(info, what=what_annotation)
-        annots = pd.DataFrame(annots)
+
+        if len(annots) == 0:
+            annots = pd.DataFrame([], columns=['parent_image_id'])
+        else:
+            annots = pd.DataFrame(annots)
 
         out = pd.merge(parent_images, annots, how='left', left_on=['id'], right_on=['parent_image_id'], suffixes=('', '_annot'))
         # NaN -> None
@@ -96,12 +111,15 @@ class BaseClient(BaseAPISpec):
         # first find which files need to be uploaded
         to_upload = []
         chunk_size = self._put_chunk_size * self._n_threads
+
         for i, group in enumerate(chunker(files, chunk_size)):
             logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i*chunk_size,
                                                                                          i * chunk_size + len(group),
                                                                                          len(files)))
-            to_upload += self._diff_images_to_upload(group)
 
+            to_upload += self._diff_images_to_upload(group)
+        if len(to_upload) == 0:
+            logging.warning('No image to upload!')
         out = []
         # upload by chunks now
         for i, group in enumerate(chunker(to_upload, self._put_chunk_size)):
