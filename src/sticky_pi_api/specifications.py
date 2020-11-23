@@ -353,7 +353,7 @@ class LocalAPI(BaseAPI):
     def _create_db_engine(self):
         local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
-        return sqlalchemy.create_engine(engine_url)
+        return sqlalchemy.create_engine(engine_url, connect_args={"check_same_thread": False})
 
 # TODO here implement a mysql connection
 # class Remote(BaseAPI):
