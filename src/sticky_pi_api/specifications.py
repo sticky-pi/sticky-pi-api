@@ -14,6 +14,7 @@ from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, Dict, Any
 from sticky_pi_api.database.users_tables import Users
+from sticky_pi_api.utils import chunker
 
 
 
@@ -228,26 +229,34 @@ class BaseAPI(BaseAPISpec):
 
     def get_uid_annotations(self, info: MetadataType, what: str = 'metadata'):
         images = self.get_images(info)
-        image_ids = [Images.id == img['id'] for img in images]
-        session = sessionmaker(bind=self._db_engine)()
-        conditions = or_(*image_ids)
-
-        q = session.query(Images.id).filter(conditions)
 
         out = []
-        parent_img_ids = [i[0] for i in q.all()]
-        q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
-        # q = session.query(UIDAnnotations)
 
-        for annots in q:
-            annot_dict = annots.to_dict()
-            if what == 'metadata':
-                del annot_dict['json']
-            elif what == 'data':
-                pass
-            else:
-                raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
-            out.append(annot_dict)
+        for i, images_chunk in enumerate(chunker(images, self._get_image_chunk_size)):
+            logging.info("Getting image annotations... %i-%i / %i" %
+                         (i * self._get_image_chunk_size,
+                          i * self._get_image_chunk_size + len(images_chunk),
+                          len(info)))
+
+            image_ids = [Images.id == img['id'] for img in images_chunk]
+            session = sessionmaker(bind=self._db_engine)()
+            conditions = or_(*image_ids)
+
+            q = session.query(Images.id).filter(conditions)
+        
+            parent_img_ids = [i[0] for i in q.all()]
+            q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
+            # q = session.query(UIDAnnotations)
+
+            for annots in q:
+                annot_dict = annots.to_dict()
+                if what == 'metadata':
+                    del annot_dict['json']
+                elif what == 'data':
+                    pass
+                else:
+                    raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
+                out.append(annot_dict)
         return out
 
     def get_images(self, info: MetadataType, what: str = 'metadata'):
@@ -259,12 +268,11 @@ class BaseAPI(BaseAPISpec):
         session = sessionmaker(bind=self._db_engine)()
 
         # We fetch images by chunks:
-
-        from sticky_pi_api.utils import chunker
         for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
-            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i * self._get_image_chunk_size,
-                                                                                         i * self._get_image_chunk_size + len(info_chunk),
-                                                                                         len(info)))
+            logging.info("Putting images... %i-%i / %i" %
+                         (i * self._get_image_chunk_size,
+                          i * self._get_image_chunk_size + len(info_chunk),
+                          len(info)))
 
             conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device']) for inf in info_chunk]
             q = session.query(Images).filter(or_(*conditions))
