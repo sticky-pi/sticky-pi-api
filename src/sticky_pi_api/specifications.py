@@ -154,7 +154,7 @@ class BaseAPISpec(object):
 
 class BaseAPI(BaseAPISpec):
     _storage_class = BaseStorage
-
+    get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._configuration = api_conf
@@ -258,33 +258,21 @@ class BaseAPI(BaseAPISpec):
                 i['datetime'] = string_to_datetime(i['datetime'])
         session = sessionmaker(bind=self._db_engine)()
 
-        # we can fetch all images at once
-        conditions = [and_(Images.datetime == i['datetime'], Images.device == i['device']) for i in info]
-        q = session.query(Images).filter(or_(*conditions))
+        # We fetch images by chunks:
 
-        for img in q:
-            img_dict = img.to_dict()
-            img_dict['url'] = self._storage.get_url_for_image(img, what)
-            out.append(img_dict)
+        from sticky_pi_api.utils import chunker
+        for i, info_chunk in enumerate(chunker(info, self.get_image_chunk_size)):
+            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i * self.get_image_chunk_size,
+                                                                                         i * self.get_image_chunk_size + len(info_chunk),
+                                                                                         len(info)))
 
+            conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device']) for inf in info_chunk]
+            q = session.query(Images).filter(or_(*conditions))
 
-        #todo here, check wether requested images all exist in db. (in the case we ask for more than metadata)
-
-        # for i in info:
-        #     q = session.query(Images).filter(Images.datetime == i['datetime'], Images.device == i['device'])
-        #     if q.count() == 1:
-        #         img = q.one()
-        #         img_dict = img.to_dict()
-        #         img_dict['url'] = self._storage.get_url_for_image(img, what)
-        #         out.append(img_dict)
-        #
-        #     elif q.count() > 1:
-        #         raise Exception("more than one match for %s" % i)
-        #     # warn when trying to retrieve the URL of an image that does not exist
-        #     # "metadata" to be used when diffing to see if data exists in db
-        #     elif what != "metadata":
-        #         logging.warning("No image for %s at %s" % (i['device'], i['datetime']))
-
+            for img in q:
+                img_dict = img.to_dict()
+                img_dict['url'] = self._storage.get_url_for_image(img, what)
+                out.append(img_dict)
         return out
 
     def get_image_series(self, info: MetadataType, what: str = 'metadata'):

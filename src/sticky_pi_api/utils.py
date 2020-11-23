@@ -5,6 +5,16 @@ import hashlib
 STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 
+def chunker(seq, size: int):
+    """
+    Breaks an interable into a list of smaller chunks of size ``size`` (or less for the last chunk)
+
+    :param seq: an iterable
+    :param size: the size of the chunk
+    :return:
+    """
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
 def md5(file, chunk_size=32768):
     # if the file is a path, open and recurse
     if type(file) == str:
