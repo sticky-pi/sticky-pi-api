@@ -154,7 +154,7 @@ class BaseAPISpec(object):
 
 class BaseAPI(BaseAPISpec):
     _storage_class = BaseStorage
-    get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
+    _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._configuration = api_conf
@@ -261,9 +261,9 @@ class BaseAPI(BaseAPISpec):
         # We fetch images by chunks:
 
         from sticky_pi_api.utils import chunker
-        for i, info_chunk in enumerate(chunker(info, self.get_image_chunk_size)):
-            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i * self.get_image_chunk_size,
-                                                                                         i * self.get_image_chunk_size + len(info_chunk),
+        for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
+            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i * self._get_image_chunk_size,
+                                                                                         i * self._get_image_chunk_size + len(info_chunk),
                                                                                          len(info)))
 
             conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device']) for inf in info_chunk]
