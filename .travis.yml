@@ -10,9 +10,8 @@ install:
   - cd src
   - pip install ".[test]" . # install package + test dependencies
   - pip install "." .       # install package + test dependencies
-script: pytest --cov=src/sticky_pi_api         # run tests
+script: pytest --cov=sticky_pi_api         # run tests
 after_success:
-  - ls -lah
-  - pwd
+  - coverage xml -i
   - codecov                 # submit coverage
 
