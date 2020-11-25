@@ -95,13 +95,12 @@ class DiskStorage(BaseStorage):
         out = local_bundle_files_info(bundle_dir, what)
         for o in out:
             o['url'] = o['path']
-
-
         return out
 
     def get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
             List[Dict[str, Union[float, str]]]:
         bundle_dir = os.path.join(self._local_dir, self._ml_storage_dirname, bundle_name)
+
         already_uploaded = local_bundle_files_info(bundle_dir, what='all')
         already_uploaded_dict = {au['key']: au for au in already_uploaded}
         out = []

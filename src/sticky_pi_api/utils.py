@@ -1,6 +1,12 @@
+import pandas as pd
+import logging
 import os
 import datetime
 import hashlib
+import json
+from decimal import Decimal
+import re
+import datetime
 
 STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
@@ -15,6 +21,43 @@ def chunker(seq, size: int):
     """
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
+
+def format_io(func):
+    def io_converter(o):
+        if isinstance(o, datetime.datetime):
+            if o:
+                return datetime_to_string(o)
+            else:
+                return None
+        if isinstance(o, Decimal):
+            return float(o)
+
+    def out_parser(o):
+        for k, v in o.items():
+            if isinstance(v, str) and re.search(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$", v):
+                o[k] = string_to_datetime(o[k])
+
+        return o
+
+    def _format_input_output(self, *args, **kwargs):
+        formated_a = []
+        for a in args:
+            json_a = json.dumps(a, default=io_converter)
+            a = json.loads(json_a)
+            formated_a.append(a)
+
+        formated_k = {}
+        for k, v in kwargs.items():
+            json_v = json.dumps(v, default=io_converter)
+            v = json.loads(json_v)
+            formated_k[k] = v
+
+        out = func(self, *formated_a, **formated_k)
+        json_out = json.dumps(out, default=io_converter)
+        out = json.loads(json_out, object_hook=out_parser)
+        return out
+
+    return _format_input_output
 def md5(file, chunk_size=32768):
     # if the file is a path, open and recurse
     if type(file) == str:
@@ -59,6 +102,8 @@ def string_to_datetime(string):
 
 
 def datetime_to_string(dt):
+    if pd.isnull(dt):
+        return None
     return datetime.datetime.strftime(dt, STRING_DATETIME_FORMAT)
 
 
@@ -68,11 +113,13 @@ def local_bundle_files_info(bundle_dir, what='all',
                             ml_bundle_ml_model_subdir=('output', 'config'),
                             multipart_chunk_size = 8 * 1024 * 1024):
     out = []
+
     for root, dirs, files in os.walk(bundle_dir, topdown=True, followlinks=True):
         for name in files:
             matches = [s for s in allowed_ml_bundle_suffixes if name.endswith(s)]
             if len(matches) == 0:
                 continue
+
             subdir = os.path.relpath(root, bundle_dir)
             in_data = subdir in ml_bundle_ml_data_subdir
             in_model = subdir in ml_bundle_ml_model_subdir
