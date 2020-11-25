@@ -21,7 +21,8 @@ setup(
                       'imread',
                       'typeguard',
                       'passlib',
-                      'itsdangerous'],
+                      'itsdangerous',
+                      'decorate_all_methods'],
     extras_require={
         'test': ['nose', 'pytest', 'pytest-cov', 'codecov', 'coverage'],
         'docs': ['mock', 'sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']

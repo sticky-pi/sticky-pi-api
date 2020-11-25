@@ -4,18 +4,21 @@ Main module of the client. Implements classes to interact with the API.
 
 import logging
 import os
+from abc import ABC
 import pandas as pd
 import shutil
 from joblib import Memory, Parallel, delayed
 from sticky_pi_api.image_parser import ImageParser
-from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info, chunker
-
+from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info, chunker, format_io
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
+from decorate_all_methods import decorate_all_methods
 
 
-class BaseClient(BaseAPISpec):
+
+@decorate_all_methods(format_io, exclude=['__init__'])
+class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
 
     def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
@@ -45,7 +48,7 @@ class BaseClient(BaseAPISpec):
 
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
-        :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
+        :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'data'``}.
         :return: A list of dictionaries with one element for each queried value.
             Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
             In the case of ``what='metadata'``, the field ``json=''``.
@@ -69,7 +72,7 @@ class BaseClient(BaseAPISpec):
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
         :param what_image: The nature of the image objects to retrieve.
             One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
-        :param what_annotation: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
+        :param what_annotation: The nature of the object to retrieve. One of {``'metadata'``, ``'data'``}.
         :return: A list of dictionaries with one element for each queried value.
             Each dictionary contains the fields present in the underlying database tables (see ``UIDAnnotations`` and ``Images``).
         """
@@ -83,7 +86,9 @@ class BaseClient(BaseAPISpec):
 
         # we filter the metadata as only these two fields are necessary
         info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
+
         parent_images = pd.DataFrame(parent_images)
+
 
         annots = self.get_uid_annotations(info, what=what_annotation)
 
@@ -95,7 +100,8 @@ class BaseClient(BaseAPISpec):
         out = pd.merge(parent_images, annots, how='left', left_on=['id'], right_on=['parent_image_id'], suffixes=('', '_annot'))
         # NaN -> None
         out = out.where(pd.notnull(out), None)
-        return out.to_dict(orient='records')
+        out = out.to_dict(orient='records')
+        return out
 
     def put_images(self, files: List[str]) -> MetadataType:
         """
@@ -150,7 +156,7 @@ class BaseClient(BaseAPISpec):
         def local_img_stats(file: str, file_stats: Dict):
             i = ImageParser(file)
             out = {'device': i['device'],
-                          'datetime': datetime_to_string(i['datetime']),
+                          'datetime': i['datetime'],
                           'md5': i['md5'],
                           'url': file}
             return out
@@ -165,6 +171,7 @@ class BaseClient(BaseAPISpec):
         # we warn if md5s are different
         img_dicts = pd.DataFrame(img_dicts)
         matches = pd.DataFrame(matches, columns=img_dicts.columns)
+
         joined = pd.merge(img_dicts, matches, how='left', on = ['device', 'datetime'], suffixes=('', '_match'))
         joined['same_md5'] = joined.apply(lambda row: row.md5_match == row.md5, axis=1)
         joined['already_on_db'] = joined.apply(lambda row: not pd.isna(row.md5_match), axis=1)
@@ -219,6 +226,7 @@ class BaseClient(BaseAPISpec):
         raise NotImplementedError()
 
 
+@decorate_all_methods(format_io, exclude=['__init__'])
 class LocalClient(BaseClient, LocalAPI):
 
     def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
@@ -239,6 +247,7 @@ class LocalClient(BaseClient, LocalAPI):
             os.makedirs(os.path.dirname(target), exist_ok=True)
         logging.info("%s => %s" % (url, target))
         shutil.copy(url, target)
+
 
 
 # import requests

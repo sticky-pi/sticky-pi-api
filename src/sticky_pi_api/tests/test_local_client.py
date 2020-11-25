@@ -3,6 +3,7 @@ import tempfile
 import json
 import unittest
 from sticky_pi_api.client import LocalClient
+from sticky_pi_api.utils import string_to_datetime
 from sqlalchemy.exc import IntegrityError
 from contextlib import redirect_stderr
 from io import StringIO
@@ -11,13 +12,11 @@ import glob
 import logging
 
 logging.getLogger().setLevel(logging.INFO)
-
-
-dir = os.path.dirname(__file__)
+test_dir = os.path.dirname(__file__)
 
 class TestLocalClient(unittest.TestCase):
-    _test_images = [i for i in sorted(glob.glob(os.path.join(dir, "raw_images/**/*.jpg")))]
-    _ml_bundle_dir = os.path.join(dir, 'ml_bundle')
+    _test_images = [i for i in sorted(glob.glob(os.path.join(test_dir, "raw_images/**/*.jpg")))]
+    _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
     _test_annotation = {"annotations": [
         dict(contour=[[[2194, 1597]], [[2189, 1602]], [[2189, 1617]], [[2200, 1630]], [[2201, 1634]], [[2221, 1656]],
                       [[2240, 1656]], [[2245, 1647]], [[2245, 1632]], [[2236, 1621]], [[2241, 1613]], [[2239, 1607]],
@@ -30,7 +29,7 @@ class TestLocalClient(unittest.TestCase):
                          algo_version="1598113346-ad2cd78dfaca12821046dfb8994724d5", device="5c173ff2",
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
 
-    _test_image_for_annotation = os.path.join(dir,"raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
+    _test_image_for_annotation = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
 
 
     def test_users(self):
@@ -83,15 +82,22 @@ class TestLocalClient(unittest.TestCase):
                     db._put_new_images(self._test_images[0:1])
         finally:
             shutil.rmtree(temp_dir)
-    #
-    def test_get(self):
+
+    def test_get_images(self):
         import tempfile
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = LocalClient(temp_dir)
             db.put_images(self._test_images)
+            "the input dates of the client can be dates or string"
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}])
             self.assertEqual(len(out), 1)
+            # the output of the client should be a date, always
+            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05_10-07-16"))
+
+            # Client should should parse datetime to string internally
+            out = db.get_images([{'device': "1b74105a", 'datetime': string_to_datetime("2020-07-05_10-07-16")}])
+            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05_10-07-16"))
 
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}], what='image')
             self.assertEqual(len(out), 1)
@@ -246,7 +252,7 @@ class TestLocalClient(unittest.TestCase):
         try:
 
             db = LocalClient(temp_dir)
-            # db2 = LocalClient(temp_dir2)
+
             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
             # self.assertEqual(len(out), 8)
             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
