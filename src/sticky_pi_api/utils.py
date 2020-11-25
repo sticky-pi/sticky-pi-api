@@ -111,10 +111,14 @@ def local_bundle_files_info(bundle_dir, what='all',
                             allowed_ml_bundle_suffixes=('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg'),
                             ml_bundle_ml_data_subdir=('data', 'config'),
                             ml_bundle_ml_model_subdir=('output', 'config'),
-                            multipart_chunk_size = 8 * 1024 * 1024):
+                            multipart_chunk_size = 8 * 1024 * 1024,
+                            ignored_dir_names=('.cache', )):
     out = []
 
     for root, dirs, files in os.walk(bundle_dir, topdown=True, followlinks=True):
+        if os.path.basename(root) in ignored_dir_names:
+            logging.info("Ignoring %s" % root)
+            continue
         for name in files:
             matches = [s for s in allowed_ml_bundle_suffixes if name.endswith(s)]
             if len(matches) == 0:
