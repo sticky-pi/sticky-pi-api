@@ -21,7 +21,7 @@ from decorate_all_methods import decorate_all_methods
 class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
 
-    def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
+    def __init__(self, local_dir: str, n_threads: int = 8, cache_dir: str = None):
         """
         Abstract class that defines the methods of the client (common between remote and client).
 
@@ -34,7 +34,12 @@ class BaseClient(BaseAPISpec, ABC):
         self._n_threads = n_threads
         self._local_dir = local_dir
         os.makedirs(self._local_dir, exist_ok=True)
-        self._cache = Memory(local_dir, verbose=0)
+        if cache_dir is None:
+            logging.info('No cache dir provided for client. Using client dir: %s', local_dir)
+            self._cache = Memory(local_dir, verbose=0)
+        else:
+            assert os.path.isdir(cache_dir), 'The provided cache dir does not exist: %s' % cache_dir
+            self._cache = Memory(cache_dir, verbose=0)
 
     @property
     def local_dir(self):
@@ -229,10 +234,10 @@ class BaseClient(BaseAPISpec, ABC):
 @decorate_all_methods(format_io, exclude=['__init__'])
 class LocalClient(BaseClient, LocalAPI):
 
-    def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
+    def __init__(self, local_dir: str, n_threads: int = 8, cache_dir: str = None, *args, **kwargs):
         # ad hoc API config for the local API. define the local_dir variable
         api_conf = LocalAPIConf(LOCAL_DIR=local_dir)
-        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads, *args, **kwargs)
+        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads, cache_dir=cache_dir)
         # use this config for the local/internal mock API
         LocalAPI.__init__(self, api_conf, *args, **kwargs)
 

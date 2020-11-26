@@ -83,6 +83,22 @@ class TestLocalClient(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir)
 
+
+    def test_put_atl_cache(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        alternative_cache_dir = tempfile.mkdtemp(prefix='sticky-pi-cache')
+        try:
+            db = LocalClient(temp_dir, cache_dir=alternative_cache_dir)
+            uploaded = db.put_images(self._test_images[0:2])
+            self.assertEqual(len(uploaded), 2)
+            uploaded = db.put_images(self._test_images)
+            self.assertEqual(len(uploaded), len(self._test_images) - 2)
+            # should fail to put images that are already there:
+
+        finally:
+            shutil.rmtree(temp_dir)
+            shutil.rmtree(alternative_cache_dir)
+
     def test_get_images(self):
         import tempfile
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
