@@ -214,6 +214,8 @@ class BaseAPI(BaseAPISpec, ABC):
         out = []
         # for each image
         for data in info:
+
+
             json_str = json.dumps(data, default=str)
             dic = data['metadata']
             annotations = data['annotations']
@@ -221,16 +223,20 @@ class BaseAPI(BaseAPISpec, ABC):
             n_objects = len(annotations)
             dic['json'] = json_str
 
+            #fixme. here we should get multiple images in one go, prior to parsing annotations ?
             parent_img_list = self.get_images([dic])
+
             if len(parent_img_list) != 1:
                 raise ValueError("could not find parent image for %s" % str(dic))
             parent_img = parent_img_list[0]
+
             dic['parent_image_id'] = parent_img["id"]
             dic['n_objects'] = n_objects
             if dic['md5'] != parent_img['md5']:
                 raise ValueError("Trying to add an annotation for %s, but md5 differ" % str(data))
 
             annot = UIDAnnotations(dic)
+
             o = annot.to_dict()
             o["json"] = ""
             out.append(o)
@@ -277,9 +283,10 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
 
         # We fetch images by chunks:
+
         for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
 
-            logging.info("Putting images... %i-%i / %i" %
+            logging.info("Getting images... %i-%i / %i" %
                          (i * self._get_image_chunk_size,
                           i * self._get_image_chunk_size + len(info_chunk),
                           len(info)))

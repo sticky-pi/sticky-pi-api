@@ -132,7 +132,11 @@ class TestLocalClient(unittest.TestCase):
             db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
 
-            # should fail to upload twice the same annotations
+            # update algo version should allow reupload of annotation
+            self._test_annotation['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
+            db.put_uid_annotations([self._test_annotation])
+
+            # should fail to upload twice the same annotations (save version/image)
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(IntegrityError) as context:
                     db.put_uid_annotations([self._test_annotation])
@@ -143,6 +147,8 @@ class TestLocalClient(unittest.TestCase):
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(ValueError) as context:
                     db.put_uid_annotations([annot])
+
+
         finally:
             shutil.rmtree(temp_dir)
 
