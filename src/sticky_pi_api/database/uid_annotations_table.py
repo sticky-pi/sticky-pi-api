@@ -1,6 +1,7 @@
 import json
 import datetime
-from sqlalchemy import  Integer,  DateTime, UniqueConstraint, String, Text, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy import  Integer,  DateTime, UniqueConstraint, String, Text, ForeignKey, Column
 # from sticky_pi_client.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
@@ -8,8 +9,12 @@ from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColu
 class UIDAnnotations(Base, BaseCustomisations):
     __tablename__ = 'uid_annotations'
     __table_args__ = (UniqueConstraint('parent_image_id', 'algo_name', 'algo_version', name='annotation_id'), )
+
     id = DescribedColumn(Integer, primary_key=True)
-    parent_image_id = DescribedColumn(Integer, ForeignKey('images.id'), nullable=False)
+
+    parent_image_id = Column(Integer, ForeignKey('images.id', ondelete="CASCADE"))
+    parent_image = relationship("Images", back_populates="uid_annotations")
+
     algo_name = DescribedColumn(String(32), nullable=False) # something like "sticky-pi-universal-insect-detector")
     algo_version = DescribedColumn(String(46), nullable=False) # something like "1598113346-ad2cd78dfaca12821046dfb8994724d5" ( `X-Y` X:timestamp of the model, Y:md5 of the model)
 

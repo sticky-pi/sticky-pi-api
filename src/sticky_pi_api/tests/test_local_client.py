@@ -132,7 +132,11 @@ class TestLocalClient(unittest.TestCase):
             db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
 
-            # should fail to upload twice the same annotations
+            # update algo version should allow reupload of annotation
+            self._test_annotation['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
+            db.put_uid_annotations([self._test_annotation])
+
+            # should fail to upload twice the same annotations (save version/image)
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(IntegrityError) as context:
                     db.put_uid_annotations([self._test_annotation])
@@ -143,134 +147,136 @@ class TestLocalClient(unittest.TestCase):
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(ValueError) as context:
                     db.put_uid_annotations([annot])
-        finally:
-            shutil.rmtree(temp_dir)
 
-    def test_get_image_uid_annotations(self):
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            db = LocalClient(temp_dir)
-
-            # get annotation of non-existing parent image return an empty list
-            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
-            self.assertEqual(out, [])
-
-            db.put_images([self._test_image_for_annotation])
-            # parent image exists, but no annotation for it. empty list expected
-            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
-            self.assertEqual(out, [])
-            db.put_uid_annotations([self._test_annotation])
-
-            # we put two random images without annotation just to  make it harder
-            db.put_images(self._test_images[0:2])
-
-            # now we should have only one annotation out
-            out = db.get_uid_annotations([{'device':'5c173ff2', 'datetime':'2020-06-20_21-33-24'}])
-            self.assertEqual(len(out), 1)
-
-            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}], what='data')
-            self.assertDictEqual(json.loads(out[0]['json']), self._test_annotation)
 
         finally:
             shutil.rmtree(temp_dir)
+
+    # def test_get_image_uid_annotations(self):
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #         db = LocalClient(temp_dir)
     #
-    def test_get_uid_annotations_series(self):
-        import copy
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            db = LocalClient(temp_dir)
-            from sticky_pi_api.image_parser import ImageParser
-            from sticky_pi_api.utils import datetime_to_string
-
-            to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
-            db.put_images(to_upload)
-
-
-            # we upload annotations for all, but the last image
-
-            annot_to_up = []
-            for ti in to_upload[:-1]:
-                p = ImageParser(ti)
-                annotation_stub = copy.deepcopy(self._test_annotation)
-                annotation_stub['metadata']['device'] = p['device']
-                annotation_stub['metadata']['datetime'] = datetime_to_string(p['datetime'])
-                annotation_stub['metadata']['md5'] = p['md5']
-                annot_to_up.append(annotation_stub)
-
-            db.put_uid_annotations(annot_to_up)
-
-            out = db.get_uid_annotations_series([{'device': '0a5bb6f4',
-                                                        'start_datetime': '2020-01-01_00-00-00',
-                                                        'end_datetime': '2020-12-31_00-00-00'}])
-            # should return just the annotations for the matched query , not one per image (one image has no annot)
-            self.assertEqual(len(out), len(to_upload[:-1]))
-
-        finally:
-            shutil.rmtree(temp_dir)
-
-    def test_get_image_with_uid_annotations_series(self):
-        import copy
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            db = LocalClient(temp_dir)
-            from sticky_pi_api.image_parser import ImageParser
-            from sticky_pi_api.utils import datetime_to_string
-
-            to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
-            db.put_images(to_upload)
-
-
-            # we upload annotations for all, but the last image
-
-            annot_to_up = []
-            for ti in to_upload[:-1]:
-                p = ImageParser(ti)
-                annotation_stub = copy.deepcopy(self._test_annotation)
-                annotation_stub['metadata']['device'] = p['device']
-                annotation_stub['metadata']['datetime'] = datetime_to_string(p['datetime'])
-                annotation_stub['metadata']['md5'] = p['md5']
-                annot_to_up.append(annotation_stub)
-
-            db.put_uid_annotations(annot_to_up)
-
-            out = db.get_images_with_uid_annotations_series([{'device': '0a5bb6f4',
-                                                            'start_datetime': '2020-01-01_00-00-00',
-                                                            'end_datetime': '2020-12-31_00-00-00'}])
-
-            # should return just the annotations for the matched query , not one per image (one image has no annot)
-            self.assertEqual(len(out), len(to_upload))
-
-        finally:
-            shutil.rmtree(temp_dir)
+    #         # get annotation of non-existing parent image return an empty list
+    #         out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
+    #         self.assertEqual(out, [])
     #
-
-    def test_ml_bundle(self):
-
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
-        dummy_bundle_name = 'dummy_bundle_name'
-        try:
-
-            db = LocalClient(temp_dir)
-
-            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
-            # self.assertEqual(len(out), 8)
-            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
-            # self.assertEqual(len(out), 0)
-            # #
-            bundle_dir = os.path.join(dummy_bundle_name, temp_dir2, 'ml_bundle')
-
-            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
-
-            self.assertEqual(len(out), 3)
-
-            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
-            self.assertEqual(len(out), 5)
-
-            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
-            self.assertEqual(len(out), 0)
-
-
-        finally:
-            shutil.rmtree(temp_dir)
-            shutil.rmtree(temp_dir2)
+    #         db.put_images([self._test_image_for_annotation])
+    #         # parent image exists, but no annotation for it. empty list expected
+    #         out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
+    #         self.assertEqual(out, [])
+    #         db.put_uid_annotations([self._test_annotation])
+    #
+    #         # we put two random images without annotation just to  make it harder
+    #         db.put_images(self._test_images[0:2])
+    #
+    #         # now we should have only one annotation out
+    #         out = db.get_uid_annotations([{'device':'5c173ff2', 'datetime':'2020-06-20_21-33-24'}])
+    #         self.assertEqual(len(out), 1)
+    #
+    #         out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}], what='data')
+    #         self.assertDictEqual(json.loads(out[0]['json']), self._test_annotation)
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
+    # #
+    # def test_get_uid_annotations_series(self):
+    #     import copy
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #         db = LocalClient(temp_dir)
+    #         from sticky_pi_api.image_parser import ImageParser
+    #         from sticky_pi_api.utils import datetime_to_string
+    #
+    #         to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
+    #         db.put_images(to_upload)
+    #
+    #
+    #         # we upload annotations for all, but the last image
+    #
+    #         annot_to_up = []
+    #         for ti in to_upload[:-1]:
+    #             p = ImageParser(ti)
+    #             annotation_stub = copy.deepcopy(self._test_annotation)
+    #             annotation_stub['metadata']['device'] = p['device']
+    #             annotation_stub['metadata']['datetime'] = datetime_to_string(p['datetime'])
+    #             annotation_stub['metadata']['md5'] = p['md5']
+    #             annot_to_up.append(annotation_stub)
+    #
+    #         db.put_uid_annotations(annot_to_up)
+    #
+    #         out = db.get_uid_annotations_series([{'device': '0a5bb6f4',
+    #                                                     'start_datetime': '2020-01-01_00-00-00',
+    #                                                     'end_datetime': '2020-12-31_00-00-00'}])
+    #         # should return just the annotations for the matched query , not one per image (one image has no annot)
+    #         self.assertEqual(len(out), len(to_upload[:-1]))
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
+    #
+    # def test_get_image_with_uid_annotations_series(self):
+    #     import copy
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #         db = LocalClient(temp_dir)
+    #         from sticky_pi_api.image_parser import ImageParser
+    #         from sticky_pi_api.utils import datetime_to_string
+    #
+    #         to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
+    #         db.put_images(to_upload)
+    #
+    #
+    #         # we upload annotations for all, but the last image
+    #
+    #         annot_to_up = []
+    #         for ti in to_upload[:-1]:
+    #             p = ImageParser(ti)
+    #             annotation_stub = copy.deepcopy(self._test_annotation)
+    #             annotation_stub['metadata']['device'] = p['device']
+    #             annotation_stub['metadata']['datetime'] = datetime_to_string(p['datetime'])
+    #             annotation_stub['metadata']['md5'] = p['md5']
+    #             annot_to_up.append(annotation_stub)
+    #
+    #         db.put_uid_annotations(annot_to_up)
+    #
+    #         out = db.get_images_with_uid_annotations_series([{'device': '0a5bb6f4',
+    #                                                         'start_datetime': '2020-01-01_00-00-00',
+    #                                                         'end_datetime': '2020-12-31_00-00-00'}])
+    #
+    #         # should return just the annotations for the matched query , not one per image (one image has no annot)
+    #         self.assertEqual(len(out), len(to_upload))
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
+    # #
+    #
+    # def test_ml_bundle(self):
+    #
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     dummy_bundle_name = 'dummy_bundle_name'
+    #     try:
+    #
+    #         db = LocalClient(temp_dir)
+    #
+    #         out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
+    #         # self.assertEqual(len(out), 8)
+    #         out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
+    #         # self.assertEqual(len(out), 0)
+    #         # #
+    #         bundle_dir = os.path.join(dummy_bundle_name, temp_dir2, 'ml_bundle')
+    #
+    #         out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
+    #
+    #         self.assertEqual(len(out), 3)
+    #
+    #         out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
+    #         self.assertEqual(len(out), 5)
+    #
+    #         out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
+    #         self.assertEqual(len(out), 0)
+    #
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
+    #         shutil.rmtree(temp_dir2)
