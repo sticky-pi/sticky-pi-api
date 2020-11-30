@@ -32,41 +32,41 @@ class TestLocalClient(unittest.TestCase):
     _test_image_for_annotation = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
 
 
-    def test_users(self):
-
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            users = [
-                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
-                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
-                    ]
-            cli = LocalClient(temp_dir)
-            cli.put_users(users)
-
-            # cannot add same users twice
-            with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(IntegrityError) as context:
-                    cli.put_users(users)
-
-            out = cli.get_users()
-            self.assertEqual(len(out), 2)
-
-            out = cli.get_users(info={'username':'%'})
-            self.assertEqual(len(out), 2)
-
-            out = cli.get_users(info={'username':'ad%'})
-            self.assertEqual(len(out), 1)
-
-        finally:
-            shutil.rmtree(temp_dir)
-
-    def test_init(self):
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            db = LocalClient(temp_dir)
-        finally:
-            shutil.rmtree(temp_dir)
-
+    # def test_init(self):
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #         db = LocalClient(temp_dir)
+    #     finally:
+    #         shutil.rmtree(temp_dir)
+    #
+    # #
+    # def test_users(self):
+    #
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #         users = [
+    #             {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+    #             {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+    #                 ]
+    #         cli = LocalClient(temp_dir)
+    #         cli.put_users(users)
+    #
+    #         # cannot add same users twice
+    #         with redirect_stderr(StringIO()) as stdout:
+    #             with self.assertRaises(IntegrityError) as context:
+    #                 cli.put_users(users)
+    #
+    #         out = cli.get_users()
+    #         self.assertEqual(len(out), 2)
+    #
+    #         out = cli.get_users(info={'username':'%'})
+    #         self.assertEqual(len(out), 2)
+    #
+    #         out = cli.get_users(info={'username':'ad%'})
+    #         self.assertEqual(len(out), 1)
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
     #
     def test_put(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
