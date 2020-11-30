@@ -14,14 +14,64 @@ from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
 from decorate_all_methods import decorate_all_methods
+import inspect
+import shelve
+import dbm
+
+
+class Cache(dict):
+    _sync_each_n = 128
+
+    def __init__(self, path: str):
+        super().__init__()
+        self._path = path
+        self._n_writes = 0
+        if path:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+        with shelve.open(path) as d:
+            for k, v in d.items():
+                self[k] = v
+
+    def add(self, function, results):
+        key = inspect.getsource(function)
+        if key not in self.keys():
+            self[key] = {}
+        for r in results:
+            self[key].update(r)
+
+        if self._n_writes % self._sync_each_n == self._sync_each_n - 1:
+            self._sync()
+        self._n_writes += 1
+
+    def get_cached(self, function, hash):
+        key = inspect.getsource(function)
+        return self[key][hash]
+
+    def _sync(self):
+        with shelve.open(self._path, writeback=True) as d:
+            for k, v in self.items():
+                d[k] = v
+
+    def delete(self):
+        try:
+            os.remove(self._path)
+        except FileExistsError:
+            logging.error('trying to detect cache, but file does not exist')
+
+    def __del__(self):
+        try:
+            self._sync()
+        except dbm.error as e:
+            pass
+
 
 
 
 @decorate_all_methods(format_io, exclude=['__init__'])
 class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
-
-    def __init__(self, local_dir: str, n_threads: int = 8, cache_dir: str = None):
+    _cache_dirname = "cache"
+    def __init__(self, local_dir: str, n_threads: int = 8):
         """
         Abstract class that defines the methods of the client (common between remote and client).
 
@@ -30,16 +80,11 @@ class BaseClient(BaseAPISpec, ABC):
         """
 
         self._local_dir = local_dir
-
         self._n_threads = n_threads
         self._local_dir = local_dir
         os.makedirs(self._local_dir, exist_ok=True)
-        if cache_dir is None:
-            logging.info('No cache dir provided for client. Using client dir: %s', local_dir)
-            self._cache = Memory(local_dir, verbose=0)
-        else:
-            assert os.path.isdir(cache_dir), 'The provided cache dir does not exist: %s' % cache_dir
-            self._cache = Memory(cache_dir, verbose=0)
+
+        self._cache = Cache(os.path.join(local_dir, self._cache_dirname, 'cache.pkl'))
 
     @property
     def local_dir(self):
@@ -94,7 +139,6 @@ class BaseClient(BaseAPISpec, ABC):
 
         parent_images = pd.DataFrame(parent_images)
 
-
         annots = self.get_uid_annotations(info, what=what_annotation)
 
         if len(annots) == 0:
@@ -121,7 +165,7 @@ class BaseClient(BaseAPISpec, ABC):
         chunk_size = self._put_chunk_size * self._n_threads
 
         for i, group in enumerate(chunker(files, chunk_size)):
-            logging.info("Putting images... Computing statistics on files %i-%i / %i" % (i * chunk_size,
+            logging.info("Putting images - step 1/2 ... Computing statistics on files %i-%i / %i" % (i * chunk_size,
                                                                                          i * chunk_size + len(group),
                                                                                          len(files)))
 
@@ -132,7 +176,7 @@ class BaseClient(BaseAPISpec, ABC):
         out = []
         # upload by chunks now
         for i, group in enumerate(chunker(to_upload, self._put_chunk_size)):
-            logging.info("Putting images... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
+            logging.info("Putting images - step 2/2 ... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
                                                                            i * self._put_chunk_size + len(group),
                                                                            len(to_upload)))
 
@@ -141,8 +185,7 @@ class BaseClient(BaseAPISpec, ABC):
         return out
 
     def delete_cache(self):
-        cache_dir = os.path.join(self._cache.location, 'joblib')
-        shutil.rmtree(cache_dir)
+        self._cache.delete()
 
     def _diff_images_to_upload(self, files):
         """
@@ -156,28 +199,42 @@ class BaseClient(BaseAPISpec, ABC):
         :rtype: List()
         """
 
-        # this is a cached parser so we don't need to recompute md5 etc on client files unless they have changed
-        @self._cache.cache
-        def local_img_stats(file: str, file_stats: Dict):
-            i = ImageParser(file)
-            out = {'device': i['device'],
-                          'datetime': i['datetime'],
-                          'md5': i['md5'],
-                          'url': file}
-            return out
-        # we can compute the stats in parallel
-        img_dicts = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(f, os.stat(f)) for f in files)
 
+        def local_img_stats(file: str, file_stats: Dict, cache):
+            if (file, file_stats) in cache.keys():
+                try:
+                    return cache.get_cached(local_img_stats, (file, file_stats))
+                except KeyError:
+                    pass
+
+            i = ImageParser(file)
+            out = {(file, file_stats):
+                            {'device': i['device'],
+                            'datetime': i['datetime'],
+                            'md5': i['md5'],
+                            'url': file}}
+            return out
+
+        # we can compute the stats in parallel
+
+        if self._n_threads > 1:
+            img_dicts = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(f, os.path.getmtime(f), self._cache) for f in files)
+        else:
+            img_dicts = [local_img_stats(f, os.path.getmtime(f)) for f in files]
+
+        self._cache.add(local_img_stats, img_dicts)
         # we request these images from the database
-        matches = self.get_images(img_dicts, what='metadata')
+        info = [list(imd.values())[0] for imd in img_dicts]
+
+        matches = self.get_images(info, what='metadata')
 
         # now we diff: we ignore images that exist on DB AND have the same md5
         # we put images that do not exist on db
         # we warn if md5s are different
-        img_dicts = pd.DataFrame(img_dicts)
-        matches = pd.DataFrame(matches, columns=img_dicts.columns)
+        info = pd.DataFrame(info)
+        matches = pd.DataFrame(matches, columns=info.columns)
 
-        joined = pd.merge(img_dicts, matches, how='left', on = ['device', 'datetime'], suffixes=('', '_match'))
+        joined = pd.merge(info, matches, how='left', on = ['device', 'datetime'], suffixes=('', '_match'))
         joined['same_md5'] = joined.apply(lambda row: row.md5_match == row.md5, axis=1)
         joined['already_on_db'] = joined.apply(lambda row: not pd.isna(row.md5_match), axis=1)
         # images that re not yet on the db:
@@ -233,11 +290,10 @@ class BaseClient(BaseAPISpec, ABC):
 
 @decorate_all_methods(format_io, exclude=['__init__'])
 class LocalClient(BaseClient, LocalAPI):
-
-    def __init__(self, local_dir: str, n_threads: int = 8, cache_dir: str = None, *args, **kwargs):
+    def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
         # ad hoc API config for the local API. define the local_dir variable
         api_conf = LocalAPIConf(LOCAL_DIR=local_dir)
-        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads, cache_dir=cache_dir)
+        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)
         # use this config for the local/internal mock API
         LocalAPI.__init__(self, api_conf, *args, **kwargs)
 

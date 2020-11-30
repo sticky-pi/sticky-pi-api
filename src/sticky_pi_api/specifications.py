@@ -167,7 +167,7 @@ class BaseAPI(BaseAPISpec, ABC):
     _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
 
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__()
         self._configuration = api_conf
         self._storage = self._storage_class(api_conf=api_conf, *args, **kwargs)
         self._db_engine = self._create_db_engine()
