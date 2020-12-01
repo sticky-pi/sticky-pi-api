@@ -3,10 +3,16 @@ import logging
 from sticky_pi_api.types import List, Dict, Union
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.utils import local_bundle_files_info
-from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf
+from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf, RemoteAPIConf
+from abc import ABC
+import boto3
+from io import BytesIO
 
 
-class BaseStorage(object):
+class BaseStorage(ABC):
+    _raw_images_dirname = 'raw_images'
+    _ml_storage_dirname = 'ml'
+
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         self._api_conf = api_conf
 
@@ -55,8 +61,6 @@ class BaseStorage(object):
 
 
 class DiskStorage(BaseStorage):
-    _raw_images_dirname = 'raw_images'
-    _ml_storage_dirname = 'ml'
 
     def __init__(self, api_conf: LocalAPIConf,  *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
@@ -123,6 +127,52 @@ class DiskStorage(BaseStorage):
         return out
 
 
-#todo
-# class S3Storage(BaseStorage):
-#     pass
+class S3Storage(BaseStorage):
+    _multipart_chunk_size = 8 * 1024 * 1024
+
+    def __init__(self, api_conf: RemoteAPIConf,  *args, **kwargs):
+        super().__init__(api_conf, *args, **kwargs)
+        credentials = {"aws_access_key_id": api_conf.S3_ACCESS_KEY,
+                       "aws_secret_access_key": api_conf.S3_PRIVATE_KEY,
+                       "endpoint_url": "http://%s" % api_conf.S3_HOST,
+                       }
+        self._bucket_name = api_conf.S3_BUCKET_NAME
+        self._s3_client = boto3.resource('s3', **credentials)
+
+
+
+    def store_image_files(self, image: Images) -> None:
+        tmp = BytesIO()
+        image.thumbnail.save(tmp, format='jpeg')
+        tmp_mini = BytesIO()
+        image.thumbnail_mini.save(tmp_mini, format='jpeg')
+        self._s3_client.Bucket()
+        self._s3_client.Object(self._bucket_name,
+                               os.path.join(self._raw_images_dirname,
+                                            image.device,
+                                            image.filename)).put(Body=image.file_blob)
+        self._s3_client.Object(self._bucket_name,
+                               os.path.join(self._raw_images_dirname,
+                                            image.device,
+                                            image.filename + '.thumbnail')).put(Body=tmp.getvalue())
+        self._s3_client.Object(self._bucket_name,
+                               os.path.join(self._raw_images_dirname,
+                                            image.device,
+                                            image.filename + '.thumbnail_mini')).put(Body=tmp_mini.getvalue())
+
+    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
+        return "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html"
+        
+        # target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
+        # os.makedirs(os.path.dirname(target), exist_ok=True)
+        # with open(target, 'wb') as f:
+        #     f.write(image.file_blob)
+        # image.thumbnail.save(target + ".thumbnail", format='jpeg')
+        # image.thumbnail_mini.save(target + ".thumbnail_mini", format='jpeg')
+
+# self._bucket_conf = {
+#             "S3BUCKET_PRIVATE_KEY": os.environ.get("S3BUCKET_PRIVATE_KEY"),
+#             "S3BUCKET_ACCESS_KEY": os.environ.get("S3BUCKET_ACCESS_KEY"),
+#             "bucket": name,
+#             "S3BUCKET_HOST": os.environ.get("S3BUCKET_HOST")
+#         }

@@ -8,7 +8,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
 from sticky_pi_api.utils import string_to_datetime
 from sticky_pi_api.database.utils import Base
-from sticky_pi_api.storage import DiskStorage, BaseStorage
+from sticky_pi_api.storage import DiskStorage, BaseStorage, S3Storage
 from sticky_pi_api.configuration import BaseAPIConf
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
@@ -364,11 +364,15 @@ class LocalAPI(BaseAPI):
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
         return sqlalchemy.create_engine(engine_url, connect_args={"check_same_thread": False})
 
-# TODO here implement a mysql connection
-# class Remote(BaseAPI):
-#     _storage_class = #TODO s3 Storage
-#     _database_filename = 'database.db'
-#
-#     def _create_db_engine(self, local_dir):
-#         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
-#         return sqlalchemy.create_engine(engine_url)
+
+class RemoteAPI(BaseAPI):
+    _storage_class = S3Storage
+
+    def _create_db_engine(self):
+        engine_url = "mysql+pymsql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
+                                                                     self._configuration.MYSQL_PASSWORD,
+                                                                     self._configuration.MYSQL_HOST,
+                                                                     self._configuration.MYSQL_DB_NAME
+                                                                     )
+
+        return sqlalchemy.create_engine(engine_url)

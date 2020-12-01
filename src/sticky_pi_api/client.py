@@ -58,12 +58,6 @@ class Cache(dict):
         except FileExistsError:
             logging.error('trying to detect cache, but file does not exist')
 
-    def __del__(self):
-        try:
-            self._sync()
-        except dbm.error as e:
-            pass
-
 
 
 
@@ -83,8 +77,8 @@ class BaseClient(BaseAPISpec, ABC):
         self._n_threads = n_threads
         self._local_dir = local_dir
         os.makedirs(self._local_dir, exist_ok=True)
-
-        self._cache = Cache(os.path.join(local_dir, self._cache_dirname, 'cache.pkl'))
+        cache_file = os.path.join(local_dir, self._cache_dirname, 'cache.pkl')
+        self._cache = Cache(cache_file)
 
     @property
     def local_dir(self):
