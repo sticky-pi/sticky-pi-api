@@ -1,4 +1,3 @@
-import datetime
 import copy
 import logging
 import os
@@ -8,23 +7,20 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
 from sticky_pi_api.utils import string_to_datetime
 from sticky_pi_api.database.utils import Base
-from sticky_pi_api.storage import DiskStorage, BaseStorage, S3Storage
+from sticky_pi_api.storage import DiskStorage, BaseStorage
 from sticky_pi_api.configuration import BaseAPIConf
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, Dict, Any
 from sticky_pi_api.database.users_tables import Users
-from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
-from sticky_pi_api.utils import chunker, datetime_to_string, format_io
-from decorate_all_methods import decorate_all_methods
-from abc import ABC, abstractmethod
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
-class BaseAPISpec(ABC):
+
+
+class BaseAPISpec(object):
     # def __init__(self, *args, **kwargs):
     #     pass
-    @abstractmethod
+
     def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
         Retrieves information about a given set of images, defined by their parent device and the
@@ -39,7 +35,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def _put_new_images(self, files: List[str]) -> MetadataType:
         """
         Uploads a set of client image files to the API.
@@ -52,41 +47,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def _put_tiled_tuboids(self, files: List[Dict[str, str]]) -> MetadataType:
-        """
-            Uploads a set of client tiled tuboid files to the API.
-            The user would use ``BaseClient.put_tiled_tuboid(files)``.
-
-
-            :param files: A list of dict. Each dict contains keys:
-                * ``tuboid_id``: a formatted string describing the tuboid series and tuboid id e.g. ``08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.0002``
-                * ``metadata``: the path to a comma-separated files that contains metadata for each tuboid shot
-                * ``tuboid``: the path to a tiled jpg containing (some of) the shots described in metadata, in the same order
-                * ``context``: the path to an illustration (jpg) of the detected object highlighted in the whole image of the first shot
-
-            :return: The metadata of the files that were actually uploaded
-            """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_tiled_tuboid_series(self, info: InfoType) -> MetadataType:
-        """
-        Retrieves tiled tuboids -- i.e. stitched annotations into a tile,
-        where the assumption is one tuboid per instance.
-        A series contains all tuboids fully  contained within a range
-
-        :param info: A list of dicts. each dicts has, at least, the keys:
-            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
-            For instance,one can match all devices with ``device="%"``.
-        :param what: The nature of the objects to retrieve.
-        :return: A list of dictionaries with one element for each queried value. Each dictionary contains
-            the fields present in the underlying database plus the fields ``'metadata'``, ``'tuboid'`` and ``'context'``
-            fields, which have a url to fetch the relevant file.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
     def get_image_series(self, info, what: str = 'metadata') -> MetadataType:
         """
         Retrieves image sequences (i.e. series).
@@ -104,7 +64,6 @@ class BaseAPISpec(ABC):
 
         raise NotImplementedError()
 
-    @abstractmethod
     def put_uid_annotations(self, info: AnnotType) -> MetadataType:
         """
         :param info: A list of dictionaries corresponding to annotations (one list element per image).
@@ -127,7 +86,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def get_uid_annotations(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
         Reteives annotations for a given set of images.
@@ -141,7 +99,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         """
         Get a list of file for a given ML Bundle.
@@ -155,7 +112,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def _get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
             List[Dict[str, Union[float, str]]]:
         """
@@ -169,7 +125,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
         """
         Get a list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
@@ -183,7 +138,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Add a list of users defined by a dict of proprieties.
@@ -195,20 +149,19 @@ class BaseAPISpec(ABC):
         raise NotImplementedError()
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
-class BaseAPI(BaseAPISpec, ABC):
+
+
+class BaseAPI(BaseAPISpec):
     _storage_class = BaseStorage
-    _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
 
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self._configuration = api_conf
-        self._storage = self._storage_class(api_conf=api_conf, *args, **kwargs)
+        self._storage = self._storage_class(api_conf = api_conf, *args, **kwargs)
         self._db_engine = self._create_db_engine()
 
         Base.metadata.create_all(self._db_engine, Base.metadata.tables.values(), checkfirst=True)
 
-    @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
         raise NotImplementedError()
 
@@ -235,30 +188,6 @@ class BaseAPI(BaseAPISpec, ABC):
                 raise e
         return out
 
-    def _put_tiled_tuboids(self, files: List[Dict[str, str]]):  # fixme return type
-        session = sessionmaker(bind=self._db_engine)()
-        # store the uploaded images
-        out = []
-        # for each tuboid
-        for data in files:
-            # print(data)
-            # We parse the tuboid data as a entry
-            tub = TiledTuboids(data)
-            out.append(tub.to_dict())
-            session.add(tub)
-
-            # try to store images, only commit if storage worked.
-            # rollback otherwise
-            try:
-                self._storage.store_tiled_tuboid(data)
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                logging.error("Storage Error. Failed to store tuboid %s" % tub)
-                logging.error(e)
-                raise e
-        return out
-
     def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         return self._storage.get_ml_bundle_file_list(bundle_name, what)
 
@@ -272,28 +201,23 @@ class BaseAPI(BaseAPISpec, ABC):
         out = []
         # for each image
         for data in info:
-
-            json_str = json.dumps(data, default=str)
+            json_str = json.dumps(data)
             dic = data['metadata']
             annotations = data['annotations']
 
             n_objects = len(annotations)
             dic['json'] = json_str
 
-            # fixme. here we should get multiple images in one go, prior to parsing annotations ?
             parent_img_list = self.get_images([dic])
-
             if len(parent_img_list) != 1:
                 raise ValueError("could not find parent image for %s" % str(dic))
             parent_img = parent_img_list[0]
-
             dic['parent_image_id'] = parent_img["id"]
             dic['n_objects'] = n_objects
             if dic['md5'] != parent_img['md5']:
                 raise ValueError("Trying to add an annotation for %s, but md5 differ" % str(data))
 
             annot = UIDAnnotations(dic)
-
             o = annot.to_dict()
             o["json"] = ""
             out.append(o)
@@ -303,84 +227,62 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_uid_annotations(self, info: MetadataType, what: str = 'metadata'):
         images = self.get_images(info)
+        image_ids = [Images.id == img['id'] for img in images]
+        session = sessionmaker(bind=self._db_engine)()
+        conditions = or_(*image_ids)
+
+        q = session.query(Images.id).filter(conditions)
 
         out = []
+        parent_img_ids = [i[0] for i in q.all()]
+        q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
+        # q = session.query(UIDAnnotations)
 
-        for i, images_chunk in enumerate(chunker(images, self._get_image_chunk_size)):
-            logging.info("Getting image annotations... %i-%i / %i" %
-                         (i * self._get_image_chunk_size,
-                          i * self._get_image_chunk_size + len(images_chunk),
-                          len(info)))
-
-            image_ids = [Images.id == img['id'] for img in images_chunk]
-            session = sessionmaker(bind=self._db_engine)()
-            conditions = or_(*image_ids)
-
-            q = session.query(Images.id).filter(conditions)
-
-            parent_img_ids = [i[0] for i in q.all()]
-            q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
-            # q = session.query(UIDAnnotations)
-
-            for annots in q:
-                annot_dict = annots.to_dict()
-                if what == 'metadata':
-                    del annot_dict['json']
-                elif what == 'data':
-                    pass
-                else:
-                    raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
-                out.append(annot_dict)
+        for annots in q:
+            annot_dict = annots.to_dict()
+            if what == 'metadata':
+                del annot_dict['json']
+            elif what == 'data':
+                pass
+            else:
+                raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
+            out.append(annot_dict)
         return out
 
     def get_images(self, info: MetadataType, what: str = 'metadata'):
         out = []
         info = copy.deepcopy(info)
-        session = sessionmaker(bind=self._db_engine)()
-
-        # We fetch images by chunks:
-
-        for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
-
-            logging.info("Getting images... %i-%i / %i" %
-                         (i * self._get_image_chunk_size,
-                          i * self._get_image_chunk_size + len(info_chunk),
-                          len(info)))
-
-            for inf in info_chunk:
-                inf['datetime'] = string_to_datetime(inf['datetime'])
-
-            conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
-                          for inf in info_chunk]
-
-            q = session.query(Images).filter(or_(*conditions))
-
-            for img in q:
-                img_dict = img.to_dict()
-                img_dict['url'] = self._storage.get_url_for_image(img, what)
-                out.append(img_dict)
-        return out
-
-    def get_tiled_tuboid_series(self, info: InfoType) -> MetadataType:
-        session = sessionmaker(bind=self._db_engine)()
-        out = []
-
-        info = copy.deepcopy(info)
         for i in info:
-            i['start_datetime'] = string_to_datetime(i['start_datetime'])
-            i['end_datetime'] = string_to_datetime(i['end_datetime'])
-            q = session.query(TiledTuboids).filter(TiledTuboids.start_datetime >= i['start_datetime'],
-                                                   TiledTuboids.end_datetime < i['end_datetime'],
-                                                   TiledTuboids.device.like(i['device']))
+            i['datetime'] = string_to_datetime(i['datetime'])
+        session = sessionmaker(bind=self._db_engine)()
 
-            if q.count() == 0:
-                logging.warning('No data for series %s' % str(i))
-                # raise Exception("more than one match for %s" % i)
+        # we can fetch all images at once
+        conditions = [and_(Images.datetime == i['datetime'], Images.device == i['device']) for i in info]
+        q = session.query(Images).filter(or_(*conditions))
 
-            for tub in q.all():
-                tub_dict = tub.to_dict()
-                tub_dict.update(self._storage.get_urls_for_tiled_tuboids(tub_dict))
-                out.append(tub_dict)
+        for img in q:
+            img_dict = img.to_dict()
+            img_dict['url'] = self._storage.get_url_for_image(img, what)
+            out.append(img_dict)
+
+
+        #todo here, check wether requested images all exist in db. (in the case we ask for more than metadata)
+
+        # for i in info:
+        #     q = session.query(Images).filter(Images.datetime == i['datetime'], Images.device == i['device'])
+        #     if q.count() == 1:
+        #         img = q.one()
+        #         img_dict = img.to_dict()
+        #         img_dict['url'] = self._storage.get_url_for_image(img, what)
+        #         out.append(img_dict)
+        #
+        #     elif q.count() > 1:
+        #         raise Exception("more than one match for %s" % i)
+        #     # warn when trying to retrieve the URL of an image that does not exist
+        #     # "metadata" to be used when diffing to see if data exists in db
+        #     elif what != "metadata":
+        #         logging.warning("No image for %s at %s" % (i['device'], i['datetime']))
+
         return out
 
     def get_image_series(self, info: MetadataType, what: str = 'metadata'):
@@ -391,18 +293,27 @@ class BaseAPI(BaseAPISpec, ABC):
         for i in info:
             i['start_datetime'] = string_to_datetime(i['start_datetime'])
             i['end_datetime'] = string_to_datetime(i['end_datetime'])
+
+        for i in info:
             q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                              Images.datetime < i['end_datetime'],
                                              Images.device.like(i['device']))
 
             if q.count() == 0:
                 logging.warning('No data for series %s' % str(i))
-                # raise Exception("more than one match for %s" % i)
+                #raise Exception("more than one match for %s" % i)
 
             for img in q.all():
                 img_dict = img.to_dict()
                 img_dict['url'] = self._storage.get_url_for_image(img, what)
                 out.append(img_dict)
+
+
+            # warn when trying to retrieve the URL of an image that does not exist
+            # "metadata" to be used when diffing to see if data exists in db
+            # elif what != "metadata":
+            #     logging.warning("No image for %s at %s" % (i['device'], i['datetime']))
+
         return out
 
     def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -440,17 +351,14 @@ class LocalAPI(BaseAPI):
     def _create_db_engine(self):
         local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
-        return sqlalchemy.create_engine(engine_url, connect_args={"check_same_thread": False})
-
-
-class RemoteAPI(BaseAPI):
-    _storage_class = S3Storage
-
-    def _create_db_engine(self):
-        engine_url = "mysql+pymsql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
-                                                                     self._configuration.MYSQL_PASSWORD,
-                                                                     self._configuration.MYSQL_HOST,
-                                                                     self._configuration.MYSQL_DB_NAME
-                                                                     )
-
         return sqlalchemy.create_engine(engine_url)
+
+# TODO here implement a mysql connection
+# class Remote(BaseAPI):
+#     _storage_class = #TODO s3 Storage
+#     _database_filename = 'database.db'
+#
+#     def _create_db_engine(self, local_dir):
+#         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
+#         return sqlalchemy.create_engine(engine_url)
+
