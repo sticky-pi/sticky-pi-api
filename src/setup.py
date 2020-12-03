@@ -9,14 +9,11 @@ setup(
     scripts=['bin/sync_local_images.py'],
     include_package_data=True,
     zip_safe=False,
-    install_requires=['numpy',
-                      'pandas',
+    install_requires=['pandas',
                       'requests',
-                      'futures',
                       'python-dotenv',
                       'boto3',
                       'pillow',
-                      'opencv_python',
                       'psutil',
                       'tqdm',
                       'joblib',
@@ -24,9 +21,10 @@ setup(
                       'imread',
                       'typeguard',
                       'passlib',
-                      'itsdangerous'],
+                      'itsdangerous',
+                      'decorate_all_methods'],
     extras_require={
-        'test': ['nose', 'pytest', 'pytest-cov', 'codecov'],
+        'test': ['nose', 'pytest', 'pytest-cov', 'codecov', 'coverage'],
         'docs': ['mock', 'sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },
     test_suite='nose.collector'
