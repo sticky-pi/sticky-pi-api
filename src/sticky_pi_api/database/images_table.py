@@ -1,5 +1,4 @@
 import datetime
-from sqlalchemy.orm import relationship
 from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
@@ -13,12 +12,6 @@ from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColu
 class Images(Base, BaseCustomisations):
     __tablename__ = 'images'
     __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'),)
-
-    uid_annotations = relationship("UIDAnnotations",
-                                   back_populates="parent_image",
-                                   cascade="all, delete",
-                                   passive_deletes=True
-                                   )
 
     id = DescribedColumn(Integer, primary_key=True,
                          description="The unique identifier of each image")
