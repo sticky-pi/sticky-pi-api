@@ -3,7 +3,6 @@ import tempfile
 import json
 import unittest
 from sticky_pi_api.client import LocalClient
-from sticky_pi_api.utils import string_to_datetime
 from sqlalchemy.exc import IntegrityError
 from contextlib import redirect_stderr
 from io import StringIO
@@ -13,11 +12,21 @@ import logging
 
 
 logging.getLogger().setLevel(logging.INFO)
+<<<<<<< HEAD
 test_dir = os.path.dirname(__file__)
 
 
 class LocalAndRemoteTests(object):
     _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
+=======
+
+
+dir = os.path.dirname(__file__)
+
+class TestLocalClient(unittest.TestCase):
+    _test_images = [i for i in sorted(glob.glob(os.path.join(dir, "raw_images/**/*.jpg")))]
+    _ml_bundle_dir = os.path.join(dir, 'ml_bundle')
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
     _test_annotation = {"annotations": [
         dict(contour=[[[2194, 1597]], [[2189, 1602]], [[2189, 1617]], [[2200, 1630]], [[2201, 1634]], [[2221, 1656]],
                       [[2240, 1656]], [[2245, 1647]], [[2245, 1632]], [[2236, 1621]], [[2241, 1613]], [[2239, 1607]],
@@ -29,6 +38,7 @@ class LocalAndRemoteTests(object):
         "metadata": dict(algo_name="sticky-pi-universal-insect-detector",
                          algo_version="1598113346-ad2cd78dfaca12821046dfb8994724d5", device="5c173ff2",
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
+<<<<<<< HEAD
     _test_dir = test_dir
 
     def __init__(self):
@@ -57,6 +67,13 @@ class LocalAndRemoteTests(object):
             shutil.rmtree(temp_dir)
 
     #
+=======
+
+    _test_image_for_annotation = os.path.join(dir,"raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
+
+
+    def test_users(self):
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 
     def test_users(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -86,6 +103,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
+<<<<<<< HEAD
     # #
     def test_put_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -98,10 +116,28 @@ class LocalAndRemoteTests(object):
             uploaded = db.put_images(self._test_images)
             self.assertEqual(len(uploaded), len(self._test_images) - 2)
 
+=======
+
+    def test_init(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = LocalClient(temp_dir)
+        finally:
+            shutil.rmtree(temp_dir)
+
+    #
+    def test_put(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = LocalClient(temp_dir)
+            uploaded = db.put_images(self._test_images[0:2])
+            self.assertEqual(len(uploaded), 2)
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
             uploaded = db.put_images(self._test_images)
 
             # should fail to put images that are already there:
             with redirect_stderr(StringIO()) as stdout:
+<<<<<<< HEAD
                 with self.assertRaises(self._server_error) as context:
                     db._put_new_images(self._test_images[0:1])
 
@@ -110,22 +146,27 @@ class LocalAndRemoteTests(object):
     #
 
     def test_get_images(self):
+=======
+                with self.assertRaises(IntegrityError) as context:
+                    db._put_new_images(self._test_images[0:1])
+        finally:
+            shutil.rmtree(temp_dir)
+    #
+    def test_get(self):
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         import tempfile
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = self._make_client(temp_dir)
             self._clean_persistent_resources(db)
             db.put_images(self._test_images)
+<<<<<<< HEAD
 
             #the input dates of the client can be dates or string
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}])
             self.assertEqual(len(out), 1)
-            # the output of the client should be a date, always
-            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05_10-07-16"))
-
-            # Client should should parse datetime to string internally
-            out = db.get_images([{'device': "1b74105a", 'datetime': string_to_datetime("2020-07-05_10-07-16")}])
-            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05_10-07-16"))
 
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}], what='image')
             self.assertEqual(len(out), 1)
@@ -171,12 +212,16 @@ class LocalAndRemoteTests(object):
             im = db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
 
+<<<<<<< HEAD
             # update algo version should allow reupload of annotation
             test_annotation2 = copy.deepcopy(self._test_annotation)
             test_annotation2['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
             db.put_uid_annotations([test_annotation2])
             #
             # should fail to upload twice the same annotations (save version/image)
+=======
+            # should fail to upload twice the same annotations
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(self._server_error) as context:
                     db.put_uid_annotations([test_annotation2])
@@ -185,6 +230,7 @@ class LocalAndRemoteTests(object):
             #
             test_annotation2['metadata']['device'] = '01234567'
             with redirect_stderr(StringIO()) as stdout:
+<<<<<<< HEAD
                 with self.assertRaises((ValueError, self._server_error)) as context:
                     db.put_uid_annotations([test_annotation2])
             #
@@ -195,6 +241,10 @@ class LocalAndRemoteTests(object):
             db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
 
+=======
+                with self.assertRaises(ValueError) as context:
+                    db.put_uid_annotations([annot])
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         finally:
             shutil.rmtree(temp_dir)
 
@@ -303,9 +353,9 @@ class LocalAndRemoteTests(object):
 
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
-        dummy_bundle_name = 'dummy_bundle_name'
         try:
 
+<<<<<<< HEAD
             db = self._make_client(temp_dir)
             self._clean_persistent_resources(db)
             #
@@ -315,21 +365,38 @@ class LocalAndRemoteTests(object):
             self.assertEqual(len(out), 0)
 
             bundle_dir = os.path.join(temp_dir2, dummy_bundle_name)
+=======
+            db = LocalClient(temp_dir)
+            # db2 = LocalClient(temp_dir2)
+            out = db.put_ml_bundle_dir(self._ml_bundle_dir)
+            # self.assertEqual(len(out), 8)
+            out = db.put_ml_bundle_dir(self._ml_bundle_dir)
+            # self.assertEqual(len(out), 0)
+            # #
+            bundle_dir = os.path.join(temp_dir2, 'ml_bundle')
+
+            out = db.get_ml_bundle_dir(bundle_dir, 'model')
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 
             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
             self.assertEqual(len(out), 3)
 
+<<<<<<< HEAD
             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
 
+=======
+            out = db.get_ml_bundle_dir(bundle_dir, 'data')
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
             self.assertEqual(len(out), 5)
 
-            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
+            out = db.get_ml_bundle_dir(bundle_dir, 'all')
             self.assertEqual(len(out), 0)
 
 
         finally:
             shutil.rmtree(temp_dir)
             shutil.rmtree(temp_dir2)
+<<<<<<< HEAD
 
     def test_tiled_tuboids(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -436,3 +503,5 @@ class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
         return LocalClient(directory)
 
 
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"

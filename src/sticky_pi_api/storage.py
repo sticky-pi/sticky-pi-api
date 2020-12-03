@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import time
 import datetime
 import shutil
@@ -32,6 +33,17 @@ class BaseStorage(ABC):
     _ml_bundle_ml_data_subdir = ('data', 'config')
     _ml_bundle_ml_model_subdir = ('output', 'config')
 
+=======
+import os
+import logging
+from sticky_pi_api.types import List, Dict, Union
+from sticky_pi_api.database.images_table import Images
+from sticky_pi_api.utils import local_bundle_files_info
+from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf
+
+
+class BaseStorage(object):
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         self._api_conf = api_conf
 
@@ -140,6 +152,7 @@ class BaseStorage(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
         pass
@@ -163,10 +176,19 @@ class BaseStorage(ABC):
 
 class DiskStorage(BaseStorage):
     def __init__(self, api_conf: LocalAPIConf, *args, **kwargs):
+=======
+
+class DiskStorage(BaseStorage):
+    _raw_images_dirname = 'raw_images'
+    _ml_storage_dirname = 'ml'
+
+    def __init__(self, api_conf: LocalAPIConf,  *args, **kwargs):
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         super().__init__(api_conf, *args, **kwargs)
         self._local_dir = self._api_conf.LOCAL_DIR
         assert os.path.isdir(self._local_dir)
 
+<<<<<<< HEAD
     def _upload_url(self, path):
         return os.path.join(self._local_dir, path)
 
@@ -193,6 +215,8 @@ class DiskStorage(BaseStorage):
         files_urls = {k: os.path.join(target_dirname, v) for k, v in self._tiled_tuboid_filenames.items()}
         return files_urls
 
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
     def store_image_files(self, image: Images) -> None:
         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
         os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -244,8 +268,11 @@ class DiskStorage(BaseStorage):
         out = self.local_bundle_files_info(bundle_dir, what)
         for o in out:
             o['url'] = o['path']
+
+
         return out
 
+<<<<<<< HEAD
 
 class S3Storage(BaseStorage):
 
@@ -380,3 +407,33 @@ class S3Storage(BaseStorage):
         target_dirname = os.path.join(self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
         files_urls = {k: self._presigned_url(os.path.join(target_dirname, v)) for k, v in self._tiled_tuboid_filenames.items()}
         return files_urls
+=======
+    def get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
+            List[Dict[str, Union[float, str]]]:
+        bundle_dir = os.path.join(self._local_dir, self._ml_storage_dirname, bundle_name)
+        already_uploaded = local_bundle_files_info(bundle_dir, what='all')
+        already_uploaded_dict = {au['key']: au for au in already_uploaded}
+        out = []
+        for i in info:
+            to_upload = False
+            # file does not exists on remote
+            if i['key'] not in already_uploaded_dict:
+                to_upload = True
+            else:
+                remote_info = already_uploaded_dict[i['key']]
+                if i['md5'] == remote_info['md5']:
+                    to_upload = False
+                elif i['mtime'] > remote_info['mtime']:
+                    to_upload = True
+            if to_upload:
+                i['url'] = os.path.join(self._local_dir, self._ml_storage_dirname, bundle_name, i['key'])
+                out.append(i)
+            else:
+                logging.info("Skipping %s (already on remote)" % str(i))
+        return out
+
+
+#todo
+# class S3Storage(BaseStorage):
+#     pass
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"

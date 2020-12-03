@@ -1,6 +1,10 @@
 import datetime
+<<<<<<< HEAD
 from sqlalchemy.orm import relationship
 from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String, Index
+=======
+from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
@@ -9,6 +13,7 @@ class Images(BaseCustomisations):
     __tablename__ = 'images'
     __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'), Index("image_uid", 'device', 'datetime'))
 
+<<<<<<< HEAD
     uid_annotations = relationship("UIDAnnotations",
                                    back_populates="parent_image",
                                    cascade="all, delete",
@@ -17,6 +22,8 @@ class Images(BaseCustomisations):
 
     # tasks = relationship("Task", back_populates="project", passive_deletes=True)
 
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
     id = DescribedColumn(Integer, primary_key=True,
                          description="The unique identifier of each image")
     device = DescribedColumn(String(8), nullable=False,

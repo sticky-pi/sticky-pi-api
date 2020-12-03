@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 
 import datetime
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 import copy
 import logging
 import os
@@ -16,12 +19,13 @@ import sqlite3
 
 from sticky_pi_api.utils import json_io_converter
 from sticky_pi_api.database.utils import Base
-from sticky_pi_api.storage import DiskStorage, BaseStorage, S3Storage
+from sticky_pi_api.storage import DiskStorage, BaseStorage
 from sticky_pi_api.configuration import BaseAPIConf
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, Dict, Any
 from sticky_pi_api.database.users_tables import Users
+<<<<<<< HEAD
 from sticky_pi_api.database.tuboid_series_table import TuboidSeries
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.database.itc_labels_table import ITCLabels
@@ -37,6 +41,17 @@ from abc import ABC, abstractmethod
 class BaseAPISpec(ABC):
     @abstractmethod
     def get_images(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+=======
+
+
+
+
+class BaseAPISpec(object):
+    # def __init__(self, *args, **kwargs):
+    #     pass
+
+    def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         Retrieves information about a given set of images, defined by their parent device and the
         datetime of the picture. *If an image is not available, no data is returned for this image*.
@@ -51,8 +66,12 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def delete_images(self, info: MetadataType, client_info: Dict[str, Any] = None):
+=======
+    def _put_new_images(self, files: List[str]) -> MetadataType:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         #fixme. this is false. it now takes a set of images as returned by get_images
         Delete a set of images, defined by their parent device and the
@@ -64,6 +83,7 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def delete_tiled_tuboids(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         """
@@ -92,6 +112,9 @@ class BaseAPISpec(ABC):
 
     @abstractmethod
     def get_image_series(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+=======
+    def get_image_series(self, info, what: str = 'metadata') -> MetadataType:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         Retrieves image sequences (i.e. series).
         A series contains all images from a given device within a datetime range.
@@ -109,8 +132,12 @@ class BaseAPISpec(ABC):
 
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def put_uid_annotations(self, info: AnnotType, client_info: Dict[str, Any] = None) -> MetadataType:
+=======
+    def put_uid_annotations(self, info: AnnotType) -> MetadataType:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         :param info: A list of dictionaries corresponding to annotations (one list element per image).
             The annotations are formatted as a dictionaries with two keys: ``'annotations'`` and ``'metadata'``.
@@ -132,9 +159,13 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def get_uid_annotations(self, info: InfoType, what: str = 'metadata',
                             client_info: Dict[str, Any] = None) -> MetadataType:
+=======
+    def get_uid_annotations(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         Retrieves annotations for a given set of images.
 
@@ -216,6 +247,7 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def put_itc_labels(self, info: List[Dict[str, Union[str, int]]],
                        client_info: Dict[str, Any] = None) -> MetadataType:
@@ -232,6 +264,9 @@ class BaseAPISpec(ABC):
     @abstractmethod
     def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str, Any] = None) -> List[
         Dict[str, Union[float, str]]]:
+=======
+    def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         Get a list of file for a given ML Bundle.
 
@@ -245,9 +280,13 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def _get_ml_bundle_upload_links(self, info: List[Dict[str, Union[float, str]]],
                                     client_info: Dict[str, Any] = None) -> \
+=======
+    def _get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
             List[Dict[str, Union[float, str]]]:
         """
         Ask the client for a list of upload url for the files described in info.
@@ -262,8 +301,12 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def get_users(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+=======
+    def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         Get a list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
         In the latter case, the union of all matched users is returned.
@@ -277,8 +320,12 @@ class BaseAPISpec(ABC):
         """
         pass
 
+<<<<<<< HEAD
     @abstractmethod
     def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+=======
+    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         """
         Add a list of users defined by a dict of proprieties.
 
@@ -302,20 +349,27 @@ class BaseAPISpec(ABC):
         pass
 
 
+<<<<<<< HEAD
 @decorate_all_methods(json_inputs_to_python, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
 class BaseAPI(BaseAPISpec, ABC):
+=======
+
+class BaseAPI(BaseAPISpec):
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
     _storage_class = BaseStorage
-    _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
 
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
+<<<<<<< HEAD
         # super().__init__()
+=======
+        super().__init__(*args, **kwargs)
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         self._configuration = api_conf
-        self._storage = self._storage_class(api_conf=api_conf, *args, **kwargs)
+        self._storage = self._storage_class(api_conf = api_conf, *args, **kwargs)
         self._db_engine = self._create_db_engine()
 
         Base.metadata.create_all(self._db_engine, Base.metadata.tables.values(), checkfirst=True)
 
-    @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
         pass
 
@@ -419,6 +473,7 @@ class BaseAPI(BaseAPISpec, ABC):
             out += self._storage.get_ml_bundle_upload_links(bundle_name, info)
         return out
 
+<<<<<<< HEAD
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         out = []
         session = sessionmaker(bind=self._db_engine)()
@@ -541,9 +596,72 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
+=======
+    def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
+        return self._storage.get_ml_bundle_file_list(bundle_name, what)
+
+    def _get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
+            List[Dict[str, Union[float, str]]]:
+        return self._storage.get_ml_bundle_upload_links(bundle_name, info)
+
+    def put_uid_annotations(self, info: AnnotType):
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+        out = []
+        # for each image
+        for data in info:
+            json_str = json.dumps(data)
+            dic = data['metadata']
+            annotations = data['annotations']
+
+            n_objects = len(annotations)
+            dic['json'] = json_str
+
+            parent_img_list = self.get_images([dic])
+            if len(parent_img_list) != 1:
+                raise ValueError("could not find parent image for %s" % str(dic))
+            parent_img = parent_img_list[0]
+            dic['parent_image_id'] = parent_img["id"]
+            dic['n_objects'] = n_objects
+            if dic['md5'] != parent_img['md5']:
+                raise ValueError("Trying to add an annotation for %s, but md5 differ" % str(data))
+
+            annot = UIDAnnotations(dic)
+            o = annot.to_dict()
+            o["json"] = ""
+            out.append(o)
+            session.add(annot)
+            session.commit()
+        return out
+
+    def get_uid_annotations(self, info: MetadataType, what: str = 'metadata'):
+        images = self.get_images(info)
+        image_ids = [Images.id == img['id'] for img in images]
+        session = sessionmaker(bind=self._db_engine)()
+        conditions = or_(*image_ids)
+
+        q = session.query(Images.id).filter(conditions)
+
+        out = []
+        parent_img_ids = [i[0] for i in q.all()]
+        q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
+        # q = session.query(UIDAnnotations)
+
+        for annots in q:
+            annot_dict = annots.to_dict()
+            if what == 'metadata':
+                del annot_dict['json']
+            elif what == 'data':
+                pass
+            else:
+                raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
+            out.append(annot_dict)
+        return out
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 
     def get_uid_annotations(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         out = []
+<<<<<<< HEAD
         session = sessionmaker(bind=self._db_engine)()
         try:
 
@@ -593,6 +711,43 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_tiled_tuboid_series(self, info: InfoType, what: str = 'metadata',
                                 client_info: Dict[str, Any] = None) -> MetadataType:
+=======
+        info = copy.deepcopy(info)
+        for i in info:
+            i['datetime'] = string_to_datetime(i['datetime'])
+        session = sessionmaker(bind=self._db_engine)()
+
+        # we can fetch all images at once
+        conditions = [and_(Images.datetime == i['datetime'], Images.device == i['device']) for i in info]
+        q = session.query(Images).filter(or_(*conditions))
+
+        for img in q:
+            img_dict = img.to_dict()
+            img_dict['url'] = self._storage.get_url_for_image(img, what)
+            out.append(img_dict)
+
+
+        #todo here, check wether requested images all exist in db. (in the case we ask for more than metadata)
+
+        # for i in info:
+        #     q = session.query(Images).filter(Images.datetime == i['datetime'], Images.device == i['device'])
+        #     if q.count() == 1:
+        #         img = q.one()
+        #         img_dict = img.to_dict()
+        #         img_dict['url'] = self._storage.get_url_for_image(img, what)
+        #         out.append(img_dict)
+        #
+        #     elif q.count() > 1:
+        #         raise Exception("more than one match for %s" % i)
+        #     # warn when trying to retrieve the URL of an image that does not exist
+        #     # "metadata" to be used when diffing to see if data exists in db
+        #     elif what != "metadata":
+        #         logging.warning("No image for %s at %s" % (i['device'], i['datetime']))
+
+        return out
+
+    def get_image_series(self, info: MetadataType, what: str = 'metadata'):
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
         session = sessionmaker(bind=self._db_engine)()
         try:
             out = []
@@ -627,6 +782,7 @@ class BaseAPI(BaseAPISpec, ABC):
     def delete_tiled_tuboids(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
         info = copy.deepcopy(info)
+<<<<<<< HEAD
         session = sessionmaker(bind=self._db_engine)()
         try:
             # We fetch images by chunks:
@@ -675,6 +831,33 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
+=======
+        for i in info:
+            i['start_datetime'] = string_to_datetime(i['start_datetime'])
+            i['end_datetime'] = string_to_datetime(i['end_datetime'])
+
+        for i in info:
+            q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
+                                             Images.datetime < i['end_datetime'],
+                                             Images.device.like(i['device']))
+
+            if q.count() == 0:
+                logging.warning('No data for series %s' % str(i))
+                #raise Exception("more than one match for %s" % i)
+
+            for img in q.all():
+                img_dict = img.to_dict()
+                img_dict['url'] = self._storage.get_url_for_image(img, what)
+                out.append(img_dict)
+
+
+            # warn when trying to retrieve the URL of an image that does not exist
+            # "metadata" to be used when diffing to see if data exists in db
+            # elif what != "metadata":
+            #     logging.warning("No image for %s at %s" % (i['device'], i['datetime']))
+
+        return out
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 
     def _get_itc_labels(self, info: List[Dict], client_info: Dict[str, Any] = None) -> MetadataType:
         info = copy.deepcopy(info)
@@ -789,6 +972,7 @@ class LocalAPI(BaseAPI):
     def _create_db_engine(self):
         local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
+<<<<<<< HEAD
         return sqlalchemy.create_engine(engine_url, connect_args={"check_same_thread": False, 'timeout': 60})
 
     def _make_db_session(self):
@@ -819,3 +1003,16 @@ class RemoteAPI(BaseAPI):
                                                                       self._configuration.MYSQL_DATABASE
                                                                       )
         return sqlalchemy.create_engine(engine_url, pool_recycle=3600)
+=======
+        return sqlalchemy.create_engine(engine_url)
+
+# TODO here implement a mysql connection
+# class Remote(BaseAPI):
+#     _storage_class = #TODO s3 Storage
+#     _database_filename = 'database.db'
+#
+#     def _create_db_engine(self, local_dir):
+#         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
+#         return sqlalchemy.create_engine(engine_url)
+
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"

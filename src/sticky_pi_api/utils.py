@@ -1,15 +1,21 @@
+<<<<<<< HEAD
 import logging
 import requests
 import tempfile
 import shutil
 import pandas as pd
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 import os
 import hashlib
+<<<<<<< HEAD
 import json
 from decimal import Decimal
 import re
 import datetime
 import functools
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 
 STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 DATESTRING_REGEX=re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
@@ -40,6 +46,7 @@ class URLOrFileOpen(object):
             shutil.rmtree(self._tmp_dir_path)
 
 
+<<<<<<< HEAD
 def chunker(seq, size: int):
     """
     Breaks an interable into a list of smaller chunks of size ``size`` (or less for the last chunk)
@@ -136,6 +143,8 @@ def python_inputs_to_json(func):
 
 
 
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
 def md5(file, chunk_size=32768):
     # if the file is a path, open and recurse
     if type(file) == str:
@@ -180,8 +189,31 @@ def string_to_datetime(string):
 
 
 def datetime_to_string(dt):
-    if pd.isnull(dt):
-        return None
     return datetime.datetime.strftime(dt, STRING_DATETIME_FORMAT)
 
 
+<<<<<<< HEAD
+=======
+def local_bundle_files_info(bundle_dir, what='all',
+                            allowed_ml_bundle_suffixes=('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg'),
+                            ml_bundle_ml_data_subdir=('data', 'config'),
+                            ml_bundle_ml_model_subdir=('output', 'config'),
+                            multipart_chunk_size = 8 * 1024 * 1024):
+    out = []
+    for root, dirs, files in os.walk(bundle_dir, topdown=True, followlinks=True):
+        for name in files:
+            matches = [s for s in allowed_ml_bundle_suffixes if name.endswith(s)]
+            if len(matches) == 0:
+                continue
+            subdir = os.path.relpath(root, bundle_dir)
+            in_data = subdir in ml_bundle_ml_data_subdir
+            in_model = subdir in ml_bundle_ml_model_subdir
+
+            path = os.path.join(root, name)
+            key = os.path.relpath(path, bundle_dir)
+            local_md5 = multipart_etag(path, chunk_size=multipart_chunk_size)
+            local_mtime = os.path.getmtime(path)
+            if what == 'all' or (in_data and what == 'data') or (in_model and what == 'model'):
+                out.append({'key': key, 'path': path, 'md5': local_md5, 'mtime': local_mtime})
+    return out
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"

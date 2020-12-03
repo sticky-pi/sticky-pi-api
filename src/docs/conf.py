@@ -373,5 +373,5 @@ class Mock(MagicMock):
 
 MOCK_MODULES = [
     'cv2', 'cv', 'cv2.cv',
-    'numpy', 'scipy', 'pandas', 'imread', 'joblib']
+    'numpy', 'scipy', 'pandas', 'imread', 'joblib', 'sqlalchemy']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)

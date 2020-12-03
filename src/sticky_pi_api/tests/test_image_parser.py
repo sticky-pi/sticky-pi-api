@@ -4,14 +4,14 @@ import datetime
 import os
 import logging
 
-test_dir = os.path.dirname(__file__)
+dir = os.path.dirname(__file__)
 
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 
 
 class TestImageParser(unittest.TestCase):
-    _test_image = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
+    _test_image = os.path.join(dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
     _test_image_metadata = {'device': '5c173ff2',
                             'datetime': datetime.datetime(2020, 6, 20, 21, 33, 24),
                             'filename': '5c173ff2.2020-06-20_21-33-24.jpg', 'width': 2592, 'height': 1944,

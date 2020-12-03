@@ -47,6 +47,7 @@ class LocalAPIConf(BaseAPIConf):
         'SECRET_API_KEY': "endjlwenmfkwe",
         'LOCAL_DIR': RequiredConfVar()
     }
+<<<<<<< HEAD
 
 
 class RemoteAPIConf(BaseAPIConf):
@@ -63,3 +64,5 @@ class RemoteAPIConf(BaseAPIConf):
         'MYSQL_PASSWORD': RequiredConfVar(),
         'MYSQL_DATABASE': RequiredConfVar()
     }
+=======
+>>>>>>> 7daa60a... Revert "Feature tiled tuboids"
