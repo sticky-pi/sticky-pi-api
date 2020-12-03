@@ -13,10 +13,14 @@ import logging
 
 logging.getLogger().setLevel(logging.INFO)
 test_dir = os.path.dirname(__file__)
-
+_tiled_tuboid_root_dir = os.path.join(test_dir, 'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
 class TestLocalClient(unittest.TestCase):
     _test_images = [i for i in sorted(glob.glob(os.path.join(test_dir, "raw_images/**/*.jpg")))]
     _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
+
+
+    _tiled_tuboid_dirs = [os.path.join(_tiled_tuboid_root_dir, d) for d in os.listdir(_tiled_tuboid_root_dir)]
+
     _test_annotation = {"annotations": [
         dict(contour=[[[2194, 1597]], [[2189, 1602]], [[2189, 1617]], [[2200, 1630]], [[2201, 1634]], [[2221, 1656]],
                       [[2240, 1656]], [[2245, 1647]], [[2245, 1632]], [[2236, 1621]], [[2241, 1613]], [[2239, 1607]],
@@ -32,42 +36,42 @@ class TestLocalClient(unittest.TestCase):
     _test_image_for_annotation = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
 
 
-    # def test_init(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #         db = LocalClient(temp_dir)
-    #     finally:
-    #         shutil.rmtree(temp_dir)
+    def test_init(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = LocalClient(temp_dir)
+        finally:
+            shutil.rmtree(temp_dir)
+
     #
-    # #
-    # def test_users(self):
-    #
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #         users = [
-    #             {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
-    #             {'username': 'grace', 'password': 'hopper', 'is_admin': True},
-    #                 ]
-    #         cli = LocalClient(temp_dir)
-    #         cli.put_users(users)
-    #
-    #         # cannot add same users twice
-    #         with redirect_stderr(StringIO()) as stdout:
-    #             with self.assertRaises(IntegrityError) as context:
-    #                 cli.put_users(users)
-    #
-    #         out = cli.get_users()
-    #         self.assertEqual(len(out), 2)
-    #
-    #         out = cli.get_users(info={'username':'%'})
-    #         self.assertEqual(len(out), 2)
-    #
-    #         out = cli.get_users(info={'username':'ad%'})
-    #         self.assertEqual(len(out), 1)
-    #
-    #     finally:
-    #         shutil.rmtree(temp_dir)
-    #
+    def test_users(self):
+
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            users = [
+                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+                    ]
+            cli = LocalClient(temp_dir)
+            cli.put_users(users)
+
+            # cannot add same users twice
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(IntegrityError) as context:
+                    cli.put_users(users)
+
+            out = cli.get_users()
+            self.assertEqual(len(out), 2)
+
+            out = cli.get_users(info={'username':'%'})
+            self.assertEqual(len(out), 2)
+
+            out = cli.get_users(info={'username':'ad%'})
+            self.assertEqual(len(out), 1)
+
+        finally:
+            shutil.rmtree(temp_dir)
+
     def test_put(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -296,3 +300,22 @@ class TestLocalClient(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir)
             shutil.rmtree(temp_dir2)
+
+    def test_tiled_tuboids(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            db = LocalClient(temp_dir)
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs)
+
+            series = [{'device': '%',
+                       'start_datetime': '2020-01-01_00-00-00',
+                       'end_datetime': '2020-12-31_00-00-00'}]
+
+            self.assertEqual(len(db.get_tiled_tuboid_series(series)), 6)
+            # import pandas as pd
+            # print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
+
+        finally:
+            shutil.rmtree(temp_dir)
+

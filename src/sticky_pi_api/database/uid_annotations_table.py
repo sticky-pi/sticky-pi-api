@@ -21,7 +21,7 @@ class UIDAnnotations(Base, BaseCustomisations):
     datetime_created = DescribedColumn(DateTime,  nullable=False)
     uploader = DescribedColumn(Integer, nullable=True)  # the user_id of the user who uploaded the data
     n_objects = DescribedColumn(Integer, nullable=False)  # the number of detected objects
-    json = DescribedColumn(Text(2 ^ 32), nullable=False) # this is a longtext
+    json = DescribedColumn(Text(2 ^ 32), nullable=False)  # this is a longtext
 
     def __init__(self, info):
         column_names = UIDAnnotations.column_names()

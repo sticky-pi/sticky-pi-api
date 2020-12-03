@@ -14,10 +14,10 @@ from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, Dict, Any
 from sticky_pi_api.database.users_tables import Users
+from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.utils import chunker, datetime_to_string, format_io
 from decorate_all_methods import decorate_all_methods
 from abc import ABC, abstractmethod
-
 
 
 @decorate_all_methods(format_io, exclude=['__init__'])
@@ -49,6 +49,40 @@ class BaseAPISpec(ABC):
         :param files: A list of path to client files
 
         :return: The metadata of the files that were actually uploaded
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _put_tiled_tuboids(self, files: List[Dict[str, str]]) -> MetadataType:
+        """
+            Uploads a set of client tiled tuboid files to the API.
+            The user would use ``BaseClient.put_tiled_tuboid(files)``.
+
+
+            :param files: A list of dict. Each dict contains keys:
+                * ``tuboid_id``: a formatted string describing the tuboid series and tuboid id e.g. ``08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.0002``
+                * ``metadata``: the path to a comma-separated files that contains metadata for each tuboid shot
+                * ``tuboid``: the path to a tiled jpg containing (some of) the shots described in metadata, in the same order
+                * ``context``: the path to an illustration (jpg) of the detected object highlighted in the whole image of the first shot
+
+            :return: The metadata of the files that were actually uploaded
+            """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_tiled_tuboid_series(self, info: InfoType) -> MetadataType:
+        """
+        Retrieves tiled tuboids -- i.e. stitched annotations into a tile,
+        where the assumption is one tuboid per instance.
+        A series contains all tuboids fully  contained within a range
+
+        :param info: A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
+            For instance,one can match all devices with ``device="%"``.
+        :param what: The nature of the objects to retrieve.
+        :return: A list of dictionaries with one element for each queried value. Each dictionary contains
+            the fields present in the underlying database plus the fields ``'metadata'``, ``'tuboid'`` and ``'context'``
+            fields, which have a url to fetch the relevant file.
         """
         raise NotImplementedError()
 
@@ -201,6 +235,30 @@ class BaseAPI(BaseAPISpec, ABC):
                 raise e
         return out
 
+    def _put_tiled_tuboids(self, files: List[Dict[str, str]]):  # fixme return type
+        session = sessionmaker(bind=self._db_engine)()
+        # store the uploaded images
+        out = []
+        # for each tuboid
+        for data in files:
+            # print(data)
+            # We parse the tuboid data as a entry
+            tub = TiledTuboids(data)
+            out.append(tub.to_dict())
+            session.add(tub)
+
+            # try to store images, only commit if storage worked.
+            # rollback otherwise
+            try:
+                self._storage.store_tiled_tuboid(data)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logging.error("Storage Error. Failed to store tuboid %s" % tub)
+                logging.error(e)
+                raise e
+        return out
+
     def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         return self._storage.get_ml_bundle_file_list(bundle_name, what)
 
@@ -215,7 +273,6 @@ class BaseAPI(BaseAPISpec, ABC):
         # for each image
         for data in info:
 
-
             json_str = json.dumps(data, default=str)
             dic = data['metadata']
             annotations = data['annotations']
@@ -223,7 +280,7 @@ class BaseAPI(BaseAPISpec, ABC):
             n_objects = len(annotations)
             dic['json'] = json_str
 
-            #fixme. here we should get multiple images in one go, prior to parsing annotations ?
+            # fixme. here we should get multiple images in one go, prior to parsing annotations ?
             parent_img_list = self.get_images([dic])
 
             if len(parent_img_list) != 1:
@@ -276,7 +333,6 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(annot_dict)
         return out
 
-
     def get_images(self, info: MetadataType, what: str = 'metadata'):
         out = []
         info = copy.deepcopy(info)
@@ -303,6 +359,28 @@ class BaseAPI(BaseAPISpec, ABC):
                 img_dict = img.to_dict()
                 img_dict['url'] = self._storage.get_url_for_image(img, what)
                 out.append(img_dict)
+        return out
+
+    def get_tiled_tuboid_series(self, info: InfoType) -> MetadataType:
+        session = sessionmaker(bind=self._db_engine)()
+        out = []
+
+        info = copy.deepcopy(info)
+        for i in info:
+            i['start_datetime'] = string_to_datetime(i['start_datetime'])
+            i['end_datetime'] = string_to_datetime(i['end_datetime'])
+            q = session.query(TiledTuboids).filter(TiledTuboids.start_datetime >= i['start_datetime'],
+                                                   TiledTuboids.end_datetime < i['end_datetime'],
+                                                   TiledTuboids.device.like(i['device']))
+
+            if q.count() == 0:
+                logging.warning('No data for series %s' % str(i))
+                # raise Exception("more than one match for %s" % i)
+
+            for tub in q.all():
+                tub_dict = tub.to_dict()
+                tub_dict.update(self._storage.get_urls_for_tiled_tuboids(tub_dict))
+                out.append(tub_dict)
         return out
 
     def get_image_series(self, info: MetadataType, what: str = 'metadata'):
