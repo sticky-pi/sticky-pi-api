@@ -58,12 +58,6 @@ class Cache(dict):
         except FileExistsError:
             logging.error('trying to detect cache, but file does not exist')
 
-    def __del__(self):
-        try:
-            self._sync()
-        except dbm.error as e:
-            pass
-
 
 
 
@@ -83,8 +77,8 @@ class BaseClient(BaseAPISpec, ABC):
         self._n_threads = n_threads
         self._local_dir = local_dir
         os.makedirs(self._local_dir, exist_ok=True)
-
-        self._cache = Cache(os.path.join(local_dir, self._cache_dirname, 'cache.pkl'))
+        cache_file = os.path.join(local_dir, self._cache_dirname, 'cache.pkl')
+        self._cache = Cache(cache_file)
 
     @property
     def local_dir(self):
@@ -148,7 +142,7 @@ class BaseClient(BaseAPISpec, ABC):
 
         out = pd.merge(parent_images, annots, how='left', left_on=['id'], right_on=['parent_image_id'], suffixes=('', '_annot'))
         # NaN -> None
-        out = out.where(pd.notnull(out), None)
+        out = out.where(pd.notnull(out), None).sort_values(['device', 'datetime'])
         out = out.to_dict(orient='records')
         return out
 
@@ -182,6 +176,30 @@ class BaseClient(BaseAPISpec, ABC):
 
             out += self._put_new_images(group)
         logging.info("Putting images... Complete!")
+        return out
+
+    def put_tiled_tuboids(self, tuboid_directories: List[str]):
+        def parse_tuboid_dir(directory):
+            dirname = os.path.basename(os.path.normpath(directory))
+
+            metadata_file = os.path.join(directory, 'metadata.txt')
+            tuboid_file = os.path.join(directory, 'tuboid.jpg')
+            context_file = os.path.join(directory, 'context.jpg')
+            assert len(dirname.split('.')) == 5  # 5 fields in this dir
+            assert os.path.isfile(metadata_file)
+            assert os.path.isfile(context_file)
+            assert os.path.isfile(tuboid_file)
+            return {'tuboid_id': dirname,
+                    'metadata': metadata_file,
+                    'tuboid': tuboid_file,
+                    'context': context_file}
+        out = []
+        for i, group in enumerate(chunker(tuboid_directories, self._put_chunk_size)):
+            to_upload = [parse_tuboid_dir(g) for g in group]
+            logging.info("Putting tuboids ... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
+                                                                             i * self._put_chunk_size + len(group),
+                                                                             len(to_upload)))
+            out += self._put_tiled_tuboids(to_upload)
         return out
 
     def delete_cache(self):
