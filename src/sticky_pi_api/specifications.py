@@ -70,7 +70,7 @@ class BaseAPISpec(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_tiled_tuboid_series(self, info: InfoType) -> MetadataType:
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata") -> MetadataType:
         """
         Retrieves tiled tuboids -- i.e. stitched annotations into a tile,
         where the assumption is one tuboid per instance.
@@ -79,7 +79,8 @@ class BaseAPISpec(ABC):
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
             For instance,one can match all devices with ``device="%"``.
-        :param what: The nature of the objects to retrieve.
+        :param what: The nature of the objects to retrieve, either ``'data'`` or ``'metadata'``. ``'metadata'`` will not
+            add the extra three fields mapping the files to the results
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
             the fields present in the underlying database plus the fields ``'metadata'``, ``'tuboid'`` and ``'context'``
             fields, which have a url to fetch the relevant file.
@@ -244,6 +245,9 @@ class BaseAPI(BaseAPISpec, ABC):
             # print(data)
             # We parse the tuboid data as a entry
             tub = TiledTuboids(data)
+
+            # fixme we should check that no tuboid exists within this -- implicit -- series.
+            # ie no overlap of [series_start_datetime, series_end_datetime] allowed for same device, algo_version,...
             out.append(tub.to_dict())
             session.add(tub)
 
@@ -361,16 +365,18 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(img_dict)
         return out
 
-    def get_tiled_tuboid_series(self, info: InfoType) -> MetadataType:
+    def get_tiled_tuboid_series(self, info: InfoType, what: str='metadata') -> MetadataType:
         session = sessionmaker(bind=self._db_engine)()
         out = []
+        assert what in ('data', 'metadata')
 
         info = copy.deepcopy(info)
         for i in info:
             i['start_datetime'] = string_to_datetime(i['start_datetime'])
             i['end_datetime'] = string_to_datetime(i['end_datetime'])
             q = session.query(TiledTuboids).filter(TiledTuboids.start_datetime >= i['start_datetime'],
-                                                   TiledTuboids.end_datetime < i['end_datetime'],
+                                                   # nthe here we need to include both bounds in case a tuboid ends just in between
+                                                   TiledTuboids.end_datetime <= i['end_datetime'],
                                                    TiledTuboids.device.like(i['device']))
 
             if q.count() == 0:
@@ -379,7 +385,8 @@ class BaseAPI(BaseAPISpec, ABC):
 
             for tub in q.all():
                 tub_dict = tub.to_dict()
-                tub_dict.update(self._storage.get_urls_for_tiled_tuboids(tub_dict))
+                if what == 'data':
+                    tub_dict.update(self._storage.get_urls_for_tiled_tuboids(tub_dict))
                 out.append(tub_dict)
         return out
 
