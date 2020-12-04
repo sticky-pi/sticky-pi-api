@@ -312,7 +312,7 @@ class TestLocalClient(unittest.TestCase):
                        'start_datetime': '2020-01-01_00-00-00',
                        'end_datetime': '2020-12-31_00-00-00'}]
 
-            self.assertEqual(len(db.get_tiled_tuboid_series(series)), 6)
+            self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
             # import pandas as pd
             # print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
 
