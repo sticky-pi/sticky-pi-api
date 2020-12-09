@@ -5,11 +5,6 @@ from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 
-# import warnings
-# from sqlalchemy.exc import SAWarning
-# warnings.filterwarnings('ignore', r".*support Decimal objects natively", SAWarning, r'^sqlalchemy\.sql\.sqltypes$')
-
-
 class Images(Base, BaseCustomisations):
     __tablename__ = 'images'
     __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'),)

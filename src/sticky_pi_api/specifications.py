@@ -15,6 +15,7 @@ from sticky_pi_api.database.uid_annotations_table import UIDAnnotations
 from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, Dict, Any
 from sticky_pi_api.database.users_tables import Users
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
+from sticky_pi_api.database.itc_labels_table import ITCLabels
 from sticky_pi_api.utils import chunker, datetime_to_string, format_io
 from decorate_all_methods import decorate_all_methods
 from abc import ABC, abstractmethod
@@ -49,41 +50,6 @@ class BaseAPISpec(ABC):
         :param files: A list of path to client files
 
         :return: The metadata of the files that were actually uploaded
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def _put_tiled_tuboids(self, files: List[Dict[str, str]]) -> MetadataType:
-        """
-            Uploads a set of client tiled tuboid files to the API.
-            The user would use ``BaseClient.put_tiled_tuboid(files)``.
-
-
-            :param files: A list of dict. Each dict contains keys:
-                * ``tuboid_id``: a formatted string describing the tuboid series and tuboid id e.g. ``08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.0002``
-                * ``metadata``: the path to a comma-separated files that contains metadata for each tuboid shot
-                * ``tuboid``: the path to a tiled jpg containing (some of) the shots described in metadata, in the same order
-                * ``context``: the path to an illustration (jpg) of the detected object highlighted in the whole image of the first shot
-
-            :return: The metadata of the files that were actually uploaded
-            """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata") -> MetadataType:
-        """
-        Retrieves tiled tuboids -- i.e. stitched annotations into a tile,
-        where the assumption is one tuboid per instance.
-        A series contains all tuboids fully  contained within a range
-
-        :param info: A list of dicts. each dicts has, at least, the keys:
-            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
-            For instance,one can match all devices with ``device="%"``.
-        :param what: The nature of the objects to retrieve, either ``'data'`` or ``'metadata'``. ``'metadata'`` will not
-            add the extra three fields mapping the files to the results
-        :return: A list of dictionaries with one element for each queried value. Each dictionary contains
-            the fields present in the underlying database plus the fields ``'metadata'``, ``'tuboid'`` and ``'context'``
-            fields, which have a url to fetch the relevant file.
         """
         raise NotImplementedError()
 
@@ -131,7 +97,7 @@ class BaseAPISpec(ABC):
     @abstractmethod
     def get_uid_annotations(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         """
-        Reteives annotations for a given set of images.
+        Retrieves annotations for a given set of images.
 
         :param info: A list of dict with keys: ``'device'`` and ``'datetime'``
         :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
@@ -141,6 +107,64 @@ class BaseAPISpec(ABC):
             Otherwise, it contains a json string with the actual annotation data.
         """
         raise NotImplementedError()
+
+    @abstractmethod
+    def _put_tiled_tuboids(self, files: List[Dict[str, str]]) -> MetadataType:
+        """
+            Uploads a set of client tiled tuboid files to the API.
+            The user would use ``BaseClient.put_tiled_tuboid(files)``.
+
+
+            :param files: A list of dict. Each dict contains keys:
+                * ``tuboid_id``: a formatted string describing the tuboid series and tuboid id e.g. ``08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.0002``
+                * ``metadata``: the path to a comma-separated files that contains metadata for each tuboid shot
+                * ``tuboid``: the path to a tiled jpg containing (some of) the shots described in metadata, in the same order
+                * ``context``: the path to an illustration (jpg) of the detected object highlighted in the whole image of the first shot
+
+            :return: The metadata of the files that were actually uploaded
+            """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata") -> MetadataType:
+        """
+        Retrieves tiled tuboids -- i.e. stitched annotations into a tile,
+        where the assumption is one tuboid per instance.
+        A series contains all tuboids fully  contained within a range
+
+        :param info: A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
+            For instance,one can match all devices with ``device="%"``.
+        :param what: The nature of the objects to retrieve, either ``'data'`` or ``'metadata'``. ``'metadata'`` will not
+            add the extra three fields mapping the files to the results
+        :return: A list of dictionaries with one element for each queried value. Each dictionary contains
+            the fields present in the underlying database plus the fields ``'metadata'``, ``'tuboid'`` and ``'context'``
+            fields, which have a url to fetch the relevant file.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _get_itc_labels(self, info: List[Dict]) -> MetadataType:
+        """
+        Retrieves labels for a given set of tiled tuboid
+
+        :param info: A list of dict with key: ``'tuboid_id'``
+        :return: A list of dictionaries with one element for each queried value.
+            Each dictionary contains the fields present in the underlying database table (see ``ITCLabels``).
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]]) -> MetadataType:
+        """
+        Stores labels for a given set of tiled tuboid
+
+        :param info: A list of dict with keys: ``'tuboid_id'``, ``'label'``, ``'pattern'``,
+            ``'algo_version'``and ``'algo_name'``  (see ``ITCLabels``).
+        :return: the field corresponding to the labels that were submitted
+        """
+        raise NotImplementedError()
+
 
     @abstractmethod
     def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
@@ -169,6 +193,7 @@ class BaseAPISpec(ABC):
             where the client can then upload their data.
         """
         raise NotImplementedError()
+
 
     @abstractmethod
     def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
@@ -410,6 +435,39 @@ class BaseAPI(BaseAPISpec, ABC):
                 img_dict = img.to_dict()
                 img_dict['url'] = self._storage.get_url_for_image(img, what)
                 out.append(img_dict)
+        return out
+
+    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]]) -> MetadataType:
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+        out = []
+        # for each image
+        for data in info:
+            q = session.query(TiledTuboids).filter(TiledTuboids.tuboid_id == data['tuboid_id'])
+            assert q.count() == 1, "No match for %s" % data
+            data['parent_tuboid_id'] = q.first().tuboid_id
+            label = ITCLabels(data)
+            out.append(label.to_dict())
+            session.add(label)
+            session.commit()
+        return out
+
+    def _get_itc_labels(self, info: List[Dict]) -> MetadataType:
+        info = copy.deepcopy(info)
+        out = []
+        for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
+            logging.info("Getting tuboid label... %i-%i / %i" %
+                         (i * self._get_image_chunk_size,
+                          i * self._get_image_chunk_size + len(info_chunk),
+                          len(info)))
+            tuboid_ids = [ITCLabels.parent_tuboid_id  == j['tuboid_id'] for j in info_chunk]
+
+            session = sessionmaker(bind=self._db_engine)()
+            conditions = or_(*tuboid_ids)
+            q = session.query(ITCLabels).filter(conditions)
+
+            for annots in q:
+                out.append(annots.to_dict())
         return out
 
     def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

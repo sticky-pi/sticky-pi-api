@@ -72,6 +72,7 @@ class BaseStorage(ABC):
     def get_urls_for_tiled_tuboids(self, data: Dict[str, str]) -> Dict[str, str]:
         raise NotImplementedError()
 
+
 class DiskStorage(BaseStorage):
     def __init__(self, api_conf: LocalAPIConf,  *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
