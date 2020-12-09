@@ -4,10 +4,10 @@ import datetime
 
 import os
 
-dir = os.path.dirname(__file__)
+test_dir = os.path.dirname(__file__)
 
 class TestImageParser(unittest.TestCase):
-    _test_image = os.path.join(dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
+    _test_image = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
     _test_image_metadata = {'device': '5c173ff2',
                             'datetime': datetime.datetime(2020, 6, 20, 21, 33, 24),
                             'filename': '5c173ff2.2020-06-20_21-33-24.jpg', 'width': 2592, 'height': 1944,

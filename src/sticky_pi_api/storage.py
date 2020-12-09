@@ -1,12 +1,25 @@
+import shutil
 import os
 import logging
 from sticky_pi_api.types import List, Dict, Union
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.utils import local_bundle_files_info
-from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf
+from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf, RemoteAPIConf
+from abc import ABC
+import boto3
+from io import BytesIO
 
 
-class BaseStorage(object):
+class BaseStorage(ABC):
+    _raw_images_dirname = 'raw_images'
+    _ml_storage_dirname = 'ml'
+    _tiled_tuboids_storage_dirname = 'tiled_tuboids'
+
+
+    _tiled_tuboid_filenames = {'tuboid': 'tuboid.jpg',
+                                    'metadata': 'metadata.txt',
+                                    'context': 'context.jpg'}
+
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         self._api_conf = api_conf
 
@@ -53,15 +66,34 @@ class BaseStorage(object):
         """
         raise NotImplementedError()
 
+    def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
+        raise NotImplementedError()
+
+    def get_urls_for_tiled_tuboids(self, data: Dict[str, str]) -> Dict[str, str]:
+        raise NotImplementedError()
 
 class DiskStorage(BaseStorage):
-    _raw_images_dirname = 'raw_images'
-    _ml_storage_dirname = 'ml'
-
     def __init__(self, api_conf: LocalAPIConf,  *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
         self._local_dir = self._api_conf.LOCAL_DIR
         assert os.path.isdir(self._local_dir)
+
+    def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
+        tuboid_id = data['tuboid_id']
+        series_id = ".".join(tuboid_id.split('.')[0: -1]) # strip the tuboid specific part
+        target_dirname = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
+        os.makedirs(target_dirname, exist_ok=True)
+        for k, v in self._tiled_tuboid_filenames.items():
+            assert k in data, (k, data)
+            logging.debug("%s => %s" % (data[k], os.path.join(target_dirname, v)))
+            shutil.copy(data[k], os.path.join(target_dirname, v))
+
+    def get_urls_for_tiled_tuboids(self, data: Dict[str, str]) -> Dict[str, str]:
+        tuboid_id = data['tuboid_id']
+        series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip the tuboid specific part
+        target_dirname = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
+        files_urls = {k: os.path.join(target_dirname, v) for k, v in self._tiled_tuboid_filenames.items()}
+        return files_urls
 
     def store_image_files(self, image: Images) -> None:
         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
@@ -95,13 +127,12 @@ class DiskStorage(BaseStorage):
         out = local_bundle_files_info(bundle_dir, what)
         for o in out:
             o['url'] = o['path']
-
-
         return out
 
     def get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
             List[Dict[str, Union[float, str]]]:
         bundle_dir = os.path.join(self._local_dir, self._ml_storage_dirname, bundle_name)
+
         already_uploaded = local_bundle_files_info(bundle_dir, what='all')
         already_uploaded_dict = {au['key']: au for au in already_uploaded}
         out = []
@@ -124,6 +155,50 @@ class DiskStorage(BaseStorage):
         return out
 
 
-#todo
-# class S3Storage(BaseStorage):
-#     pass
+class S3Storage(BaseStorage):
+    _multipart_chunk_size = 8 * 1024 * 1024
+
+    def __init__(self, api_conf: RemoteAPIConf,  *args, **kwargs):
+        super().__init__(api_conf, *args, **kwargs)
+        credentials = {"aws_access_key_id": api_conf.S3_ACCESS_KEY,
+                       "aws_secret_access_key": api_conf.S3_PRIVATE_KEY,
+                       "endpoint_url": "http://%s" % api_conf.S3_HOST,
+                       }
+        self._bucket_name = api_conf.S3_BUCKET_NAME
+        self._s3_client = boto3.resource('s3', **credentials)
+
+    def store_image_files(self, image: Images) -> None:
+        tmp = BytesIO()
+        image.thumbnail.save(tmp, format='jpeg')
+        tmp_mini = BytesIO()
+        image.thumbnail_mini.save(tmp_mini, format='jpeg')
+        self._s3_client.Bucket()
+        self._s3_client.Object(self._bucket_name,
+                               os.path.join(self._raw_images_dirname,
+                                            image.device,
+                                            image.filename)).put(Body=image.file_blob)
+        self._s3_client.Object(self._bucket_name,
+                               os.path.join(self._raw_images_dirname,
+                                            image.device,
+                                            image.filename + '.thumbnail')).put(Body=tmp.getvalue())
+        self._s3_client.Object(self._bucket_name,
+                               os.path.join(self._raw_images_dirname,
+                                            image.device,
+                                            image.filename + '.thumbnail_mini')).put(Body=tmp_mini.getvalue())
+
+    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
+        return "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html"
+
+        # target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
+        # os.makedirs(os.path.dirname(target), exist_ok=True)
+        # with open(target, 'wb') as f:
+        #     f.write(image.file_blob)
+        # image.thumbnail.save(target + ".thumbnail", format='jpeg')
+        # image.thumbnail_mini.save(target + ".thumbnail_mini", format='jpeg')
+
+# self._bucket_conf = {
+#             "S3BUCKET_PRIVATE_KEY": os.environ.get("S3BUCKET_PRIVATE_KEY"),
+#             "S3BUCKET_ACCESS_KEY": os.environ.get("S3BUCKET_ACCESS_KEY"),
+#             "bucket": name,
+#             "S3BUCKET_HOST": os.environ.get("S3BUCKET_HOST")
+#         }
