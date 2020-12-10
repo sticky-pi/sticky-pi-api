@@ -20,7 +20,7 @@ import dbm
 
 
 class Cache(dict):
-    _sync_each_n = 128
+    _sync_each_n = 2
 
     def __init__(self, path: str):
         super().__init__()
@@ -57,9 +57,6 @@ class Cache(dict):
             os.remove(self._path)
         except FileExistsError:
             logging.error('trying to detect cache, but file does not exist')
-
-
-
 
 @decorate_all_methods(format_io, exclude=['__init__'])
 class BaseClient(BaseAPISpec, ABC):
@@ -218,7 +215,7 @@ class BaseClient(BaseAPISpec, ABC):
         """
 
 
-        def local_img_stats(file: str, file_stats: Dict, cache):
+        def local_img_stats(file: str, file_stats: float, cache):
             if (file, file_stats) in cache.keys():
                 try:
                     return cache.get_cached(local_img_stats, (file, file_stats))
@@ -236,9 +233,10 @@ class BaseClient(BaseAPISpec, ABC):
         # we can compute the stats in parallel
 
         if self._n_threads > 1:
-            img_dicts = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(f, os.path.getmtime(f), self._cache) for f in files)
+            img_dicts = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(f, os.path.getmtime(f), self._cache)
+                                                         for f in files)
         else:
-            img_dicts = [local_img_stats(f, os.path.getmtime(f)) for f in files]
+            img_dicts = [local_img_stats(f, os.path.getmtime(f), self._cache) for f in files]
 
         self._cache.add(local_img_stats, img_dicts)
         # we request these images from the database
