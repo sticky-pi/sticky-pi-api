@@ -515,7 +515,7 @@ class RemoteAPI(BaseAPI):
         engine_url = "mysql+pymsql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
                                                                      self._configuration.MYSQL_PASSWORD,
                                                                      self._configuration.MYSQL_HOST,
-                                                                     self._configuration.MYSQL_DB_NAME
+                                                                     self._configuration.MYSQL_DATABASE
                                                                      )
 
         return sqlalchemy.create_engine(engine_url)

@@ -50,6 +50,7 @@ class LocalAPIConf(BaseAPIConf):
         'LOCAL_DIR': RequiredConfVar()
     }
 
+
 class RemoteAPIConf(BaseAPIConf):
     _config_vars = {
         'SECRET_API_KEY': RequiredConfVar(),
@@ -62,5 +63,5 @@ class RemoteAPIConf(BaseAPIConf):
         'MYSQL_HOST': RequiredConfVar(),
         'MYSQL_USER': RequiredConfVar(),
         'MYSQL_PASSWORD': RequiredConfVar(),
-        'MYSQL_DB_NAME': RequiredConfVar()
+        'MYSQL_DATABASE': RequiredConfVar()
     }
