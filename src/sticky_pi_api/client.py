@@ -239,33 +239,42 @@ class BaseClient(BaseAPISpec, ABC):
         """
 
 
-        def local_img_stats(file: str, file_stats: float, cache):
-            if (file, file_stats) in cache.keys():
-                try:
-                    return cache.get_cached(local_img_stats, (file, file_stats))
-                except KeyError:
-                    pass
-
+        def local_img_stats(file: str, file_stats: float):
             i = ImageParser(file)
-            out = {(file, file_stats):
+            out_ = {(file, file_stats):
                             {'device': i['device'],
                             'datetime': i['datetime'],
                             'md5': i['md5'],
                             'url': file}}
-            return out
+            return out_
 
         # we can compute the stats in parallel
+        cached_results = []
+        to_compute = []
+
+        for f in files:
+            key = f, os.path.getmtime(f)
+            try:
+                res = {key: self._cache.get_cached(local_img_stats, key)}
+                cached_results.append(res)
+            except KeyError as e:
+                to_compute.append(key)
+
+
 
         if self._n_threads > 1:
-            img_dicts = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(f, os.path.getmtime(f), self._cache)
-                                                         for f in files)
+            computed = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(*tc) for tc in to_compute)
         else:
-            img_dicts = [local_img_stats(f, os.path.getmtime(f), self._cache) for f in files]
+          computed = [local_img_stats(*tc) for tc in to_compute]
 
-        self._cache.add(local_img_stats, img_dicts)
+        logging.info('Caching %i image stats (%i already pre-computed)' % (len(computed), len(cached_results)))
+
+        self._cache.add(local_img_stats, computed)
+
+        computed += cached_results
+
         # we request these images from the database
-        info = [list(imd.values())[0] for imd in img_dicts]
-
+        info = [list(imd.values())[0] for imd in computed]
         matches = self.get_images(info, what='metadata')
 
         # now we diff: we ignore images that exist on DB AND have the same md5
