@@ -49,3 +49,19 @@ class LocalAPIConf(BaseAPIConf):
         'SECRET_API_KEY': "endjlwenmfkwe",
         'LOCAL_DIR': RequiredConfVar()
     }
+
+
+class RemoteAPIConf(BaseAPIConf):
+    _config_vars = {
+        'SECRET_API_KEY': RequiredConfVar(),
+
+        'S3_HOST': RequiredConfVar(),
+        'S3_ACCESS_KEY': RequiredConfVar(),
+        'S3_PRIVATE_KEY': RequiredConfVar(),
+        'S3_BUCKET_NAME': RequiredConfVar(),
+
+        'MYSQL_HOST': RequiredConfVar(),
+        'MYSQL_USER': RequiredConfVar(),
+        'MYSQL_PASSWORD': RequiredConfVar(),
+        'MYSQL_DATABASE': RequiredConfVar()
+    }

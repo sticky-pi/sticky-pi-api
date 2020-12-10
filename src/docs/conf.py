@@ -53,6 +53,7 @@ intersphinx_mapping = {
     # 'samplerate': ('http://www.ar.media.kyoto-u.ac.jp/members/david/softwares/samplerate/sphinx/', None),
     # 'pywt': ('http://www.pybytes.com/pywavelets/', None),
     #'sklearn': ('http://scikit-learn.org/stable/documentation.html', None),
+    'sqlalchemy': ('https://docs.sqlalchemy.org/', None)
 }
 
 # Add any paths that contain templates here, relative to this directory.
