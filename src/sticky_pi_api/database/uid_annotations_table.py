@@ -1,8 +1,6 @@
-import json
 import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy import  Integer,  DateTime, UniqueConstraint, String, Text, ForeignKey, Column
-# from sticky_pi_client.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 
