@@ -58,10 +58,12 @@ class Cache(dict):
         except FileExistsError:
             logging.error('trying to detect cache, but file does not exist')
 
+
 @decorate_all_methods(format_io, exclude=['__init__'])
 class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
     _cache_dirname = "cache"
+
     def __init__(self, local_dir: str, n_threads: int = 8):
         """
         Abstract class that defines the methods of the client (common between remote and client).
@@ -107,7 +109,6 @@ class BaseClient(BaseAPISpec, ABC):
         Retrieves images alongside their annotations (if available)  for images from a given device and
         within a given datetime range.
 
-        TODO add ref to api specs, where params hould be inherited (so we don't write twice the same doc)
 
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
@@ -142,6 +143,29 @@ class BaseClient(BaseAPISpec, ABC):
         out = out.where(pd.notnull(out), None).sort_values(['device', 'datetime'])
         out = out.to_dict(orient='records')
         return out
+
+    def get_tiled_tuboid_series_itc_labels(self, info: InfoType, what: str = "metadata") -> MetadataType:
+
+        tiled_tuboids = pd.DataFrame(self.get_tiled_tuboid_series(info, what))
+        if len(tiled_tuboids) == 0:
+            logging.warning('No tuboids found for %s' % info)
+            return []
+
+        itc_labels = pd.DataFrame(self._get_itc_labels([{'tuboid_id': i} for i in tiled_tuboids.tuboid_id]))
+
+        if len(itc_labels) == 0:
+            logging.warning('No ITC labels found for %s' % info)
+            out = tiled_tuboids
+        else:
+            # force suffixes for ITC
+            itc_labels.columns = itc_labels.columns.map(lambda x: str(x) + '_itc')
+            out = pd.merge(tiled_tuboids, itc_labels, how='left', left_on=['tuboid_id'],
+                       right_on=['parent_tuboid_id_itc'])
+
+        out = out.where(pd.notnull(out), None) #.sort_values(['device', 'datetime'])
+        out = out.to_dict(orient='records')
+        return out
+
 
     def put_images(self, files: List[str]) -> MetadataType:
         """

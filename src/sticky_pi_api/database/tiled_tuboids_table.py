@@ -1,5 +1,5 @@
 import datetime
-
+from sqlalchemy.orm import relationship
 from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
 from sticky_pi_api.utils import string_to_datetime
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
@@ -9,15 +9,20 @@ class TiledTuboids(Base, BaseCustomisations):
     __tablename__ = 'tiled_tuboids'
     __table_args__ = (UniqueConstraint('tuboid_id', name='tuboid_id'),)
 
+    itc_labels = relationship("ITCLabels",
+                              back_populates="parent_tuboid",
+                              cascade="all, delete",
+                              passive_deletes=True
+                              )
+
     id = DescribedColumn(Integer, primary_key=True,
                          description="The unique identifier of each series")
 
     tuboid_id = DescribedColumn(String(100), nullable=False,
-                                   description="the dirname of the tuboid, acting as a uid")
+                                description="the dirname of the tuboid, acting as a uid")
 
     id_in_series = DescribedColumn(Integer, nullable=False,
                                    description="the original series id")
-
 
     device = DescribedColumn(String(8), nullable=False,
                              description="An 8 char hexadecimal code describing the hardware chip of the device that"
@@ -75,7 +80,7 @@ class TiledTuboids(Base, BaseCustomisations):
         input['datetime_created'] = datetime.datetime.now()
 
         i_dict = {}
-        for k,v in input.items():
+        for k, v in input.items():
 
             try:
                 i_dict[k] = string_to_datetime(v)

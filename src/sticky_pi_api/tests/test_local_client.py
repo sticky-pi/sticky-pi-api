@@ -14,6 +14,7 @@ import logging
 logging.getLogger().setLevel(logging.INFO)
 test_dir = os.path.dirname(__file__)
 _tiled_tuboid_root_dir = os.path.join(test_dir, 'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
+
 class TestLocalClient(unittest.TestCase):
     _test_images = [i for i in sorted(glob.glob(os.path.join(test_dir, "raw_images/**/*.jpg")))]
     _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
@@ -34,7 +35,7 @@ class TestLocalClient(unittest.TestCase):
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
 
     _test_image_for_annotation = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
-
+    #
 
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -319,3 +320,47 @@ class TestLocalClient(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir)
 
+    def test_itc_labels(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            series = [{'device': '%',
+                       'start_datetime': '2020-01-01_00-00-00',
+                       'end_datetime': '2020-12-31_00-00-00'}]
+            db = LocalClient(temp_dir)
+            # emp[ty dt should be returned if no series exist
+            db.get_tiled_tuboid_series_itc_labels(series)
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs)
+            # should be missing the itc fields
+            db.get_tiled_tuboid_series_itc_labels(series)
+            info = [{
+                'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
+                'algo_version': '1111-abce',
+                'algo_name': 'insect_tuboid_classifier',
+                'label': 1,
+                'pattern': 'Insecta.*',
+                'type':'Insecta',
+                'order': 'test',
+                'family':'test',
+                'genus': 'test'
+            }
+            ]
+
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            # cannot add same label twice
+
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(IntegrityError) as context:
+                    info[0]['label'] = 2
+                    db.put_itc_labels(info)
+            info[0]['algo_name'] = 'another_algo'
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+
+            import pandas as pd
+            out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
+            self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+
+        finally:
+            shutil.rmtree(temp_dir)
