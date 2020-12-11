@@ -1,1 +1,48 @@
+version: '3'
 
+
+services:
+
+  spi_db:
+    container_name: spi_db
+    image: mariadb
+    restart: always
+    env_file:
+      - .env
+      - .secret.env
+      - ${EXTRA_ENV}
+  spi_api:
+    build: ./api
+    container_name: spi_api
+    restart: always
+    depends_on:
+      - spi_db
+      - spi_nginx
+    expose:
+      - 8080
+#    ports:
+#      - "5000:5000"
+
+    env_file:
+      - .env
+      - .secret.env
+      - ${EXTRA_ENV}
+  spi_api_tests:
+    build: ./api
+    container_name: spi_api_tests
+    command: python api_tests.py
+    depends_on:
+      - spi_api
+      - spi_db
+      - spi_nginx
+    env_file:
+      - .env
+      - .secret.env
+      - ${EXTRA_ENV}
+
+  spi_nginx:
+    build: ./nginx
+    container_name: spi_nginx
+    restart: always
+    ports:
+      - "80:80"

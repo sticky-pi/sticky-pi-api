@@ -2,8 +2,12 @@ import unittest
 from sticky_pi_api.image_parser import ImageParser
 import datetime
 import os
+import logging
 
 test_dir = os.path.dirname(__file__)
+
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 
 
 class TestImageParser(unittest.TestCase):

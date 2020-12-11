@@ -12,16 +12,33 @@ RUN set -e; \
 		linux-headers;
 
 
-# add to a new line, so we can cache previouss command (does not rerun if requierements change)
+# fixme remove (debug)
+# these ca explicit dependencies of `sticky_pi_api[remote_api]`
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
+RUN pip install  ipython
+
+
+#fixme  for now,  use local package instead of dl from github everytime
+# a src is a local snapshot of the package
+# e,g, rsync -a ../../src/ src
+COPY src /tmp/sticky_pi_api
+RUN pip uninstall sticky_pi_api -y
+RUN pip install -e /tmp/sticky_pi_api[remote_api]
+
+# when stable:
+#RUN pip install git+https://github.com/sticky-pi/sticky-pi-api@main#egg=sticky_pi_api&subdirectory=src
 
 # Set the current directory to /app 
 WORKDIR /app
-
-# Copy the current directory contents into the container at /app 
+# Copy the current directory contents into the container at /app
 COPY . /app
 
+# debug:
+#ENV FLASK_APP app.py
+#ENV FLASK_RUN_HOST 0.0.0.0
+#ENV FLASK_ENV development
+#ENTRYPOINT ["flask", "run"]
+
+# production
 CMD ["uwsgi", "--ini", "uwsgi.ini"]
-#
-#ENTRYPOINT ["flask", "run", "--with-threads"]

@@ -1,4 +1,3 @@
-import datetime
 import copy
 import logging
 import os
@@ -16,7 +15,7 @@ from sticky_pi_api.types import InfoType, MetadataType, AnnotType, List, Union, 
 from sticky_pi_api.database.users_tables import Users
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.database.itc_labels_table import ITCLabels
-from sticky_pi_api.utils import chunker, datetime_to_string, format_io
+from sticky_pi_api.utils import chunker, format_io
 from decorate_all_methods import decorate_all_methods
 from abc import ABC, abstractmethod
 
@@ -165,7 +164,6 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-
     @abstractmethod
     def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         """
@@ -194,9 +192,8 @@ class BaseAPISpec(ABC):
         """
         raise NotImplementedError()
 
-
     @abstractmethod
-    def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
+    def get_users(self, info: List[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         """
         Get a list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
         In the latter case, the union of all matched users is returned.
@@ -215,7 +212,7 @@ class BaseAPISpec(ABC):
         Add a list of users defined by a dict of proprieties.
 
         :param info: A list of dictionary each dictionary has the fields  {``'username'``, ``'password'``},
-            and optionally: {``'email'``, ``'is_admin'``,``'model'`` },
+            and optionally: {``'email'``, ``'is_admin'``},
         :return: A list of dictionaries describing the users that were created
         """
         raise NotImplementedError()
@@ -390,7 +387,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(img_dict)
         return out
 
-    def get_tiled_tuboid_series(self, info: InfoType, what: str='metadata') -> MetadataType:
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = 'metadata') -> MetadataType:
         session = sessionmaker(bind=self._db_engine)()
         out = []
         assert what in ('data', 'metadata')
@@ -460,7 +457,7 @@ class BaseAPI(BaseAPISpec, ABC):
                          (i * self._get_image_chunk_size,
                           i * self._get_image_chunk_size + len(info_chunk),
                           len(info)))
-            tuboid_ids = [ITCLabels.parent_tuboid_id  == j['tuboid_id'] for j in info_chunk]
+            tuboid_ids = [ITCLabels.parent_tuboid_id == j['tuboid_id'] for j in info_chunk]
 
             session = sessionmaker(bind=self._db_engine)()
             conditions = or_(*tuboid_ids)
@@ -477,25 +474,46 @@ class BaseAPI(BaseAPISpec, ABC):
         for data in info:
             user = Users(**data)
             out.append(user.to_dict())
-            user.hash_password(data["password"])
             session.add(user)
             session.commit()
+        out = self.get_users([{'username': o['username'] for o in out}])
+
         return out
 
-    def get_users(self, info: Dict[str, str] = None) -> List[Dict[str, Any]]:
-        if info is None:
-            info = {}
-
-        session = sessionmaker(bind=self._db_engine)()
+    def get_users(self, info: List[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         out = []
-        conditions = [and_(getattr(Users, i).like(info[i]) for i in info.keys())]
-        q = session.query(Users).filter(or_(*conditions))
+        if info is None:
+            info = [{'username': "%"}]
+        print(info)
+        session = sessionmaker(bind=self._db_engine)()
+        for inf in info:
+            conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]
+            q = session.query(Users).filter(or_(*conditions))
 
-        for user in q.all():
-            user.password_hash = "***********"
-            user_dict = user.to_dict()
-            out.append(user_dict)
+            for user in q.all():
+                user.password_hash = "***********"
+                user_dict = user.to_dict()
+                out.append(user_dict)
         return out
+
+    def verify_password(self, username_or_token: str, password: str):
+        session = sessionmaker(bind=self._db_engine)()
+        if not username_or_token:
+            logging.warning('No such user or token `%s`' % username_or_token)
+            return False
+        # first, try to use token to authenticate
+        user = Users.verify_auth_token(username_or_token, self._configuration.SECRET_API_KEY)
+        if not user:
+            # try to authenticate with username/password
+            user = session.query(Users).filter(Users.username == username_or_token).first()
+            if not user:
+                logging.warning('No such user: `%s`' % username_or_token)
+                return False
+            if not user.verify_password(password):
+                logging.warning('Failed to authenticate `%s` with password' % username_or_token)
+                return False
+
+        return user.username
 
 
 class LocalAPI(BaseAPI):
@@ -510,12 +528,10 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
-
     def _create_db_engine(self):
-        engine_url = "mysql+pymsql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
-                                                                     self._configuration.MYSQL_PASSWORD,
-                                                                     self._configuration.MYSQL_HOST,
-                                                                     self._configuration.MYSQL_DATABASE
-                                                                     )
-
+        engine_url = "mysql+pymysql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
+                                                                      self._configuration.MYSQL_PASSWORD,
+                                                                      self._configuration.MYSQL_HOST,
+                                                                      self._configuration.MYSQL_DATABASE
+                                                                      )
         return sqlalchemy.create_engine(engine_url)

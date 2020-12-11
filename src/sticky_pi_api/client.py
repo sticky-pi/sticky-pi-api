@@ -4,19 +4,20 @@ Main module of the client. Implements classes to interact with the API.
 
 import logging
 import os
-from abc import ABC
+from abc import ABC, abstractmethod
 import pandas as pd
 import shutil
-from joblib import Memory, Parallel, delayed
+from joblib import Parallel, delayed
+import inspect
+import shelve
+import requests
+from typing import Any
+from decorate_all_methods import decorate_all_methods
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info, chunker, format_io
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
-from decorate_all_methods import decorate_all_methods
-import inspect
-import shelve
-import dbm
 
 
 class Cache(dict):
@@ -166,7 +167,6 @@ class BaseClient(BaseAPISpec, ABC):
         out = out.where(pd.notnull(out), None) #.sort_values(['device', 'datetime'])
         out = out.to_dict(orient='records')
         return out
-
 
     def put_images(self, files: List[str]) -> MetadataType:
         """
@@ -329,10 +329,16 @@ class BaseClient(BaseAPISpec, ABC):
                 self._put_ml_bundle_file(f['path'], f['url'])
         return files_to_upload
 
+    @abstractmethod
     def _put_ml_bundle_file(self, path: str, key: str):
         raise NotImplementedError()
 
+    @abstractmethod
     def _get_ml_bundle_file(self, url: str, target: str):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _put_new_images(self, files: List[str]) -> MetadataType:
         raise NotImplementedError()
 
 
@@ -359,18 +365,39 @@ class LocalClient(BaseClient, LocalAPI):
 
 
 
-# import requests
-# class RemoteAPIConnector(BaseAPISpec):
-#     # todo create init that can handle tocken/credentials
-#     def _put_new_images(self, files: List[str]) -> MetadataType:
-#       todo. create a request
+@decorate_all_methods(format_io, exclude=['__init__'])
+class RemoteAPIConnector(BaseAPISpec):
+    def __init__(self, host, username, password, protocol='https', port=443):
+        self._host = host
+        self._username = username
+        self._password = password
+        self._protocol = protocol
+        self._port = int(port)
+
+    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        url = "%s://%s:%i/%s" % (self._protocol, self._host, self._port, 'put_users')
+        logging.debug('Requesting %s' % url)
+        response = requests.post(url, json=info, auth=(self._username, self._password))
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(response.content)
+
+    # def _put_new_images(self, files: List[str]) -> MetadataType:
+    #   todo. create a request
 
 
+@decorate_all_methods(format_io, exclude=['__init__'])
+class RemoteClient(BaseClient, RemoteAPIConnector):
+    def __init__(self, *args, **kwargs):
+        RemoteAPIConnector.__init__(self, *args, **kwargs)
 
-# class RemoteClient(LocalClient, RemoteAPIConnector):
-#     def _put_new_images(self, files: List[str]) -> MetadataType:
-#         LocalClient._put_new_images(self, files)
-#         RemoteAPIConnector._put_new_images(self, files)
+    # def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    #     print('allo')
+    #     RemoteAPIConnector.put_users(self, info)
+# def _put_new_images(self, files: List[str]) -> MetadataType:
+    #     LocalClient._put_new_images(self, files)
+    #     RemoteAPIConnector._put_new_images(self, files)
 
 
 
