@@ -20,7 +20,7 @@ import dbm
 
 
 class Cache(dict):
-    _sync_each_n = 2
+    _sync_each_n = 1024
 
     def __init__(self, path: str):
         super().__init__()
@@ -33,15 +33,16 @@ class Cache(dict):
                 self[k] = v
 
     def add(self, function, results):
+        if len(results) == 0:
+            return
         key = inspect.getsource(function)
         if key not in self.keys():
             self[key] = {}
         for r in results:
             self[key].update(r)
-
-        if self._n_writes % self._sync_each_n == self._sync_each_n - 1:
-            self._sync()
-        self._n_writes += 1
+            if self._n_writes % self._sync_each_n == self._sync_each_n - 1:
+                self._sync()
+            self._n_writes += 1
 
     def get_cached(self, function, hash):
         key = inspect.getsource(function)
@@ -260,12 +261,10 @@ class BaseClient(BaseAPISpec, ABC):
             except KeyError as e:
                 to_compute.append(key)
 
-
-
         if self._n_threads > 1:
             computed = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(*tc) for tc in to_compute)
         else:
-          computed = [local_img_stats(*tc) for tc in to_compute]
+            computed = [local_img_stats(*tc) for tc in to_compute]
 
         logging.info('Caching %i image stats (%i already pre-computed)' % (len(computed), len(cached_results)))
 
