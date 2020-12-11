@@ -1,0 +1,3 @@
+Flask
+uWSGI
+git+https://github.com/sticky-pi/sticky-pi-api@develop#egg=sticky_pi_api&subdirectory=src
