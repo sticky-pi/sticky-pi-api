@@ -49,3 +49,8 @@ e.begin()
 ```
 
 to read: https://www.freecodecamp.org/news/end-to-end-api-testing-with-docker/
+
+# run prototype:
+```
+rsync -a ../src/ api/src &&  docker-compose  down --remove-orphans  -v &&  export EXTRA_ENV=.devel.env && docker-compose up --remove-orphans --build --force-recreate -d
+```

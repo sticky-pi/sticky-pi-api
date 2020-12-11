@@ -2,10 +2,7 @@ import logging
 import os
 from sticky_pi_api.client import RemoteClient
 
-# import time
-# while True:
-#     time.sleep(1)
-
+import time
 
 # set logging according to productions/devel/testing
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -31,3 +28,5 @@ TEST_USER = {'username':'test',
 out = r.put_users([TEST_USER])
 print(out)
 print('DONE')
+
+
