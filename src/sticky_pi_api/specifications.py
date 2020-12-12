@@ -484,7 +484,6 @@ class BaseAPI(BaseAPISpec, ABC):
         out = []
         if info is None:
             info = [{'username': "%"}]
-        print(info)
         session = sessionmaker(bind=self._db_engine)()
         for inf in info:
             conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]

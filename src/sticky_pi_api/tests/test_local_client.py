@@ -64,10 +64,10 @@ class TestLocalClient(unittest.TestCase):
             out = cli.get_users()
             self.assertEqual(len(out), 2)
 
-            out = cli.get_users(info=[{'username':'%'}])
+            out = cli.get_users(info=[{'username': '%'}])
             self.assertEqual(len(out), 2)
 
-            out = cli.get_users(info=[{'username':'ad%'}])
+            out = cli.get_users(info=[{'username': 'ad%'}])
             self.assertEqual(len(out), 1)
 
         finally:

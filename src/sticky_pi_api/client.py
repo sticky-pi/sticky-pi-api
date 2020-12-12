@@ -363,6 +363,12 @@ class LocalClient(BaseClient, LocalAPI):
         logging.info("%s => %s" % (url, target))
         shutil.copy(url, target)
 
+    def _put_new_images(self, files: List[str]) -> MetadataType:
+        return LocalAPI._put_new_images(self, files)
+
+
+
+
 
 
 @decorate_all_methods(format_io, exclude=['__init__'])
@@ -374,8 +380,9 @@ class RemoteAPIConnector(BaseAPISpec):
         self._protocol = protocol
         self._port = int(port)
 
-    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        url = "%s://%s:%i/%s" % (self._protocol, self._host, self._port, 'put_users')
+    def _default_connector(self, entry_point, info):
+        url = "%s://%s:%i/%s" % (self._protocol, self._host, self._port, entry_point)
+        logging.debug('Requesting %s' % url)
         logging.debug('Requesting %s' % url)
         response = requests.post(url, json=info, auth=(self._username, self._password))
         if response.status_code == 200:
@@ -383,6 +390,8 @@ class RemoteAPIConnector(BaseAPISpec):
         else:
             raise Exception(response.content)
 
+    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return self._default_connector('put_users', info)
     # def _put_new_images(self, files: List[str]) -> MetadataType:
     #   todo. create a request
 
