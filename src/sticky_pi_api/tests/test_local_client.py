@@ -13,14 +13,12 @@ import logging
 
 logging.getLogger().setLevel(logging.INFO)
 test_dir = os.path.dirname(__file__)
-_tiled_tuboid_root_dir = os.path.join(test_dir, 'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
+
 
 class TestLocalClient(unittest.TestCase):
-    _test_images = [i for i in sorted(glob.glob(os.path.join(test_dir, "raw_images/**/*.jpg")))]
+
     _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
-
-
-    _tiled_tuboid_dirs = [os.path.join(_tiled_tuboid_root_dir, d) for d in os.listdir(_tiled_tuboid_root_dir)]
+    _initial_n_users = 0
 
     _test_annotation = {"annotations": [
         dict(contour=[[[2194, 1597]], [[2189, 1602]], [[2189, 1617]], [[2200, 1630]], [[2201, 1634]], [[2221, 1656]],
@@ -33,14 +31,23 @@ class TestLocalClient(unittest.TestCase):
         "metadata": dict(algo_name="sticky-pi-universal-insect-detector",
                          algo_version="1598113346-ad2cd78dfaca12821046dfb8994724d5", device="5c173ff2",
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
+    _server_error = IntegrityError
+    _test_dir = test_dir
+    def __init__(self, methodName='runTest'):
+        self._test_image_for_annotation = os.path.join(self._test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
+        self._tiled_tuboid_root_dir = os.path.join(self._test_dir,
+                                              'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
+        self._tiled_tuboid_dirs = [os.path.join(self._tiled_tuboid_root_dir, d) for d in os.listdir(self._tiled_tuboid_root_dir)]
+        self._test_images = [i for i in sorted(glob.glob(os.path.join(self._test_dir, "raw_images/**/*.jpg")))]
+        super().__init__(methodName)
 
-    _test_image_for_annotation = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
-    #
+    def _make_client(self, directory):
+        return LocalClient(directory)
 
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
         finally:
             shutil.rmtree(temp_dir)
 
@@ -53,30 +60,30 @@ class TestLocalClient(unittest.TestCase):
                 {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
                 {'username': 'grace', 'password': 'hopper', 'is_admin': True},
                     ]
-            cli = LocalClient(temp_dir)
+            cli = self._make_client(temp_dir)
             cli.put_users(users)
 
             # cannot add same users twice
             with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(IntegrityError) as context:
+                with self.assertRaises(self._server_error) as context:
                     cli.put_users(users)
 
             out = cli.get_users()
-            self.assertEqual(len(out), 2)
+            self.assertEqual(len(out), 2 + self._initial_n_users)
 
             out = cli.get_users(info=[{'username': '%'}])
-            self.assertEqual(len(out), 2)
+            self.assertEqual(len(out), 2 + self._initial_n_users)
 
-            out = cli.get_users(info=[{'username': 'ad%'}])
+            out = cli.get_users(info=[{'username': 'ada'}])
             self.assertEqual(len(out), 1)
 
         finally:
             shutil.rmtree(temp_dir)
-
-    def test_put(self):
+    #
+    def test_put_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             uploaded = db.put_images(self._test_images[0:2])
             self.assertEqual(len(uploaded), 2)
             uploaded = db.put_images(self._test_images)
@@ -90,12 +97,12 @@ class TestLocalClient(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir)
 
-
+    #
     def test_get_images(self):
         import tempfile
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             db.put_images(self._test_images)
             "the input dates of the client can be dates or string"
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}])
@@ -121,7 +128,7 @@ class TestLocalClient(unittest.TestCase):
     def test_get_image_series(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             db.put_images(self._test_images)
             out = db.get_image_series([{'device': "0a5bb6f4",
                                         'start_datetime': "2020-06-20_00-00-00",
@@ -135,7 +142,7 @@ class TestLocalClient(unittest.TestCase):
     def test_put_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
 
             db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
@@ -163,7 +170,7 @@ class TestLocalClient(unittest.TestCase):
     def test_get_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
 
             # get annotation of non-existing parent image return an empty list
             out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
@@ -192,7 +199,7 @@ class TestLocalClient(unittest.TestCase):
         import copy
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             from sticky_pi_api.image_parser import ImageParser
             from sticky_pi_api.utils import datetime_to_string
 
@@ -226,7 +233,7 @@ class TestLocalClient(unittest.TestCase):
         import copy
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             from sticky_pi_api.image_parser import ImageParser
             from sticky_pi_api.utils import datetime_to_string
 
@@ -265,7 +272,7 @@ class TestLocalClient(unittest.TestCase):
         dummy_bundle_name = 'dummy_bundle_name'
         try:
 
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
 
             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
             # self.assertEqual(len(out), 8)
@@ -293,7 +300,7 @@ class TestLocalClient(unittest.TestCase):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
 
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             db.put_tiled_tuboids(self._tiled_tuboid_dirs)
 
             series = [{'device': '%',
@@ -314,7 +321,7 @@ class TestLocalClient(unittest.TestCase):
             series = [{'device': '%',
                        'start_datetime': '2020-01-01_00-00-00',
                        'end_datetime': '2020-12-31_00-00-00'}]
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             # emp[ty dt should be returned if no series exist
             db.get_tiled_tuboid_series_itc_labels(series)
             db.put_tiled_tuboids(self._tiled_tuboid_dirs)

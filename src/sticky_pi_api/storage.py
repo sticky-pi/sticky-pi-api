@@ -81,7 +81,7 @@ class DiskStorage(BaseStorage):
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
         tuboid_id = data['tuboid_id']
-        series_id = ".".join(tuboid_id.split('.')[0: -1]) # strip the tuboid specific part
+        series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip out the tuboid specific part
         target_dirname = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
         os.makedirs(target_dirname, exist_ok=True)
         for k, v in self._tiled_tuboid_filenames.items():
@@ -91,7 +91,7 @@ class DiskStorage(BaseStorage):
 
     def get_urls_for_tiled_tuboids(self, data: Dict[str, str]) -> Dict[str, str]:
         tuboid_id = data['tuboid_id']
-        series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip the tuboid specific part
+        series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip out the tuboid specific part
         target_dirname = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
         files_urls = {k: os.path.join(target_dirname, v) for k, v in self._tiled_tuboid_filenames.items()}
         return files_urls

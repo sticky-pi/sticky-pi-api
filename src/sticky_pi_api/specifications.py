@@ -170,7 +170,7 @@ class BaseAPISpec(ABC):
         Get a list of file for a given ML Bundle.
 
         A ML bundle contains files necessary to train and run a ML training/inference (data, configs and model).
-        :param bundle_name: the name of the machine learning buncle to fetch the files from
+        :param bundle_name: the name of the machine learning bundle to fetch the files from
         :param what: One of {``'all'``, ``'data'``,``'model'`` }, to return all files, only the training data(training),
             or only the model (inference), respectively.
         :return: A list of dict containing the fields ``key`` and ``url`` of the files to be downloaded,
@@ -527,6 +527,7 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
+
     def _create_db_engine(self):
         engine_url = "mysql+pymysql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
                                                                       self._configuration.MYSQL_PASSWORD,
