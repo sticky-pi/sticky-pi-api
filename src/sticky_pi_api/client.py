@@ -29,9 +29,10 @@ class Cache(dict):
         self._n_writes = 0
         if path:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-        with shelve.open(path) as d:
-            for k, v in d.items():
-                self[k] = v
+        if os.path.isfile(path):
+            with shelve.open(path, flag='r') as d:
+                for k, v in d.items():
+                    self[k] = v
 
     def add(self, function, results):
         if len(results) == 0:
