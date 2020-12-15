@@ -20,7 +20,7 @@ from decorate_all_methods import decorate_all_methods
 from abc import ABC, abstractmethod
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
+@decorate_all_methods(format_io, exclude=['__init__', '_put_new_images'])
 class BaseAPISpec(ABC):
     # def __init__(self, *args, **kwargs):
     #     pass
@@ -218,7 +218,7 @@ class BaseAPISpec(ABC):
         raise NotImplementedError()
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
+@decorate_all_methods(format_io, exclude=['__init__', '_put_new_images'])
 class BaseAPI(BaseAPISpec, ABC):
     _storage_class = BaseStorage
     _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
@@ -234,6 +234,7 @@ class BaseAPI(BaseAPISpec, ABC):
     @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
         raise NotImplementedError()
+
 
     def _put_new_images(self, files: List[str]):
         session = sessionmaker(bind=self._db_engine)()
@@ -264,7 +265,7 @@ class BaseAPI(BaseAPISpec, ABC):
         out = []
         # for each tuboid
         for data in files:
-            # print(data)
+
             # We parse the tuboid data as a entry
             tub = TiledTuboids(data)
 
@@ -515,6 +516,9 @@ class BaseAPI(BaseAPISpec, ABC):
         return user.username
 
 
+    def _make_db_session(self):
+        return sessionmaker(bind=self._db_engine)()
+
 class LocalAPI(BaseAPI):
     _storage_class = DiskStorage
     _database_filename = 'database.db'
@@ -522,11 +526,18 @@ class LocalAPI(BaseAPI):
     def _create_db_engine(self):
         local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
-        return sqlalchemy.create_engine(engine_url, connect_args={"check_same_thread": False})
+        return sqlalchemy.create_engine(engine_url, connect_args={"check_same_thread": False, 'timeout': 60})
+
+    def _make_db_session(self):
+        return sessionmaker(bind=self._db_engine)(autoflush=False)
 
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
+
+    def put_images(self, files: List[str]):
+        return self._put_new_images(files)
+
 
     def _create_db_engine(self):
         engine_url = "mysql+pymysql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,

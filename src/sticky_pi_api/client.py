@@ -372,7 +372,7 @@ class LocalClient(BaseClient, LocalAPI):
 class RemoteAPIException(Exception):
     pass
 
-@decorate_all_methods(format_io, exclude=['__init__'])
+@decorate_all_methods(format_io, exclude=['__init__', '_default_client_to_api'])
 class RemoteAPIConnector(BaseAPISpec):
     def __init__(self, host, username, password, protocol='https', port=443):
         self._host = host
@@ -381,7 +381,7 @@ class RemoteAPIConnector(BaseAPISpec):
         self._protocol = protocol
         self._port = int(port)
 
-    def _default_connector(self, entry_point, info=None, what: str = None, files=None):
+    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None):
         url = "%s://%s:%i/%s" % (self._protocol, self._host, self._port, entry_point)
         if what is not None:
             url += "/" + what
@@ -394,7 +394,6 @@ class RemoteAPIConnector(BaseAPISpec):
 
     # FIXME ideally, we could use the fefault annotator on any called method so we would not have to write redundant code:
 
-
     # def __getattr__(self, name):
     #     print('attttr==================================')
     #     if name in BaseAPISpec.__abstractmethods__:
@@ -406,18 +405,21 @@ class RemoteAPIConnector(BaseAPISpec):
 
     # fixme. for now we do that by hand
     def get_users(self, info: List[Dict[str, str]] = None) -> List[Dict[str, Any]]:
-        return self._default_connector('get_users', info)
+        return self._default_client_to_api('get_users', info)
 
     def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return self._default_connector('put_users', info)
+        return self._default_client_to_api('put_users', info)
 
     def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
-        return self._default_connector('get_images', info, what=what)
+        return self._default_client_to_api('get_images', info, what=what)
 
     def _put_new_images(self, files: List[str]) -> MetadataType:
-        to_upload = {os.path.basename(f): open(f, 'rb') for f in files}
-        return self._default_connector('_put_new_images', files=to_upload)
-
+        out = []
+        for file in files:
+            with open(file, 'rb') as f:
+                payload = {os.path.basename(file): f}
+                out += self._default_client_to_api('_put_new_images', files=payload)
+        return out
 
 
 @decorate_all_methods(format_io, exclude=['__init__'])
@@ -425,4 +427,7 @@ class RemoteClient(BaseClient, RemoteAPIConnector):
     def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
         BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)
         RemoteAPIConnector.__init__(self, *args, **kwargs)
+
+    def _put_new_images(self, files: List[str]) -> MetadataType:
+        return RemoteAPIConnector._put_new_images(self, files)
 

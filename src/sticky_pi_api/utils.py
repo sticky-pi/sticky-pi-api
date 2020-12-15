@@ -29,8 +29,10 @@ def format_io(func):
                 return datetime_to_string(o)
             else:
                 return None
-        if isinstance(o, Decimal):
+        elif isinstance(o, Decimal):
             return float(o)
+        else:
+            raise Exception('Un-parsable json object')
 
     def out_parser(o):
         for k, v in o.items():
@@ -58,6 +60,8 @@ def format_io(func):
         return out
 
     return _format_input_output
+
+
 def md5(file, chunk_size=32768):
     # if the file is a path, open and recurse
     if type(file) == str:

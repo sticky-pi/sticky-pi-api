@@ -15,10 +15,9 @@ class BaseStorage(ABC):
     _ml_storage_dirname = 'ml'
     _tiled_tuboids_storage_dirname = 'tiled_tuboids'
 
-
     _tiled_tuboid_filenames = {'tuboid': 'tuboid.jpg',
-                                    'metadata': 'metadata.txt',
-                                    'context': 'context.jpg'}
+                               'metadata': 'metadata.txt',
+                               'context': 'context.jpg'}
 
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
         self._api_conf = api_conf
@@ -74,7 +73,7 @@ class BaseStorage(ABC):
 
 
 class DiskStorage(BaseStorage):
-    def __init__(self, api_conf: LocalAPIConf,  *args, **kwargs):
+    def __init__(self, api_conf: LocalAPIConf, *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
         self._local_dir = self._api_conf.LOCAL_DIR
         assert os.path.isdir(self._local_dir)
@@ -116,7 +115,8 @@ class DiskStorage(BaseStorage):
         elif what == "image":
             pass
         else:
-            raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'image', 'thumbnail', 'thumbnail_mini'}")
+            raise ValueError(
+                "Unexpected `what` argument: %s. Should be in {'metadata', 'image', 'thumbnail', 'thumbnail_mini'}")
 
         return url
 
@@ -158,8 +158,8 @@ class DiskStorage(BaseStorage):
 
 class S3Storage(BaseStorage):
     _multipart_chunk_size = 8 * 1024 * 1024
-
-    def __init__(self, api_conf: RemoteAPIConf,  *args, **kwargs):
+    _expiration = 3600
+    def __init__(self, api_conf: RemoteAPIConf, *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
         credentials = {"aws_access_key_id": api_conf.S3_ACCESS_KEY,
                        "aws_secret_access_key": api_conf.S3_PRIVATE_KEY,
@@ -173,30 +173,46 @@ class S3Storage(BaseStorage):
         image.thumbnail.save(tmp, format='jpeg')
         tmp_mini = BytesIO()
         image.thumbnail_mini.save(tmp_mini, format='jpeg')
-        self._s3_client.Bucket()
-        self._s3_client.Object(self._bucket_name,
-                               os.path.join(self._raw_images_dirname,
-                                            image.device,
-                                            image.filename)).put(Body=image.file_blob)
-        self._s3_client.Object(self._bucket_name,
-                               os.path.join(self._raw_images_dirname,
-                                            image.device,
-                                            image.filename + '.thumbnail')).put(Body=tmp.getvalue())
-        self._s3_client.Object(self._bucket_name,
-                               os.path.join(self._raw_images_dirname,
-                                            image.device,
-                                            image.filename + '.thumbnail_mini')).put(Body=tmp_mini.getvalue())
+
+        for suffix, body in zip(['', '.thumbnail', '.thumbnail-mini'],
+                                [image.file_blob, tmp.getvalue(), tmp_mini.getvalue()]):
+            self._s3_client.Object(self._bucket_name,
+                                   self._image_key(image, suffix)).put(Body=body)
+
+    def _image_key(self, image, suffix):
+        return os.path.join(self._raw_images_dirname,
+                            image.device,
+                            image.filename + suffix)
+    #
 
     def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
-        return "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html"
+        # see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-presigned-urls.html
 
-        # target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
-        # os.makedirs(os.path.dirname(target), exist_ok=True)
-        # with open(target, 'wb') as f:
-        #     f.write(image.file_blob)
-        # image.thumbnail.save(target + ".thumbnail", format='jpeg')
-        # image.thumbnail_mini.save(target + ".thumbnail_mini", format='jpeg')
+        if what == 'metadata':
+            return ""
 
+        suffix_map = {'image': '',
+                 'thumbnail': '.thumbnail',
+                  'thumbnail-mini': '.thumbnail-mini'}
+
+        suffix = suffix_map[what]
+
+        response = self._s3_client.meta.client.generate_presigned_url('get_object',
+                                                          Params={'Bucket': self._bucket_name,
+                                                                  'Key': self._image_key(image, suffix)},
+                                                          ExpiresIn=self._expiration)
+        print(response)
+        print(self._image_key(image, suffix))
+        # The response contains the presigned URL
+        return response
+#
+#         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
+#         os.makedirs(os.path.dirname(target), exist_ok=True)
+#         with open(target, 'wb') as f:
+#             f.write(image.file_blob)
+#         image.thumbnail.save(target + ".thumbnail", format='jpeg')
+#         image.thumbnail_mini.save(target + ".thumbnail_mini", format='jpeg')
+#
 # self._bucket_conf = {
 #             "S3BUCKET_PRIVATE_KEY": os.environ.get("S3BUCKET_PRIVATE_KEY"),
 #             "S3BUCKET_ACCESS_KEY": os.environ.get("S3BUCKET_ACCESS_KEY"),

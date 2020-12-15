@@ -28,7 +28,7 @@ class ImageParser(dict):
         elif hasattr(file, 'read'):
             self._parse(file)
         else:
-            raise TypeError('Unexpected type for file. Should be either a path or a file-like')
+            raise TypeError('Unexpected type for file. Should be either a path or a file-like. file is %s' % type(file))
 
 
     def _device_datetime_info(self, filename):
@@ -45,7 +45,7 @@ class ImageParser(dict):
         fields = filename.split('.')
 
         if len(fields) != 3:
-            raise Exception("Wrong file name, three dot-separated fields expected")
+            raise Exception("Wrong file name: %s. Three dot-separated fields expected." % filename)
 
         device = fields[0]
         try:

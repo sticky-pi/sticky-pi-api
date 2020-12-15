@@ -15,11 +15,8 @@ logging.getLogger().setLevel(logging.INFO)
 test_dir = os.path.dirname(__file__)
 
 
-class TestLocalClient(unittest.TestCase):
-
+class LocalAndRemoteTests(object):
     _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
-    _initial_n_users = 0
-
     _test_annotation = {"annotations": [
         dict(contour=[[[2194, 1597]], [[2189, 1602]], [[2189, 1617]], [[2200, 1630]], [[2201, 1634]], [[2221, 1656]],
                       [[2240, 1656]], [[2245, 1647]], [[2245, 1632]], [[2236, 1621]], [[2241, 1613]], [[2239, 1607]],
@@ -31,18 +28,14 @@ class TestLocalClient(unittest.TestCase):
         "metadata": dict(algo_name="sticky-pi-universal-insect-detector",
                          algo_version="1598113346-ad2cd78dfaca12821046dfb8994724d5", device="5c173ff2",
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
-    _server_error = IntegrityError
     _test_dir = test_dir
-    def __init__(self, methodName='runTest'):
+
+    def __init__(self):
         self._test_image_for_annotation = os.path.join(self._test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
         self._tiled_tuboid_root_dir = os.path.join(self._test_dir,
                                               'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
         self._tiled_tuboid_dirs = [os.path.join(self._tiled_tuboid_root_dir, d) for d in os.listdir(self._tiled_tuboid_root_dir)]
         self._test_images = [i for i in sorted(glob.glob(os.path.join(self._test_dir, "raw_images/**/*.jpg")))]
-        super().__init__(methodName)
-
-    def _make_client(self, directory):
-        return LocalClient(directory)
 
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -52,33 +45,33 @@ class TestLocalClient(unittest.TestCase):
             shutil.rmtree(temp_dir)
 
     #
-    def test_users(self):
-
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            users = [
-                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
-                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
-                    ]
-            cli = self._make_client(temp_dir)
-            cli.put_users(users)
-
-            # cannot add same users twice
-            with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(self._server_error) as context:
-                    cli.put_users(users)
-
-            out = cli.get_users()
-            self.assertEqual(len(out), 2 + self._initial_n_users)
-
-            out = cli.get_users(info=[{'username': '%'}])
-            self.assertEqual(len(out), 2 + self._initial_n_users)
-
-            out = cli.get_users(info=[{'username': 'ada'}])
-            self.assertEqual(len(out), 1)
-
-        finally:
-            shutil.rmtree(temp_dir)
+    # def test_users(self):
+    #
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #         users = [
+    #             {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+    #             {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+    #                 ]
+    #         cli = self._make_client(temp_dir)
+    #         cli.put_users(users)
+    #
+    #         # cannot add same users twice
+    #         with redirect_stderr(StringIO()) as stdout:
+    #             with self.assertRaises(self._server_error) as context:
+    #                 cli.put_users(users)
+    #
+    #         out = cli.get_users()
+    #         self.assertEqual(len(out), 2 + self._initial_n_users)
+    #
+    #         out = cli.get_users(info=[{'username': '%'}])
+    #         self.assertEqual(len(out), 2 + self._initial_n_users)
+    #
+    #         out = cli.get_users(info=[{'username': 'ada'}])
+    #         self.assertEqual(len(out), 1)
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
     #
     def test_put_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -87,12 +80,14 @@ class TestLocalClient(unittest.TestCase):
             uploaded = db.put_images(self._test_images[0:2])
             self.assertEqual(len(uploaded), 2)
             uploaded = db.put_images(self._test_images)
+            self.assertEqual(len(uploaded), len(self._test_images) - 2)
+
             uploaded = db.put_images(self._test_images)
-            # self.assertEqual(len(uploaded), len(self._test_images) - 2)
-            # # should fail to put images that are already there:
-            # with redirect_stderr(StringIO()) as stdout:
-            #     with self.assertRaises(IntegrityError) as context:
-            #         db._put_new_images(self._test_images[0:1])
+
+            # should fail to put images that are already there:
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    db._put_new_images(self._test_images[0:1])
 
         finally:
             shutil.rmtree(temp_dir)
@@ -358,3 +353,17 @@ class TestLocalClient(unittest.TestCase):
 
         finally:
             shutil.rmtree(temp_dir)
+
+
+class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
+    _server_error = IntegrityError
+    _initial_n_users = 0
+
+    def __init__(self, method):
+        LocalAndRemoteTests.__init__(self)
+        unittest.TestCase.__init__(self, method)
+
+    def _make_client(self, directory):
+        return LocalClient(directory)
+
+
