@@ -2,15 +2,22 @@ from sticky_pi_api.configuration import RemoteAPIConf
 from sticky_pi_api.specifications import RemoteAPI
 from sqlalchemy.exc import OperationalError, IntegrityError
 from flask import Flask, abort, request, jsonify, g, url_for, Response
+from flask.json import JSONEncoder
+
 from flask_httpauth import HTTPBasicAuth
 from flask import request
 from retry import retry
 import os
 import logging
 
+
+import datetime
+from sticky_pi_api.utils import datetime_to_string
+
+
 # just wait for database to be ready
 @retry(exceptions=OperationalError, delay=2, max_delay=10)
-def get_api(config):
+def get_api(config: RemoteAPIConf) -> RemoteAPI:
     return RemoteAPI(config)
 
 
@@ -44,11 +51,11 @@ if os.getenv('DEBUG') and os.getenv('DEBUG').lower() == "true":
     logging.info('Debug mode ON')
 
 
-
 conf = RemoteAPIConf()
 auth = HTTPBasicAuth()
 api = get_api(conf)
 create_initial_admin(api)
+
 
 # configure authentication
 @auth.verify_password
@@ -63,25 +70,90 @@ def get_user_roles(user):
     return 'admin' if is_admin else 'user'
 
 
+class CustomJSONEncoder(JSONEncoder):
+    def default(self, o):
+        try:
+            if isinstance(o, datetime.datetime):
+                return datetime_to_string(o)
+            iterable = iter(o)
+        except TypeError:
+            pass
+        else:
+            return list(iterable)
+        return JSONEncoder.default(self, o)
+
+
 app = Flask(__name__)
+app.json_encoder = CustomJSONEncoder
 
-@app.route('/')
-# @auth.login_required()
-def hello_world():
-    return 'Hello, World!'
 
-@app.route('/get_users', methods = ['POST'])
-@auth.login_required(role='admin')
-def get_users():
-    out = api.get_users()
+# fixme. an attempt to programatically define entrypoints
+# def add_entry_point(name, role='admin', methods=['POST']):
+#     @app.route('/' + name, endpoint=name,  methods=methods)
+#
+#     @auth.login_required(role=role)
+#     def foo():
+#         data = request.get_json()
+#         out = api.get_users(data)
+#         return jsonify(out)
+#
+#     app.add_url_rule('/' + name,
+#                      endpoint=name,
+#                      view_func=foo)
+#
+#
+# add_entry_point('get_users')
+# add_entry_point('put_users')
+template_function = \
+"""
+@app.route('/%s%s', methods = ['POST'])
+@auth.login_required(%s)
+def %s(**kwargs):
+    data = request.get_json()
+    client_info = {'username':auth.current_user()}
+    out = api.%s(data, client_info=client_info, **kwargs)
+    return jsonify(out)
+"""
+
+
+def make_endpoint(method, role='admin', what=False):
+    endpoint = method.__name__
+    sub_route = "/<what>" if what else ""
+    role_str = "role='%s'" % role if role else ""
+    assert endpoint in dir(api), "all endpoint must point to api methods. got %s" % endpoint
+    # print(template_function % (endpoint, sub_route, role_str, endpoint, endpoint))
+    exec(template_function % (endpoint, sub_route, role_str, endpoint, endpoint))
+
+
+@app.route('/get_token', methods=['POST'])
+@auth.login_required()
+def get_token():
+    client_info = {'username': auth.current_user()}
+    out = api.get_token(client_info=client_info)
     return jsonify(out)
 
-@app.route('/put_users', methods = ['POST'])
-@auth.login_required(role='admin')
-def put_users():
-    data = request.get_json()
-    if not data:
-        print(request)
-        raise Exception()
-    out = api.put_users(data)
+
+
+make_endpoint(api.get_users, role='admin')
+make_endpoint(api.put_users, role='admin')
+make_endpoint(api.get_images, role="", what=True)
+make_endpoint(api.get_image_series, role="", what=True)
+make_endpoint(api.delete_images, role="admin")
+make_endpoint(api.put_uid_annotations, role="")
+make_endpoint(api.get_uid_annotations, role="", what=True)
+make_endpoint(api._get_ml_bundle_upload_links, role="")
+make_endpoint(api._get_ml_bundle_file_list, role="", what=True)
+
+
+
+
+
+@app.route('/_put_new_images', methods=['POST'])
+@auth.login_required()
+def _put_new_images():
+    files = request.files
+    assert len(files) > 0
+    out = []
+    for k, f in files.items():
+        out += api.put_images([f])
     return jsonify(out)

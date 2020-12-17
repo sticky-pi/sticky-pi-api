@@ -24,7 +24,7 @@ RUN pip install  ipython
 # e,g, rsync -a ../../src/ src
 COPY src /tmp/sticky_pi_api
 RUN pip uninstall sticky_pi_api -y
-RUN pip install -e /tmp/sticky_pi_api[remote_api]
+RUN pip install -e /tmp/sticky_pi_api[remote_api,test]
 
 # when stable:
 #RUN pip install git+https://github.com/sticky-pi/sticky-pi-api@main#egg=sticky_pi_api&subdirectory=src
