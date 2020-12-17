@@ -1,7 +1,8 @@
+import requests
+import tempfile
+import shutil
 import pandas as pd
-import logging
 import os
-import datetime
 import hashlib
 import json
 from decimal import Decimal
@@ -9,6 +10,32 @@ import re
 import datetime
 
 STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
+
+class URLOrFileOpen(object):
+
+    def __init__(self, file_or_url, mode):
+        self._file_or_url = file_or_url
+        self.mode = mode
+        self._tmp_dir_path = None
+        self._file = None
+
+    def __enter__(self):
+        if not os.path.isfile(self._file_or_url):
+            resp = requests.get(self._file_or_url, allow_redirects=True)
+            self._tmp_dir_path = tempfile.mkdtemp(prefix='sticky-pi-')
+            file_name = os.path.basename(self._file_or_url).split('?')[0]
+            self._file_or_url = os.path.join(self._tmp_dir_path, file_name)
+            with open(self._file_or_url, 'wb') as f:
+                f.write(resp.content)
+
+        self._file = open(self._file_or_url, self.mode)
+        return self._file
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if self._file:
+            self._file.close()
+        if self._tmp_dir_path:
+            shutil.rmtree(self._tmp_dir_path)
 
 
 def chunker(seq, size: int):
@@ -22,6 +49,7 @@ def chunker(seq, size: int):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
+import functools
 def format_io(func):
     def io_converter(o):
         if isinstance(o, datetime.datetime):
@@ -41,6 +69,7 @@ def format_io(func):
 
         return o
 
+    @functools.wraps(func)
     def _format_input_output(self, *args, **kwargs):
         formated_a = []
         for a in args:
@@ -111,31 +140,3 @@ def datetime_to_string(dt):
     return datetime.datetime.strftime(dt, STRING_DATETIME_FORMAT)
 
 
-def local_bundle_files_info(bundle_dir, what='all',
-                            allowed_ml_bundle_suffixes=('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg'),
-                            ml_bundle_ml_data_subdir=('data', 'config'),
-                            ml_bundle_ml_model_subdir=('output', 'config'),
-                            multipart_chunk_size = 8 * 1024 * 1024,
-                            ignored_dir_names=('.cache', )):
-    out = []
-
-    for root, dirs, files in os.walk(bundle_dir, topdown=True, followlinks=True):
-        if os.path.basename(root) in ignored_dir_names:
-            logging.info("Ignoring %s" % root)
-            continue
-        for name in files:
-            matches = [s for s in allowed_ml_bundle_suffixes if name.endswith(s)]
-            if len(matches) == 0:
-                continue
-
-            subdir = os.path.relpath(root, bundle_dir)
-            in_data = subdir in ml_bundle_ml_data_subdir
-            in_model = subdir in ml_bundle_ml_model_subdir
-
-            path = os.path.join(root, name)
-            key = os.path.relpath(path, bundle_dir)
-            local_md5 = multipart_etag(path, chunk_size=multipart_chunk_size)
-            local_mtime = os.path.getmtime(path)
-            if what == 'all' or (in_data and what == 'data') or (in_model and what == 'model'):
-                out.append({'key': key, 'path': path, 'md5': local_md5, 'mtime': local_mtime})
-    return out

@@ -22,14 +22,13 @@ from abc import ABC, abstractmethod
 
 @decorate_all_methods(format_io, exclude=['__init__', '_put_new_images'])
 class BaseAPISpec(ABC):
-    # def __init__(self, *args, **kwargs):
-    #     pass
     @abstractmethod
-    def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+    def get_images(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Retrieves information about a given set of images, defined by their parent device and the
         datetime of the picture. *If an image is not available, no data is returned for this image*.
 
+        :param client_info: optional information about the client/user contains key ``'username'``
         :param info: A list of dicts. each dicts has, at least, keys: ``'device'`` and ``'datetime'``
         :param what: The nature of the objects to retrieve.
             One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
@@ -37,27 +36,42 @@ class BaseAPISpec(ABC):
             the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
             (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def _put_new_images(self, files: List[str]) -> MetadataType:
+    def delete_images(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
+        """
+        Delete a set of images, defined by their parent device and the
+        datetime of the picture.
+
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :param info: A list of dicts. each dicts has, at least, keys: ``'device'`` and ``'datetime'``
+        :return: A list of dictionaries with one element for each deleted image.
+        """
+        pass
+
+
+    @abstractmethod
+    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Uploads a set of client image files to the API.
         The user would use ``BaseClient.put_images(files)``,
         which first discovers which files are to be uploaded for incremental upload.
 
+        :param client_info: optional information about the client/user contains key ``'username'``
         :param files: A list of path to client files
 
         :return: The metadata of the files that were actually uploaded
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def get_image_series(self, info, what: str = 'metadata') -> MetadataType:
+    def get_image_series(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Retrieves image sequences (i.e. series).
         A series contains all images from a given device within a datetime range.
 
+        :param client_info: optional information about the client/user contains key ``'username'``
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
             For instance,one can match all devices with ``device="%"``.
@@ -68,10 +82,10 @@ class BaseAPISpec(ABC):
             (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
         """
 
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def put_uid_annotations(self, info: AnnotType) -> MetadataType:
+    def put_uid_annotations(self, info: AnnotType, client_info: Dict[str, Any] = None) -> MetadataType:
         """
         :param info: A list of dictionaries corresponding to annotations (one list element per image).
             The annotations are formatted as a dictionaries with two keys: ``'annotations'`` and ``'metadata'``.
@@ -87,28 +101,29 @@ class BaseAPISpec(ABC):
                 * ``'name'``: the name/type of the object (e.g. ``'insect'``)
                 * ``'fill_colour'`` and  ``'stroke_colour'``: the colours of the contour (if it is to be drawn -- e.g. ``'#0000ff'``)
                 * ``'value'``: an optional integer further describing the contour (e.g. ``1``)
-
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: The metadata of the uploaded annotations (i.e. a list od dicts. each field of the dict naming a column in the database).
             This corresponds to the annotation data as represented in ``UIDAnnotations``
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def get_uid_annotations(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+    def get_uid_annotations(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Retrieves annotations for a given set of images.
 
         :param info: A list of dict with keys: ``'device'`` and ``'datetime'``
         :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: A list of dictionaries with one element for each queried value.
             Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
             In the case of ``what='metadata'``, the field ``json=''``.
             Otherwise, it contains a json string with the actual annotation data.
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def _put_tiled_tuboids(self, files: List[Dict[str, str]]) -> MetadataType:
+    def _put_tiled_tuboids(self, files: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> MetadataType:
         """
             Uploads a set of client tiled tuboid files to the API.
             The user would use ``BaseClient.put_tiled_tuboid(files)``.
@@ -119,13 +134,13 @@ class BaseAPISpec(ABC):
                 * ``metadata``: the path to a comma-separated files that contains metadata for each tuboid shot
                 * ``tuboid``: the path to a tiled jpg containing (some of) the shots described in metadata, in the same order
                 * ``context``: the path to an illustration (jpg) of the detected object highlighted in the whole image of the first shot
-
+            :param client_info: optional information about the client/user contains key ``'username'``
             :return: The metadata of the files that were actually uploaded
             """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata") -> MetadataType:
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata", client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Retrieves tiled tuboids -- i.e. stitched annotations into a tile,
         where the assumption is one tuboid per instance.
@@ -136,87 +151,106 @@ class BaseAPISpec(ABC):
             For instance,one can match all devices with ``device="%"``.
         :param what: The nature of the objects to retrieve, either ``'data'`` or ``'metadata'``. ``'metadata'`` will not
             add the extra three fields mapping the files to the results
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
             the fields present in the underlying database plus the fields ``'metadata'``, ``'tuboid'`` and ``'context'``
             fields, which have a url to fetch the relevant file.
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def _get_itc_labels(self, info: List[Dict]) -> MetadataType:
+    def _get_itc_labels(self, info: List[Dict], client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Retrieves labels for a given set of tiled tuboid
 
+        :param client_info: optional information about the client/user contains key ``'username'``
         :param info: A list of dict with key: ``'tuboid_id'``
         :return: A list of dictionaries with one element for each queried value.
             Each dictionary contains the fields present in the underlying database table (see ``ITCLabels``).
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]]) -> MetadataType:
+    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]], client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Stores labels for a given set of tiled tuboid
 
         :param info: A list of dict with keys: ``'tuboid_id'``, ``'label'``, ``'pattern'``,
             ``'algo_version'``and ``'algo_name'``  (see ``ITCLabels``).
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: the field corresponding to the labels that were submitted
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
+    def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str, Any] = None) -> List[Dict[str, Union[float, str]]]:
         """
         Get a list of file for a given ML Bundle.
 
         A ML bundle contains files necessary to train and run a ML training/inference (data, configs and model).
-        :param bundle_name: the name of the machine learning bundle to fetch the files from
+        :param info: the name of the machine learning bundle to fetch the files from
         :param what: One of {``'all'``, ``'data'``,``'model'`` }, to return all files, only the training data(training),
             or only the model (inference), respectively.
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: A list of dict containing the fields ``key`` and ``url`` of the files to be downloaded,
          which can be used to download the files
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def _get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
+    def _get_ml_bundle_upload_links(self,  info: List[Dict[str, Union[float, str]]], client_info: Dict[str, Any] = None) -> \
             List[Dict[str, Union[float, str]]]:
         """
         Ask the client for a list of upload url for the files described in info.
 
-        :param bundle_name: the name of the machine learning bundle to fetch the files from
-        :param info: a list of dict with fields {``'key'``, ``'md5'``, ``'mtime'``}.
-            ``'key'`` is the file path, relative to the storage root (e.g. ``data/mydata.jpg``)
+
+        :param info: a list of dict with fields {``bundle_name``,``'key'``, ``'md5'``, ``'mtime'``}.
+            ``'key'`` is the file path, relative to the storage root (e.g. ``data/mydata.jpg``).
+             ``bundle_name`` is the name of the machine learning bundle to fetch the files from
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: The same list of dictionaries as ``info``, with an extra field pointing to a destination url ``'url'``,
             where the client can then upload their data.
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def get_users(self, info: List[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    def get_users(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Get a list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
         In the latter case, the union of all matched users is returned.
 
         :param info: A dictionary acting as a filter, using an SQL like-type match.
             For instance ``{'username': '%'}`` return all users.
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: A list of users as represented in the underlying database, as one dictionary [per user,
             with the keys being database column names. Note that the crypo/sensitive
             fields are not returned (e.g. password_hash)
         """
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Add a list of users defined by a dict of proprieties.
 
         :param info: A list of dictionary each dictionary has the fields  {``'username'``, ``'password'``},
             and optionally: {``'email'``, ``'is_admin'``},
+        :param client_info: optional information about the client/user contains key ``'username'``
         :return: A list of dictionaries describing the users that were created
         """
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
+    def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
+        """
+        A authentication token for a user.
+        injection in this function.
+
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: a dictionary with the keys ``'token'`` and ``'expiration'``, an ascii formated token,
+            and expiration timestamp, respectively
+        """
+        pass
 
 @decorate_all_methods(format_io, exclude=['__init__', '_put_new_images'])
 class BaseAPI(BaseAPISpec, ABC):
@@ -224,7 +258,7 @@ class BaseAPI(BaseAPISpec, ABC):
     _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
 
     def __init__(self, api_conf: BaseAPIConf, *args, **kwargs):
-        super().__init__()
+        # super().__init__()
         self._configuration = api_conf
         self._storage = self._storage_class(api_conf=api_conf, *args, **kwargs)
         self._db_engine = self._create_db_engine()
@@ -233,18 +267,21 @@ class BaseAPI(BaseAPISpec, ABC):
 
     @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
-        raise NotImplementedError()
+        pass
 
-
-    def _put_new_images(self, files: List[str]):
+    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
         # store the uploaded images
         out = []
         # for each image
         for f in files:
             # We parse the image file to make to its own DB object
-            im = Images(f)
+
+            api_user = client_info['username'] if client_info is not None else None
+            # im = Images(f, api_user=api_user)
+            im = Images(f, api_user=api_user)
             out.append(im.to_dict())
+
             session.add(im)
 
             # try to store images, only commit if storage worked.
@@ -259,7 +296,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 raise e
         return out
 
-    def _put_tiled_tuboids(self, files: List[Dict[str, str]]):  # fixme return type
+    def _put_tiled_tuboids(self, files: List[Dict[str, str]], client_info: Dict[str,Any] = None):  # fixme return type
         session = sessionmaker(bind=self._db_engine)()
         # store the uploaded images
         out = []
@@ -267,7 +304,8 @@ class BaseAPI(BaseAPISpec, ABC):
         for data in files:
 
             # We parse the tuboid data as a entry
-            tub = TiledTuboids(data)
+            api_user = client_info['username'] if client_info is not None else None
+            tub = TiledTuboids(data, api_user=api_user)
 
             # fixme we should check that no tuboid exists within this -- implicit -- series.
             # ie no overlap of [series_start_datetime, series_end_datetime] allowed for same device, algo_version,...
@@ -286,17 +324,26 @@ class BaseAPI(BaseAPISpec, ABC):
                 raise e
         return out
 
-    def _get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
-        return self._storage.get_ml_bundle_file_list(bundle_name, what)
+    def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str,Any] = None) -> List[Dict[str, Union[float, str]]]:
+        return self._storage.get_ml_bundle_file_list(info, what)
 
-    def _get_ml_bundle_upload_links(self, bundle_name: str, info: List[Dict[str, Union[float, str]]]) -> \
+    def _get_ml_bundle_upload_links(self, info: List[Dict[str, Union[float, str]]], client_info: Dict[str,Any] = None) -> \
             List[Dict[str, Union[float, str]]]:
-        return self._storage.get_ml_bundle_upload_links(bundle_name, info)
+        new_info = {}
+        for i in info:
+            bundle = i['bundle_name']
+            if bundle not in new_info.keys():
+                new_info[bundle] = []
+            new_info[bundle].append(i)
+        out = []
+        for bundle_name, info in new_info.items():
+            out += self._storage.get_ml_bundle_upload_links(bundle_name, info)
+        return out
 
-    def put_uid_annotations(self, info: AnnotType):
+    def put_uid_annotations(self, info: AnnotType, client_info: Dict[str,Any] = None):
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
-        out = []
+        all_annots = []
         # for each image
         for data in info:
 
@@ -320,15 +367,20 @@ class BaseAPI(BaseAPISpec, ABC):
                 raise ValueError("Trying to add an annotation for %s, but md5 differ" % str(data))
 
             annot = UIDAnnotations(dic)
+            all_annots.append(annot)
 
+        #https://stackoverflow.com/questions/3659142/bulk-insert-with-sqlalchemy-orm
+        session.bulk_save_objects(all_annots) #... or commit in the very end!
+        session.commit()
+        out = []
+        for annot in all_annots:
             o = annot.to_dict()
             o["json"] = ""
             out.append(o)
-            session.add(annot)
-            session.commit()
+
         return out
 
-    def get_uid_annotations(self, info: MetadataType, what: str = 'metadata'):
+    def get_uid_annotations(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str,Any] = None):
         images = self.get_images(info)
 
         out = []
@@ -360,13 +412,12 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(annot_dict)
         return out
 
-    def get_images(self, info: MetadataType, what: str = 'metadata'):
+    def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str,Any] = None):
         out = []
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
 
         # We fetch images by chunks:
-
         for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
 
             logging.info("Getting images... %i-%i / %i" %
@@ -388,7 +439,41 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(img_dict)
         return out
 
-    def get_tiled_tuboid_series(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+    def delete_images(self, info: MetadataType, client_info: Dict[str,Any] = None):
+        out = []
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+
+        # We fetch images by chunks:
+        for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
+            logging.info("Getting images... %i-%i / %i" %
+                         (i * self._get_image_chunk_size,
+                          i * self._get_image_chunk_size + len(info_chunk),
+                          len(info)))
+
+            for inf in info_chunk:
+                inf['datetime'] = string_to_datetime(inf['datetime'])
+
+            conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
+                          for inf in info_chunk]
+
+            q = session.query(Images).filter(or_(*conditions))
+
+            for img in q:
+                img_dict = img.to_dict()
+                session.delete(img)
+                try:
+                    self._storage.delete_image_files(img)
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    logging.error("Storage Error. Failed to delete image %s" % img)
+                    logging.error(e)
+                    raise e
+                out.append(img_dict)
+        return out
+
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = 'metadata', client_info: Dict[str,Any] = None) -> MetadataType:
         session = sessionmaker(bind=self._db_engine)()
         out = []
         assert what in ('data', 'metadata')
@@ -413,7 +498,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(tub_dict)
         return out
 
-    def get_image_series(self, info: MetadataType, what: str = 'metadata'):
+    def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str,Any] = None):
         session = sessionmaker(bind=self._db_engine)()
         out = []
 
@@ -435,7 +520,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(img_dict)
         return out
 
-    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]]) -> MetadataType:
+    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]], client_info: Dict[str,Any] = None) -> MetadataType:
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         out = []
@@ -444,13 +529,14 @@ class BaseAPI(BaseAPISpec, ABC):
             q = session.query(TiledTuboids).filter(TiledTuboids.tuboid_id == data['tuboid_id'])
             assert q.count() == 1, "No match for %s" % data
             data['parent_tuboid_id'] = q.first().tuboid_id
-            label = ITCLabels(data)
+            api_user = client_info['username'] if client_info is not None else None
+            label = ITCLabels(data, api_user=api_user)
             out.append(label.to_dict())
             session.add(label)
             session.commit()
         return out
 
-    def _get_itc_labels(self, info: List[Dict]) -> MetadataType:
+    def _get_itc_labels(self, info: List[Dict], client_info: Dict[str,Any] = None) -> MetadataType:
         info = copy.deepcopy(info)
         out = []
         for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
@@ -468,12 +554,13 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(annots.to_dict())
         return out
 
-    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str,Any] = None) -> List[Dict[str, Any]]:
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         out = []
         for data in info:
-            user = Users(**data)
+            api_user = client_info['username'] if client_info is not None else None
+            user = Users(**data, api_user=api_user)
             out.append(user.to_dict())
             session.add(user)
             session.commit()
@@ -481,7 +568,7 @@ class BaseAPI(BaseAPISpec, ABC):
 
         return out
 
-    def get_users(self, info: List[Dict[str, str]] = None) -> List[Dict[str, Any]]:
+    def get_users(self, info: List[Dict[str, str]] = None, client_info: Dict[str,Any] = None) -> List[Dict[str, Any]]:
         out = []
         if info is None:
             info = [{'username': "%"}]
@@ -515,7 +602,6 @@ class BaseAPI(BaseAPISpec, ABC):
 
         return user.username
 
-
     def _make_db_session(self):
         return sessionmaker(bind=self._db_engine)()
 
@@ -531,9 +617,19 @@ class LocalAPI(BaseAPI):
     def _make_db_session(self):
         return sessionmaker(bind=self._db_engine)(autoflush=False)
 
+    def get_token(self, client_info: Dict[str,Any] = None):
+        return {'token': None, 'expiration': 0}
+
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
+
+    def get_token(self, client_info: Dict[str,Any] = None) -> Dict[str, Union[str, int]]:
+        session = sessionmaker(bind=self._db_engine)()
+        username = client_info['username']
+        user = session.query(Users).filter(Users.username == username).first()
+        token = user.generate_auth_token(self._configuration.SECRET_API_KEY)
+        return token
 
     def put_images(self, files: List[str]):
         return self._put_new_images(files)

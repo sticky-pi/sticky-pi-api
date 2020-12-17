@@ -5,7 +5,7 @@ import PIL.ExifTags
 from imread import imread_from_blob
 from ast import literal_eval
 import datetime
-from sticky_pi_api.utils import md5
+from sticky_pi_api.utils import md5, URLOrFileOpen
 
 
 class ImageParser(dict):
@@ -23,7 +23,7 @@ class ImageParser(dict):
         """
         super().__init__()
         if type(file) == str:
-            with open(file, 'rb') as f:
+            with URLOrFileOpen(file, 'rb') as f:
                 self._parse(f)
         elif hasattr(file, 'read'):
             self._parse(file)

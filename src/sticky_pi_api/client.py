@@ -2,6 +2,7 @@
 Main module of the client. Implements classes to interact with the API.
 """
 
+import time
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -12,10 +13,12 @@ import inspect
 import shelve
 import requests
 from typing import Any
+import json
 from decorate_all_methods import decorate_all_methods
 from sticky_pi_api.image_parser import ImageParser
-from sticky_pi_api.utils import datetime_to_string, local_bundle_files_info, chunker, format_io
-from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType
+from sticky_pi_api.utils import datetime_to_string, chunker, format_io
+from sticky_pi_api.storage import BaseStorage
+from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType, AnnotType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
 
@@ -219,9 +222,9 @@ class BaseClient(BaseAPISpec, ABC):
         out = []
         for i, group in enumerate(chunker(tuboid_directories, self._put_chunk_size)):
             to_upload = [parse_tuboid_dir(g) for g in group]
-            logging.info("Putting tuboids ... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
-                                                                             i * self._put_chunk_size + len(group),
-                                                                             len(to_upload)))
+            logging.info("Putting tuboids... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
+                                                                            i * self._put_chunk_size + len(group),
+                                                                            len(to_upload)))
             out += self._put_tiled_tuboids(to_upload)
         return out
 
@@ -294,9 +297,14 @@ class BaseClient(BaseAPISpec, ABC):
 
     def get_ml_bundle_dir(self, bundle_name: str, bundle_dir: str, what: str) -> List[Dict[str, Union[float, str]]]:
         # bundle_name = os.path.basename(os.path.normpath(bundle_dir))
-        local_files = local_bundle_files_info(bundle_dir, what)
+        local_files = BaseStorage.local_bundle_files_info(bundle_dir, what)
         remote_files = self._get_ml_bundle_file_list(bundle_name, what)
         already_downloaded_dict = {au['key']: au for au in local_files}
+        print('already_downloaded_dict')
+        print(already_downloaded_dict)
+        print(local_files)
+        print(bundle_dir)
+
         files_to_download = []
         for r in remote_files:
             to_download = False
@@ -323,28 +331,31 @@ class BaseClient(BaseAPISpec, ABC):
 
     def put_ml_bundle_dir(self, bundle_name: str, bundle_dir: str, what: str = 'all') -> List[Dict[str, Union[float, str]]]:
         # bundle_name = os.path.basename(os.path.normpath(bundle_dir))
-        files_to_upload = local_bundle_files_info(bundle_dir, what)
-        files_to_upload = self._get_ml_bundle_upload_links(bundle_name, files_to_upload)
+        files_to_upload = BaseStorage.local_bundle_files_info(bundle_dir, what)
+        for f in files_to_upload:
+            f['bundle_name'] = bundle_name
+        files_to_upload = self._get_ml_bundle_upload_links(files_to_upload)
+
         for f in files_to_upload:
             if f['url'] is not None:
                 self._put_ml_bundle_file(f['path'], f['url'])
         return files_to_upload
 
     @abstractmethod
-    def _put_ml_bundle_file(self, path: str, key: str):
-        raise NotImplementedError()
+    def _put_ml_bundle_file(self, path: str, url: str):
+        pass
 
     @abstractmethod
     def _get_ml_bundle_file(self, url: str, target: str):
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
-    def _put_new_images(self, files: List[str]) -> MetadataType:
-        raise NotImplementedError()
+    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
+        pass
 
 
 @decorate_all_methods(format_io, exclude=['__init__'])
-class LocalClient(BaseClient, LocalAPI):
+class LocalClient(LocalAPI, BaseClient):
     def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
         # ad hoc API config for the local API. define the local_dir variable
         api_conf = LocalAPIConf(LOCAL_DIR=local_dir)
@@ -364,16 +375,14 @@ class LocalClient(BaseClient, LocalAPI):
         logging.info("%s => %s" % (url, target))
         shutil.copy(url, target)
 
-    def _put_new_images(self, files: List[str]) -> MetadataType:
-        return LocalAPI._put_new_images(self, files)
-
-
 
 class RemoteAPIException(Exception):
     pass
 
 @decorate_all_methods(format_io, exclude=['__init__', '_default_client_to_api'])
 class RemoteAPIConnector(BaseAPISpec):
+
+
     def __init__(self, host, username, password, protocol='https', port=443):
         self._host = host
         self._username = username
@@ -381,39 +390,38 @@ class RemoteAPIConnector(BaseAPISpec):
         self._protocol = protocol
         self._port = int(port)
 
+        self._token = {'token': None, 'expiration': 0}
+
+
     def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None):
+
+        if entry_point != 'get_token':
+            if self._token['expiration'] < int(time.time()) - 60:  # we add 60s just to be sure
+                self._token = self.get_token()
+            auth = self._token['token'], ''
+        else:
+            auth = self._username, self._password
+
         url = "%s://%s:%i/%s" % (self._protocol, self._host, self._port, entry_point)
         if what is not None:
             url += "/" + what
         logging.debug('Requesting %s' % url)
-        response = requests.post(url, json=info, files=files, auth=(self._username, self._password))
+        response = requests.post(url, json=info, files=files, auth=auth)
         if response.status_code == 200:
             return response.json()
         else:
+            logging.error("Failed to request url: %s" % url)
             raise RemoteAPIException(response.content)
 
-    # FIXME ideally, we could use the fefault annotator on any called method so we would not have to write redundant code:
+    def get_token(self, client_info: Dict[str, Any] = None) -> str:
+        return self._default_client_to_api('get_token', info=None)
 
-    # def __getattr__(self, name):
-    #     print('attttr==================================')
-    #     if name in BaseAPISpec.__abstractmethods__:
-    #         return super().__getattribute__(name)
-    #
-    #     def wrapper(*args, **kwargs):
-    #         self._default_connector(entry_point=name, *args, **kwargs)
-    #     return wrapper
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata", client_info: Dict[str, Any] = None) \
+            -> MetadataType:
+        pass
 
-    # fixme. for now we do that by hand
-    def get_users(self, info: List[Dict[str, str]] = None) -> List[Dict[str, Any]]:
-        return self._default_client_to_api('get_users', info)
-
-    def put_users(self, info: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return self._default_client_to_api('put_users', info)
-
-    def get_images(self, info: InfoType, what: str = 'metadata') -> MetadataType:
-        return self._default_client_to_api('get_images', info, what=what)
-
-    def _put_new_images(self, files: List[str]) -> MetadataType:
+    # custom handling of file objects to upload
+    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
         for file in files:
             with open(file, 'rb') as f:
@@ -421,13 +429,74 @@ class RemoteAPIConnector(BaseAPISpec):
                 out += self._default_client_to_api('_put_new_images', files=payload)
         return out
 
+    def get_users(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_users', info)
+
+    def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_users', info)
+
+    def get_images(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('get_images', info, what=what)
+
+    def get_image_series(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('get_image_series', info, what=what)
+
+    def delete_images(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('delete_images', info)
+
+    def put_uid_annotations(self, info: AnnotType, client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('put_uid_annotations', info)
+
+    def get_uid_annotations(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('get_uid_annotations', info, what=what)
+
+    def _put_tiled_tuboids(self, files: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> MetadataType:
+        pass
+
+    def _get_itc_labels(self, info: List[Dict], client_info: Dict[str, Any] = None) -> MetadataType:
+        pass
+
+    def put_itc_labels(self, info: List[Dict[str, Union[str, int]]], client_info: Dict[str, Any] = None) -> MetadataType:
+        pass
+
+    def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str, Any] = None) -> List[Dict[str, Union[float, str]]]:
+        return self._default_client_to_api('_get_ml_bundle_file_list', info, what=what)
+
+    def _get_ml_bundle_upload_links(self,  info: List[Dict[str, Union[float, str]]], client_info: Dict[str, Any] = None) -> \
+            List[Dict[str, Union[float, str]]]:
+        return self._default_client_to_api('_get_ml_bundle_upload_links', info)
+
 
 @decorate_all_methods(format_io, exclude=['__init__'])
-class RemoteClient(BaseClient, RemoteAPIConnector):
+class RemoteClient(RemoteAPIConnector, BaseClient):
+
     def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
         BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)
         RemoteAPIConnector.__init__(self, *args, **kwargs)
 
-    def _put_new_images(self, files: List[str]) -> MetadataType:
-        return RemoteAPIConnector._put_new_images(self, files)
+
+
+
+    def _put_ml_bundle_file(self, path: str, url: Union[str, Dict]):
+        #fixme, this is actually not a url here, but a json str => dict
+
+        response = url
+        object_name = os.path.basename(path)
+        logging.info("%s => %s" % (os.path.basename(path), response['fields']['key']))
+        with open(path, 'rb') as f:
+            files = {'file': (object_name, f)}
+            http_response = requests.post(response['url'], data=response['fields'], files=files)
+        assert http_response.status_code == 204, response
+
+    def _get_ml_bundle_file(self, url: str, target: str):
+        logging.info("%s => %s" % (url, target))
+        dirname = os.path.dirname(target)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname, exist_ok=True)
+
+        with open(target, 'wb') as data:
+            logging.info("%s => %s" % (url, target))
+            r = requests.get(url)
+            data.write(r.content)
+        assert os.path.isfile(target), 'File not writen!'
 

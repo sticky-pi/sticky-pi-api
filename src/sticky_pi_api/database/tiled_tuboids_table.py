@@ -5,7 +5,7 @@ from sticky_pi_api.utils import string_to_datetime
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 
-class TiledTuboids(Base, BaseCustomisations):
+class TiledTuboids(BaseCustomisations):
     __tablename__ = 'tiled_tuboids'
     __table_args__ = (UniqueConstraint('tuboid_id', name='tuboid_id'),)
 
@@ -46,10 +46,10 @@ class TiledTuboids(Base, BaseCustomisations):
     algo_version = DescribedColumn(String(46),
                                    nullable=False)  # something like "1598113346-ad2cd78dfaca12821046dfb8994724d5" ( `X-Y` X:timestamp of the model, Y:md5 of the model)
 
-    datetime_created = DescribedColumn(DateTime, nullable=False)
-    uploader = DescribedColumn(Integer, nullable=True)  # the user_id of the user who uploaded the data
+    # datetime_created = DescribedColumn(DateTime, nullable=False)
+    # uploader = DescribedColumn(Integer, nullable=True)  # the user_id of the user who uploaded the data
 
-    def __init__(self, data):
+    def __init__(self, data, api_user=None):
 
         input = \
             {k: v for k, v in
@@ -77,8 +77,6 @@ class TiledTuboids(Base, BaseCustomisations):
         input['start_datetime'] = first_shot_datetime
         input['end_datetime'] = annotation_datetime
 
-        input['datetime_created'] = datetime.datetime.now()
-
         i_dict = {}
         for k, v in input.items():
 
@@ -86,8 +84,8 @@ class TiledTuboids(Base, BaseCustomisations):
                 i_dict[k] = string_to_datetime(v)
             except (TypeError, ValueError) as e:
                 i_dict[k] = v
-
-        Base.__init__(self, **i_dict)
+        i_dict['api_user'] = api_user
+        super().__init__(**i_dict)
 
     def __repr__(self):
         return "<TiledTuboid(device='%s', start_datetime='%s', id_in_series='%s')>" % (
