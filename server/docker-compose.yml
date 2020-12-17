@@ -30,7 +30,7 @@ services:
   spi_api_tests:
     build: ./api
     container_name: spi_api_tests
-    command: python api_tests.py
+    command: python -m unittest api_tests.py
     depends_on:
       - spi_api
       - spi_db

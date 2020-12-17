@@ -281,7 +281,7 @@ class S3Storage(BaseStorage):
 
         for obj in bucket.objects.filter(Prefix=self._ml_storage_dirname + '/'):
             # strip the bundle dirname
-            key = os.path.relpath(obj.key, self._ml_storage_dirname)
+            key = os.path.relpath(obj.key, os.path.join(self._ml_storage_dirname, bundle_name))
 
             matches = [s for s in self._allowed_ml_bundle_suffixes if key.endswith(s)]
 
@@ -292,16 +292,12 @@ class S3Storage(BaseStorage):
             in_model = subdir in self._ml_bundle_ml_model_subdir
             if what == 'all' or (in_data and what == 'data') or (in_model and what == 'model'):
                 remote_md5 = obj.e_tag[1:-1]
-                remote_last_modified = obj.last_modified
+                remote_last_modified = datetime.datetime.timestamp(obj.last_modified)
                 url = self._presigned_url(obj.key)
 
                 o = {'key': key, 'path': obj.key, 'md5': remote_md5, 'mtime': remote_last_modified,
                      'url': url}
                 out.append(o)
-        print('what')
-        print(what)
-        print('out')
-        print(out)
         return out
 
     def _already_uploaded_ml_bundle_files(self, bundle_name: str) -> Dict[str, Dict[str, Any]]:

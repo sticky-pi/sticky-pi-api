@@ -5,6 +5,8 @@ import json
 import sqlalchemy
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
+from itsdangerous import (TimedJSONWebSignatureSerializer
+                          as Serializer, BadSignature, SignatureExpired)
 from sticky_pi_api.utils import string_to_datetime
 from sticky_pi_api.database.utils import Base
 from sticky_pi_api.storage import DiskStorage, BaseStorage, S3Storage
@@ -583,13 +585,42 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(user_dict)
         return out
 
+    # def _verify_auth_token(self, token, api_secret_key: str):
+    #     session = sessionmaker(bind=self._db_engine)()
+    #
+    #     s = Serializer(api_secret_key)
+    #     try:
+    #         data = s.loads(token)
+    #     except SignatureExpired:
+    #         return None  # valid token, but expired
+    #     except BadSignature:
+    #         return None  # invalid token
+    #     user = Users.query.get(data['id'])
+    #     return user
+    #
+    #
+    # def _get_username(token_or_username, api_secret_key: str):
+    #     user = Users.verify_auth_token(token_or_username, api_secret_key)
+    #     if user is None:
+    #         return token_or_username
+    #     else:
+    #         return user.username
+
     def verify_password(self, username_or_token: str, password: str):
         session = sessionmaker(bind=self._db_engine)()
         if not username_or_token:
             logging.warning('No such user or token `%s`' % username_or_token)
             return False
-        # first, try to use token to authenticate
-        user = Users.verify_auth_token(username_or_token, self._configuration.SECRET_API_KEY)
+
+        s = Serializer(self._configuration.SECRET_API_KEY)
+        try:
+            data = s.loads(username_or_token)
+            user = session.query(Users).get(data['id'])
+        except SignatureExpired:
+            user = None  # valid token, but expired
+        except BadSignature:
+            user = None  # invalid token
+
         if not user:
             # try to authenticate with username/password
             user = session.query(Users).filter(Users.username == username_or_token).first()

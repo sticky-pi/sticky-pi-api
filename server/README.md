@@ -8,6 +8,6 @@ define the `EXTRA_ENV` variable. It must be one of the local environment files:
 e.g. deploy:
 
 ```
-export EXTRA_ENV=.production.env && 
+export EXTRA_ENV=.prod.env && 
     docker-compose up --remove-orphans --build --force-recreate -d
 ```

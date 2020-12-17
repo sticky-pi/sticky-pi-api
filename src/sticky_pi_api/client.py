@@ -300,11 +300,6 @@ class BaseClient(BaseAPISpec, ABC):
         local_files = BaseStorage.local_bundle_files_info(bundle_dir, what)
         remote_files = self._get_ml_bundle_file_list(bundle_name, what)
         already_downloaded_dict = {au['key']: au for au in local_files}
-        print('already_downloaded_dict')
-        print(already_downloaded_dict)
-        print(local_files)
-        print(bundle_dir)
-
         files_to_download = []
         for r in remote_files:
             to_download = False
@@ -318,9 +313,7 @@ class BaseClient(BaseAPISpec, ABC):
                 elif r['mtime'] > local_info['mtime']:
                     to_download = True
             if to_download:
-                #r['url'] = os.path.join()
                 files_to_download.append(r)
-
             else:
                 logging.info("Skipping %s (already on local)" % str(r['key']))
 
@@ -474,12 +467,8 @@ class RemoteClient(RemoteAPIConnector, BaseClient):
         BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)
         RemoteAPIConnector.__init__(self, *args, **kwargs)
 
-
-
-
     def _put_ml_bundle_file(self, path: str, url: Union[str, Dict]):
-        #fixme, this is actually not a url here, but a json str => dict
-
+        #fixme,  name this is actually not a url here, but a json str => dict
         response = url
         object_name = os.path.basename(path)
         logging.info("%s => %s" % (os.path.basename(path), response['fields']['key']))
@@ -489,7 +478,7 @@ class RemoteClient(RemoteAPIConnector, BaseClient):
         assert http_response.status_code == 204, response
 
     def _get_ml_bundle_file(self, url: str, target: str):
-        logging.info("%s => %s" % (url, target))
+
         dirname = os.path.dirname(target)
         if not os.path.isdir(dirname):
             os.makedirs(dirname, exist_ok=True)

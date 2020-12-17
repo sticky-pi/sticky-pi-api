@@ -11,7 +11,7 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:
 logging.getLogger().setLevel(logging.INFO)
 
 if not(os.getenv('TESTING') and os.getenv('TESTING').lower() == "true"):
-    logging.info('No testing to do. TESTING=%' % os.getenv('TESTING') )
+    logging.info('No testing to do. TESTING=%' % os.getenv('TESTING'))
     exit(0)
 
 

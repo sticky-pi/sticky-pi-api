@@ -25,7 +25,6 @@ class Users(BaseCustomisations):
         my_dict['api_user'] = api_user
         super().__init__(**my_dict)
 
-
     def verify_password(self, password):
         out = pwd_context.verify(password, self.password_hash)
         return out
@@ -38,22 +37,3 @@ class Users(BaseCustomisations):
         return {'token': token.decode('ascii'), 'expiration': exp_timestamp}
 
 
-    @staticmethod
-    def verify_auth_token(token, api_secret_key: str):
-        s = Serializer(api_secret_key)
-        try:
-            data = s.loads(token)
-        except SignatureExpired:
-            return None  # valid token, but expired
-        except BadSignature:
-            return None  # invalid token
-        user = Users.query.get(data['id'])
-        return user
-
-    @staticmethod
-    def get_username(token_or_username, api_secret_key: str):
-        user = Users.verify_auth_token(token_or_username, api_secret_key)
-        if user is None:
-            return token_or_username
-        else:
-            return user.username
