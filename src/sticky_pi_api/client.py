@@ -93,7 +93,7 @@ class BaseClient(BaseAPISpec, ABC):
         """
         Retrieves annotations for images within a given datetime range
 
-        TODO add ref to api specs, where params hould be inherited (so we don't write twice the same doc)
+        TODO add ref to api specs, where params should be inherited (so we don't write twice the same doc)
 
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
@@ -165,7 +165,7 @@ class BaseClient(BaseAPISpec, ABC):
         else:
             # force suffixes for ITC
             itc_labels.columns = itc_labels.columns.map(lambda x: str(x) + '_itc')
-            out = pd.merge(tiled_tuboids, itc_labels, how='left', left_on=['tuboid_id'],
+            out = pd.merge(tiled_tuboids, itc_labels, how='left', left_on=['id'],
                        right_on=['parent_tuboid_id_itc'])
 
         out = out.where(pd.notnull(out), None) #.sort_values(['device', 'datetime'])
@@ -204,7 +204,8 @@ class BaseClient(BaseAPISpec, ABC):
         logging.info("Putting images... Complete!")
         return out
 
-    def put_tiled_tuboids(self, tuboid_directories: List[str]):
+    def put_tiled_tuboids(self, tuboid_directories: List[str], series_info: Dict[str, Any]):
+
         def parse_tuboid_dir(directory):
             dirname = os.path.basename(os.path.normpath(directory))
 
@@ -215,7 +216,10 @@ class BaseClient(BaseAPISpec, ABC):
             assert os.path.isfile(metadata_file)
             assert os.path.isfile(context_file)
             assert os.path.isfile(tuboid_file)
+            assert all([k in series_info.keys() for k in ('algo_name', 'algo_version', 'start_datetime', 'end_datetime', 'device') ])
+
             return {'tuboid_id': dirname,
+                    'series_info': series_info,
                     'metadata': metadata_file,
                     'tuboid': tuboid_file,
                     'context': context_file}
@@ -225,7 +229,9 @@ class BaseClient(BaseAPISpec, ABC):
             logging.info("Putting tuboids... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
                                                                             i * self._put_chunk_size + len(group),
                                                                             len(to_upload)))
+
             out += self._put_tiled_tuboids(to_upload)
+
         return out
 
     def delete_cache(self):
@@ -376,6 +382,7 @@ class RemoteAPIException(Exception):
 class RemoteAPIConnector(BaseAPISpec):
 
 
+
     def __init__(self, host, username, password, protocol='https', port=443):
         self._host = host
         self._username = username
@@ -409,11 +416,6 @@ class RemoteAPIConnector(BaseAPISpec):
     def get_token(self, client_info: Dict[str, Any] = None) -> str:
         return self._default_client_to_api('get_token', info=None)
 
-    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata", client_info: Dict[str, Any] = None) \
-            -> MetadataType:
-        pass
-
-    # custom handling of file objects to upload
     def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
         for file in files:
@@ -422,6 +424,7 @@ class RemoteAPIConnector(BaseAPISpec):
                 out += self._default_client_to_api('_put_new_images', files=payload)
         return out
 
+    # custom handling of file objects to upload
     def get_users(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         return self._default_client_to_api('get_users', info)
 
@@ -437,20 +440,40 @@ class RemoteAPIConnector(BaseAPISpec):
     def delete_images(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('delete_images', info)
 
+    def delete_tiled_tuboids(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('delete_tiled_tuboids', info)
+
     def put_uid_annotations(self, info: AnnotType, client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('put_uid_annotations', info)
 
     def get_uid_annotations(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_uid_annotations', info, what=what)
 
+    def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata", client_info: Dict[str, Any] = None) \
+            -> MetadataType:
+        return self._default_client_to_api('get_tiled_tuboid_series', info=info, what=what)
+
+
     def _put_tiled_tuboids(self, files: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> MetadataType:
-        pass
+        out = []
+        for dic in files:
+            # data = {'tuboid_id': dic.pop('tuboid_id')}
+
+            with open(dic['metadata'], 'r') as m, open(dic['tuboid'], 'rb') as t, open(dic['context'], 'rb') as c:
+                payload = {'metadata': ('metadata.txt', m,  'application/text'),
+                           'tuboid': ('tuboid.jpg', t,  'application/octet-stream'),
+                           'context': ('context.jpg', c,  'application/octet-stream'),
+                           'tuboid_id': ('tuboid_id', json.dumps(dic['tuboid_id']), 'application/json'),
+                           'series_info': ('series_info', json.dumps(dic['series_info']), 'application/json'),
+                           }
+                out += self._default_client_to_api('_put_tiled_tuboids', files=payload, info=None)
+        return out
 
     def _get_itc_labels(self, info: List[Dict], client_info: Dict[str, Any] = None) -> MetadataType:
-        pass
+        return self._default_client_to_api('_get_itc_labels', info)
 
     def put_itc_labels(self, info: List[Dict[str, Union[str, int]]], client_info: Dict[str, Any] = None) -> MetadataType:
-        pass
+        return self._default_client_to_api('put_itc_labels', info)
 
     def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str, Any] = None) -> List[Dict[str, Union[float, str]]]:
         return self._default_client_to_api('_get_ml_bundle_file_list', info, what=what)

@@ -10,8 +10,10 @@ class UIDAnnotations(BaseCustomisations):
 
     id = DescribedColumn(Integer, primary_key=True)
 
-    parent_image_id = Column(Integer, ForeignKey('images.id', ondelete="CASCADE"))
+    parent_image_id = Column(Integer, ForeignKey('images.id', ondelete="CASCADE"), nullable=False)
+    # parent_image_id = Column(Integer, ForeignKey('images.id'), nullable=False)
     parent_image = relationship("Images", back_populates="uid_annotations")
+
     algo_name = DescribedColumn(String(64), nullable=False) # something like "sticky-pi-universal-insect-detector")
     algo_version = DescribedColumn(String(46), nullable=False) # something like "1598113346-ad2cd78dfaca12821046dfb8994724d5" ( `X-Y` X:timestamp of the model, Y:md5 of the model)
 

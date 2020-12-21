@@ -10,7 +10,7 @@ class ITCLabels(BaseCustomisations):
 
     id = DescribedColumn(Integer, primary_key=True)
 
-    parent_tuboid_id = Column(Integer, ForeignKey('tiled_tuboids.id', ondelete="CASCADE"))
+    parent_tuboid_id = Column(Integer, ForeignKey('tiled_tuboids.id', ondelete="CASCADE"), nullable=False)
     parent_tuboid = relationship("TiledTuboids", back_populates="itc_labels")
 
     algo_name = DescribedColumn(String(32), nullable=False)  # something like "sticky-pi-universal-insect-detector")

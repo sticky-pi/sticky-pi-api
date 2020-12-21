@@ -59,6 +59,8 @@ def format_io(func):
                 return None
         elif isinstance(o, Decimal):
             return float(o)
+        elif hasattr(o, 'read'):
+            return o
         else:
             raise Exception('Un-parsable json object')
 
@@ -66,7 +68,6 @@ def format_io(func):
         for k, v in o.items():
             if isinstance(v, str) and re.search(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$", v):
                 o[k] = string_to_datetime(o[k])
-
         return o
 
     @functools.wraps(func)
@@ -85,7 +86,9 @@ def format_io(func):
 
         out = func(self, *formated_a, **formated_k)
         json_out = json.dumps(out, default=io_converter)
+
         out = json.loads(json_out, object_hook=out_parser)
+
         return out
 
     return _format_input_output

@@ -15,6 +15,8 @@ class Images(BaseCustomisations):
                                    passive_deletes=True
                                    )
 
+    # tasks = relationship("Task", back_populates="project", passive_deletes=True)
+
     id = DescribedColumn(Integer, primary_key=True,
                          description="The unique identifier of each image")
     device = DescribedColumn(String(8), nullable=False,

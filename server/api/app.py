@@ -1,17 +1,19 @@
-from sticky_pi_api.configuration import RemoteAPIConf
-from sticky_pi_api.specifications import RemoteAPI
-from sqlalchemy.exc import OperationalError, IntegrityError
 from flask import Flask, abort, request, jsonify, g, url_for, Response
-from flask.json import JSONEncoder
-
+from sqlalchemy.exc import OperationalError, IntegrityError
 from flask_httpauth import HTTPBasicAuth
+from flask.json import JSONEncoder
 from flask import request
 from retry import retry
-import os
-import logging
-
-
 import datetime
+import logging
+import json
+import os
+import io
+
+from sticky_pi_api.configuration import RemoteAPIConf
+from sticky_pi_api.specifications import RemoteAPI
+
+
 from sticky_pi_api.utils import datetime_to_string
 
 
@@ -139,12 +141,19 @@ make_endpoint(api.put_users, role='admin')
 make_endpoint(api.get_images, role="", what=True)
 make_endpoint(api.get_image_series, role="", what=True)
 make_endpoint(api.delete_images, role="admin")
+make_endpoint(api.delete_tiled_tuboids, role="admin")
 make_endpoint(api.put_uid_annotations, role="")
 make_endpoint(api.get_uid_annotations, role="", what=True)
+
+# see below
+# make_endpoint(api._put_tiled_tuboids, role="", what=True)
+
+make_endpoint(api.get_tiled_tuboid_series, role="", what=True)
 make_endpoint(api._get_ml_bundle_upload_links, role="")
 make_endpoint(api._get_ml_bundle_file_list, role="", what=True)
 
-
+make_endpoint(api.put_itc_labels, role="")
+make_endpoint(api._get_itc_labels, role="")
 
 
 
@@ -155,5 +164,20 @@ def _put_new_images():
     assert len(files) > 0
     out = []
     for k, f in files.items():
-        out += api.put_images([f])
+        out += api.put_images([f],client_info = {'username': auth.current_user()})
     return jsonify(out)
+
+@app.route('/_put_tiled_tuboids', methods=['POST'])
+@auth.login_required()
+def _put_tiled_tuboids():
+    files = request.files
+    assert len(files) > 0
+    data = {}
+    for k, f in files.items():
+        if k == 'tuboid_id' or k == 'series_info':
+            f = json.load(f)
+        data[k] = f
+
+    out = [api._put_tiled_tuboids([data], client_info={'username': auth.current_user()})]
+    return jsonify(out)
+

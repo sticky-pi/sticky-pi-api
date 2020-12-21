@@ -5,6 +5,7 @@ import os
 import logging
 from sticky_pi_api.types import List, Dict, Union, Any
 from sticky_pi_api.database.images_table import Images
+from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf, RemoteAPIConf
 from abc import ABC, abstractmethod, ABCMeta
 import boto3
@@ -113,7 +114,14 @@ class BaseStorage(ABC):
     @abstractmethod
     def delete_image_files(self, image: Images) -> None:
         """
-        Delete the files corresponding to a an image.
+        Delete the files corresponding to an image.
+        :param image: an image object
+        """
+        pass
+    @abstractmethod
+    def delete_tiled_tuboid_files(self, tuboid: TiledTuboids) -> None:
+        """
+        Delete the files corresponding to a tiled tuboid
         :param image: an image object
         """
         pass
@@ -193,11 +201,20 @@ class DiskStorage(BaseStorage):
 
     def delete_image_files(self, image: Images) -> None:
         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
-        os.makedirs(os.path.dirname(target), exist_ok=True)
         for s in ['image', 'thumbnail', 'thumbnail-mini']:
             to_del = target + self._suffix_map[s]
             logging.info('Removing %s' % to_del)
             os.remove(to_del)
+
+    def delete_tiled_tuboid_files(self, tuboid: TiledTuboids) -> None:
+        # name of the series
+        tuboid_dirname, _ = os.path.splitext(tuboid.tuboid_id)
+        target_dir = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, tuboid_dirname, tuboid.tuboid_id)
+        for k, v in self._tiled_tuboid_filenames.items():
+            to_del = os.path.join(target_dir, v)
+            logging.info('Removing %s' % to_del)
+            os.remove(to_del)
+        os.rmdir(target_dir)
 
     def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
         if what == 'metadata':
@@ -263,6 +280,15 @@ class S3Storage(BaseStorage):
             logging.info('Removing %s' % key)
             self._s3_ressource.meta.client.delete_object(Bucket=self._bucket_name, Key=key)
 
+    def delete_tiled_tuboid_files(self, tuboid: TiledTuboids) -> None:
+        # name of the series
+        tuboid_dirname, _ = os.path.splitext(tuboid.tuboid_id)
+        target_dir = os.path.join(self._tiled_tuboids_storage_dirname, tuboid_dirname, tuboid.tuboid_id)
+        for k, v in self._tiled_tuboid_filenames.items():
+            to_del = os.path.join(target_dir, v)
+            logging.info('Removing %s' % to_del)
+            self._s3_ressource.meta.client.delete_object(Bucket=self._bucket_name, Key=to_del)
+
     def _image_key(self, image, suffix):
         return os.path.join(self._raw_images_dirname,
                             image.device,
@@ -305,7 +331,6 @@ class S3Storage(BaseStorage):
         already_uploaded_dict = {}
         bundle_dir = os.path.join(self._ml_storage_dirname, bundle_name)
         for obj in bucket.objects.filter(Prefix=bundle_dir + '/'):
-            logging.error(obj)
             # strip the bundle dirname
             key = os.path.relpath(obj.key, bundle_dir)
             remote_md5 = obj.e_tag[1:-1]
@@ -329,22 +354,18 @@ class S3Storage(BaseStorage):
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
-        pass
+        tuboid_id = data['tuboid_id']
+        series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip out the tuboid specific part
+        for k, v in self._tiled_tuboid_filenames.items():
+            assert k in data, (k, data)
+            key = os.path.join(self._tiled_tuboids_storage_dirname, series_id, tuboid_id, v)
+            logging.debug("%s => %s" % (data[k], os.path.join(k, v)))
+            self._s3_ressource.Object(self._bucket_name,
+                                      key).put(Body=data[k])
 
     def get_urls_for_tiled_tuboids(self, data: Dict[str, str]) -> Dict[str, str]:
-        pass
-
-#
-#         target = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
-#         os.makedirs(os.path.dirname(target), exist_ok=True)
-#         with open(target, 'wb') as f:
-#             f.write(image.file_blob)
-#         image.thumbnail.save(target + ".thumbnail", format='jpeg')
-#         image.thumbnail_mini.save(target + ".thumbnail_mini", format='jpeg')
-#
-# self._bucket_conf = {
-#             "S3BUCKET_PRIVATE_KEY": os.environ.get("S3BUCKET_PRIVATE_KEY"),
-#             "S3BUCKET_ACCESS_KEY": os.environ.get("S3BUCKET_ACCESS_KEY"),
-#             "bucket": name,
-#             "S3BUCKET_HOST": os.environ.get("S3BUCKET_HOST")
-#         }
+        tuboid_id = data['tuboid_id']
+        series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip out the tuboid specific part
+        target_dirname = os.path.join(self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
+        files_urls = {k: self._presigned_url(os.path.join(target_dirname, v)) for k, v in self._tiled_tuboid_filenames.items()}
+        return files_urls

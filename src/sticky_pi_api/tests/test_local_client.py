@@ -39,10 +39,13 @@ class LocalAndRemoteTests(object):
         self._test_images = [i for i in sorted(glob.glob(os.path.join(self._test_dir, "raw_images/**/*.jpg")))]
 
     def _clean_persistent_resources(self, cli):
-        out = cli.get_image_series([{'device': '%',
-                                    'start_datetime': '2020-01-01_00-00-00',
-                                    'end_datetime': '2020-12-31_00-00-00'}])
-        return cli.delete_images(out)
+        todel = [{'device': '%',
+                                     'start_datetime': '2020-01-01_00-00-00',
+                                     'end_datetime': '2020-12-31_00-00-00'}]
+        out = cli.get_image_series(todel)
+        cli.delete_images(out)
+        cli.delete_tiled_tuboids(todel)
+
 
     ###########################################################################################################
 
@@ -63,6 +66,7 @@ class LocalAndRemoteTests(object):
                 {'username': 'grace', 'password': 'hopper', 'is_admin': True},
                     ]
             cli = self._make_client(temp_dir)
+            self._clean_persistent_resources(cli)
             cli.put_users(users)
             cli.get_token({'username':'ada'})
 
@@ -152,30 +156,39 @@ class LocalAndRemoteTests(object):
     def test_put_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
+            import copy
             db = self._make_client(temp_dir)
             self._clean_persistent_resources(db)
-            db.put_images([self._test_image_for_annotation])
+            im = db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
 
             # update algo version should allow reupload of annotation
-            self._test_annotation['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
-            db.put_uid_annotations([self._test_annotation])
-
+            test_annotation2 = copy.deepcopy(self._test_annotation)
+            test_annotation2['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
+            db.put_uid_annotations([test_annotation2])
+            #
             # should fail to upload twice the same annotations (save version/image)
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(self._server_error) as context:
-                    db.put_uid_annotations([self._test_annotation])
+                    db.put_uid_annotations([test_annotation2])
 
             # should fail to upload orphan annotations
-            annot = self._test_annotation
-            annot['metadata']['device'] = '01234567'
+            #
+            test_annotation2['metadata']['device'] = '01234567'
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises((ValueError, self._server_error)) as context:
-                    db.put_uid_annotations([annot])
+                    db.put_uid_annotations([test_annotation2])
+            #
+            # # should clean both images AND annotations, in cascade
+
+            self._clean_persistent_resources(db)
+            # print(db.get_images(im, what='image'))
+            db.put_images([self._test_image_for_annotation])
+            db.put_uid_annotations([self._test_annotation])
 
         finally:
             shutil.rmtree(temp_dir)
-
+    #
     def test_get_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -308,69 +321,97 @@ class LocalAndRemoteTests(object):
             shutil.rmtree(temp_dir)
             shutil.rmtree(temp_dir2)
 
-    # def test_tiled_tuboids(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #
-    #         db = self._make_client(temp_dir)
-    #         db.put_tiled_tuboids(self._tiled_tuboid_dirs)
-    #
-    #         series = [{'device': '%',
-    #                    'start_datetime': '2020-01-01_00-00-00',
-    #                    'end_datetime': '2020-12-31_00-00-00'}]
-    #
-    #         self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
-    #         # import pandas as pd
-    #         # print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
-    #
-    #     finally:
-    #         shutil.rmtree(temp_dir)
-    #
-    # def test_itc_labels(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #
-    #         series = [{'device': '%',
-    #                    'start_datetime': '2020-01-01_00-00-00',
-    #                    'end_datetime': '2020-12-31_00-00-00'}]
-    #         db = self._make_client(temp_dir)
-    #         self._clean_persistent_resources(db)
-    #         # emp[ty dt should be returned if no series exist
-    #         db.get_tiled_tuboid_series_itc_labels(series)
-    #         db.put_tiled_tuboids(self._tiled_tuboid_dirs)
-    #         # should be missing the itc fields
-    #         db.get_tiled_tuboid_series_itc_labels(series)
-    #         info = [{
-    #             'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
-    #             'algo_version': '1111-abce',
-    #             'algo_name': 'insect_tuboid_classifier',
-    #             'label': 1,
-    #             'pattern': 'Insecta.*',
-    #             'type':'Insecta',
-    #             'order': 'test',
-    #             'family':'test',
-    #             'genus': 'test'
-    #         }
-    #         ]
-    #
-    #         out = db.put_itc_labels(info)
-    #         self.assertEqual(len(out), 1)
-    #         # cannot add same label twice
-    #
-    #         with redirect_stderr(StringIO()) as stdout:
-    #             with self.assertRaises(self._server_error) as context:
-    #                 info[0]['label'] = 2
-    #                 db.put_itc_labels(info)
-    #         info[0]['algo_name'] = 'another_algo'
-    #         out = db.put_itc_labels(info)
-    #         self.assertEqual(len(out), 1)
-    #
-    #         import pandas as pd
-    #         out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
-    #         self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
-    #
-    #     finally:
-    #         shutil.rmtree(temp_dir)
+    def test_tiled_tuboids(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+
+            series = [{'device': '08038ade',
+                       'start_datetime': '2020-07-08_20-00-00',
+                       'end_datetime': '2020-07-09_15-00-00',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
+            import pandas as pd
+            print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
+            #
+            self._clean_persistent_resources(db)
+            series = [{'device': '08038ade',
+                       'start_datetime': '2020-07-08_20-00-00',
+                       'end_datetime': '2020-07-09_15-00-00',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+
+        finally:
+            shutil.rmtree(temp_dir)
+
+    def test_itc_labels(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            series = [{'device': '%',
+                       'start_datetime': '2020-01-01_00-00-00',
+                       'end_datetime': '2020-12-31_00-00-00',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            # emp[ty dt should be returned if no series exist
+            db.get_tiled_tuboid_series_itc_labels(series)
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            # should be missing the itc fields
+            db.get_tiled_tuboid_series_itc_labels(series)
+            info = [{
+                'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
+                'algo_version': '1111-abce',
+                'algo_name': 'insect_tuboid_classifier',
+                'label': 1,
+                'pattern': 'Insecta.*',
+                'type':'Insecta',
+                'order': 'test',
+                'family':'test',
+                'genus': 'test'
+            }
+            ]
+            #
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            # cannot add same label twice
+
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    info[0]['label'] = 2
+                    db.put_itc_labels(info)
+            #
+            info[0]['algo_name'] = 'another_algo'
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            #
+            import pandas as pd
+            pd.set_option('display.max_rows', 500)
+            pd.set_option('display.max_columns', 500)
+            out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
+            # print(info[0]['tuboid_id'])
+            print(out)
+            # for i in range(len(out)):
+            #     print(out.tuboid_id[i])
+            # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+
+        finally:
+            shutil.rmtree(temp_dir)
 
 
 class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):

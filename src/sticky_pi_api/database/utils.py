@@ -22,8 +22,6 @@ class BaseCustomisations(Base):
 
     def __init__(self, api_user=None, **kwargs):
         kwargs['datetime_created'] = datetime.datetime.now()
-
-
         kwargs['api_user'] = api_user
         kwargs['api_version'] = __version__
 
