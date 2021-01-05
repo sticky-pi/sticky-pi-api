@@ -9,7 +9,8 @@ RUN set -e; \
 		libc-dev \
 		git \
 		musl-dev linux-headers  build-base libjpeg-turbo-dev  libpng-dev openblas-dev tiff-dev \
-		linux-headers;
+		linux-headers \
+		gettext libintl;
 
 
 # fixme remove (debug)
@@ -34,11 +35,10 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# debug:
-#ENV FLASK_APP app.py
-#ENV FLASK_RUN_HOST 0.0.0.0
-#ENV FLASK_ENV development
-#ENTRYPOINT ["flask", "run"]
+
+ARG API_PORT
+ENV API_PORT=$API_PORT
 
 # production
+RUN export API_PORT; envsubst '\$API_PORT' < uwsgi.ini-template > uwsgi.ini
 CMD ["uwsgi", "--ini", "uwsgi.ini"]

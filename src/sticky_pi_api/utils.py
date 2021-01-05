@@ -62,7 +62,7 @@ def format_io(func):
         elif hasattr(o, 'read'):
             return o
         else:
-            raise Exception('Un-parsable json object')
+            raise Exception('Un-parsable json object: %s' % o)
 
     def out_parser(o):
         for k, v in o.items():

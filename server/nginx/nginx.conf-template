@@ -1,0 +1,39 @@
+# server {
+#    listen 80;
+#    server_name api.${ROOT_DOMAIN_NAME};
+#    server_tokens off;
+
+#    location /.well-known/acme-challenge/ {
+#        root /var/www/certbot;
+#    }
+#
+#    location / {
+#        return 301 https://$host$request_uri;
+#    }
+# }
+
+server {
+    listen 80;
+    listen 443 ssl;
+
+    server_name api.${ROOT_DOMAIN_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {
+        include uwsgi_params;
+        uwsgi_pass spi_api:${API_PORT};
+        client_max_body_size 100M;
+
+        gzip on;
+        gzip_min_length 1000;
+        gzip_types text/plain application/xml application/json;
+    }
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+}

@@ -216,7 +216,7 @@ class BaseClient(BaseAPISpec, ABC):
             assert os.path.isfile(metadata_file)
             assert os.path.isfile(context_file)
             assert os.path.isfile(tuboid_file)
-            assert all([k in series_info.keys() for k in ('algo_name', 'algo_version', 'start_datetime', 'end_datetime', 'device') ])
+            assert all([k in series_info.keys() for k in ('algo_name', 'algo_version', 'start_datetime', 'end_datetime', 'device', 'n_images', ) ])
 
             return {'tuboid_id': dirname,
                     'series_info': series_info,

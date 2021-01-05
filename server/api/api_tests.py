@@ -35,7 +35,7 @@ class TestRemoteAPIEndToEnd(unittest.TestCase, LocalAndRemoteTests):
                        }
 
         s3 = boto3.resource('s3',**credentials)
-        # fixme. this deletes all existing objects inside the test s3. we hadcode the name to prevent deleteing important files by mistake
+        # fixme. this deletes all existing objects inside the test s3. we hadcode the name to prevent deleting important files by mistake
         # localslack should make this irrelevent (eventually)
         bucket = s3.Bucket('sticky-pi-api-dev')
         bucket.objects.delete()

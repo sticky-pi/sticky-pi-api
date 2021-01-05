@@ -1,4 +1,4 @@
 [uwsgi]
 wsgi-file = app.py
 callable = app
-socket = :8080
+socket = :${API_PORT}
