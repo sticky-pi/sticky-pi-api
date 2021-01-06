@@ -19,6 +19,7 @@ case "$1" in
              export EXTRA_ENV=.prod.env
             ;;
        prod-init)
+           export EXTRA_ENV=.prod.env
            export $(grep -v '^#' .env | xargs)
            export $(grep -v '^#' .prod.env | xargs)
            bash .init-letsencrypt.sh
