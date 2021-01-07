@@ -56,7 +56,7 @@ class LocalAndRemoteTests(object):
         finally:
             shutil.rmtree(temp_dir)
 
-
+    #
 
     def test_users(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -188,7 +188,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-    #
+
     def test_get_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
