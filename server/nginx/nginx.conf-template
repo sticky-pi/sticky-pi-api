@@ -11,7 +11,7 @@ server {
 }
 
 server {
-#    listen 80;
+    listen 80;
     listen 443 ssl;
 
     server_name api.${ROOT_DOMAIN_NAME};
@@ -30,8 +30,4 @@ server {
         gzip_min_length 1000;
         gzip_types text/plain application/xml application/json;
     }
-#
-#    location /.well-known/acme-challenge/ {
-#        root /var/www/certbot;
-#    }
 }

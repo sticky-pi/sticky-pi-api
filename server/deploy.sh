@@ -12,28 +12,26 @@ fi
 rsync -a ../src/ api/src
 
 
+docker-compose  down --remove-orphans  -v
+
 case "$1" in
+        test)
+            docker-compose  -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_api_tests
+            ;;
         devel)
-            export EXTRA_ENV=.devel.env
+            docker-compose  -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   -d
             ;;
        prod)
-             export EXTRA_ENV=.prod.env
+            docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml up --remove-orphans --build --force-recreate -d
             ;;
        prod-init)
-           export EXTRA_ENV=.prod.env
            export $(grep -v '^#' .env | xargs)
-           export $(grep -v '^#' .prod.env | xargs)
-           export $(grep -v '^#' ${EXTRA_ENV} | xargs)
-           docker-compose  down --remove-orphans  -v
+           export $(grep -v '^#' .secret.env | xargs)
            bash .init-letsencrypt.sh
            echo 'Certificates initialised. now run "deploy.sh prod"'
-           exit 0
            ;;
         *)
             echo "Wrong action: $1"
             exit 1
 esac
-export $(grep -v '^#' ${EXTRA_ENV} | xargs)
 
-# docker-compose config
-docker-compose up --remove-orphans --build --force-recreate -d

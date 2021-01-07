@@ -1,0 +1,14 @@
+server {
+    listen 80;
+    server_name api.${ROOT_DOMAIN_NAME};
+    location / {
+        include uwsgi_params;
+        uwsgi_pass spi_api:${API_PORT};
+        client_max_body_size 100M;
+
+        gzip on;
+        gzip_min_length 1000;
+        gzip_types text/plain application/xml application/json;
+    }
+
+}

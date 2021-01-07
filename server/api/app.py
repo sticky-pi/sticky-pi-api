@@ -138,6 +138,10 @@ def get_token():
 
 make_endpoint(api.get_users, role='admin')
 make_endpoint(api.put_users, role='admin')
+
+#todo
+# make_endpoint(api.delete_users, role="admin")
+
 make_endpoint(api.get_images, role="", what=True)
 make_endpoint(api.get_image_series, role="", what=True)
 make_endpoint(api.delete_images, role="admin")

@@ -2,37 +2,17 @@ version: '3'
 
 services:
   spi_db:
-    container_name: spi_db
-    image: mariadb
-    restart: always
     env_file:
-      - .env
-      - .secret.env
-      - ${EXTRA_ENV}
-#    volumes:
-#      - ${LOCAL_VOLUME_ROOT}/mysql:/var/lib/mysql
-
-    #todo volume here
+      - .devel.env
   spi_api:
-    build:
-      context: ./api
-      args:
-        API_PORT: ${API_PORT}
-    container_name: spi_api
-    restart: always
-    depends_on:
-      - spi_db
-    expose:
-      - ${API_PORT}
     env_file:
-      - .env
-      - .secret.env
-      - ${EXTRA_ENV}
+      - .devel.env
 
   spi_api_tests:
     build: ./api
     container_name: spi_api_tests
     command: 'python -m unittest api_tests.py'
+    restart: "no"
     depends_on:
       - spi_api
       - spi_db
@@ -40,56 +20,13 @@ services:
     env_file:
       - .env
       - .secret.env
-      - ${EXTRA_ENV}
+      - .devel.env
 
   spi_nginx:
-    build:
-      context: ./nginx
-      args:
-        API_PORT: ${API_PORT}
-        ROOT_DOMAIN_NAME: ${ROOT_DOMAIN_NAME}
-        TESTING: ${TESTING}
-    container_name: spi_nginx
-    restart: always
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-    ports:
-      - "80:80"
-      - "443:443"
     env_file:
-      - .env
-      - .secret.env
-      - ${EXTRA_ENV}
+      - .devel.env
+    build:
+      args:
+          TESTING: "TRUE"
+          ROOT_DOMAIN_NAME: "localhost"
 
-    volumes:
-      - ${LOCAL_VOLUME_ROOT}/data/certbot/conf:/etc/letsencrypt
-      - ${LOCAL_VOLUME_ROOT}/data/certbot/www:/var/www/certbot
-    depends_on:
-      - spi_api
-#
-#  spi_nginx_test:
-#    build:
-#      context: ./nginx
-#      args:
-#        API_PORT: ${API_PORT}
-#        ROOT_DOMAIN_NAME: ${ROOT_DOMAIN_NAME}
-#        TESTING: ${TESTING}
-#    container_name: spi_nginx_test
-#    restart: always
-#    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-#    ports:
-#      - "80:80"
-#      - "443:443"
-#    env_file:
-#      - .env
-#      - .secret.env
-#      - ${EXTRA_ENV}
-#    depends_on:
-#      - spi_api
-
-  #https://medium.com/@pentacent/nginx-and-lets-encrypt-with-docker-in-less-than-5-minutes-b4b8a60d3a71
-  certbot:
-    image: certbot/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    volumes:
-      - ${LOCAL_VOLUME_ROOT}/data/certbot/conf:/etc/letsencrypt
-      - ${LOCAL_VOLUME_ROOT}/data/certbot/www:/var/www/certbot

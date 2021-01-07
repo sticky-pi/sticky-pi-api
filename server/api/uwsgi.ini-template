@@ -2,3 +2,4 @@
 wsgi-file = app.py
 callable = app
 socket = :${API_PORT}
+#buffer-size = 32768
