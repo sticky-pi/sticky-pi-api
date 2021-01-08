@@ -11,7 +11,6 @@ fi
 # fixme rm this line
 rsync -a ../src/ api/src
 
-
 docker-compose  down --remove-orphans  -v
 
 case "$1" in
@@ -30,8 +29,8 @@ case "$1" in
            bash .init-letsencrypt.sh
            echo 'Certificates initialised. now run "deploy.sh prod"'
            ;;
-        *)
-            echo "Wrong action: $1"
-            exit 1
+       *)
+          echo "Wrong action: $1"
+          exit 1
 esac
 

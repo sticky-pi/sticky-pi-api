@@ -22,6 +22,11 @@ services:
       - .secret.env
       - .devel.env
 
+
+  spi_webapp:
+      env_file:
+        - .devel.env
+
   spi_nginx:
     env_file:
       - .devel.env

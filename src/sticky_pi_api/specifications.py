@@ -275,7 +275,7 @@ class BaseAPISpec(ABC):
         injection in this function.
 
         :param client_info: optional information about the client/user contains key ``'username'``
-        :return: a dictionary with the keys ``'token'`` and ``'expiration'``, an ascii formated token,
+        :return: a dictionary with the keys ``'token'`` and ``'expiration'``, an ascii formatted token,
             and expiration timestamp, respectively
         """
         pass

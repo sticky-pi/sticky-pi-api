@@ -40,17 +40,19 @@ def create_initial_admin(api):
 
 
 # set logging according to productions/devel/testing
-logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S', level=logging.DEBUG)
-
 
 if os.getenv('DEVEL') and os.getenv('DEVEL').lower() == "true":
-    logging.getLogger().setLevel(logging.INFO)
+    log_lev = logging.INFO
     logging.info('Devel mode ON')
 
-if os.getenv('DEBUG') and os.getenv('DEBUG').lower() == "true":
-    logging.getLogger().setLevel(logging.DEBUG)
+elif os.getenv('DEBUG') and os.getenv('DEBUG').lower() == "true":
+    log_lev = logging.DEBUG
     logging.info('Debug mode ON')
+else:
+    log_lev = logging.WARNING
+
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S', level=log_lev)
 
 
 conf = RemoteAPIConf()

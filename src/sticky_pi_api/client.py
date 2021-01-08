@@ -481,7 +481,6 @@ class RemoteAPIConnector(BaseAPISpec):
 
 @decorate_all_methods(format_io, exclude=['__init__'])
 class RemoteClient(RemoteAPIConnector, BaseClient):
-
     def __init__(self, local_dir: str, host, username, password, protocol: str = 'https', port: int = 443,  n_threads: int = 8):
         BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)
         RemoteAPIConnector.__init__(self, host, username, password, protocol, port)

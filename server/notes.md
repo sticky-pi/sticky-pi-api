@@ -69,14 +69,17 @@ password='<PASSWORD>'
 
 from sticky_pi_api.client import RemoteClient
 import glob
+import logging
+
+logging.getLogger().setLevel(logging.INFO)
 rc = RemoteClient('/tmp/local_spi', 'api.sticky-pi.com', 'admin', password)
 
 #fixme
-ims = glob.glob('<IMDIR>/*.jpg')
+ims = glob.glob('<IMDIR>/**/*.jpg')
 
-rc.put_images(ims[0:3]) 
-rc.get_image_series([{'device': '08038ade', 
+rc.put_images(ims) 
+rc.get_image_series([{'device': '%', 
                       'start_datetime': '2019-01-01_00-00-00', 
                       'end_datetime': '2029-01-01_00-00-00'}],
-                    what='image')
+                    what='thumbnail_mini')
 ```
