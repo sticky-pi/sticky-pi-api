@@ -636,10 +636,20 @@ class BaseAPI(BaseAPISpec, ABC):
                     logging.warning('No data for series %s' % str(i))
                     # raise Exception("more than one match for %s" % i)
 
-                for img in q.all():
+                # concurrently get multiple urls
+                import multiprocessing.dummy
+                def mapping_fun(img):
                     img_dict = img.to_dict()
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
-                    out.append(img_dict)
+                    return img_dict
+
+                p = multiprocessing.dummy.Pool(32)
+                out = p.map(mapping_fun, q.all())
+
+                # for img in q.all():
+                #     img_dict = img.to_dict()
+                #     img_dict['url'] = self._storage.get_url_for_image(img, what)
+                #     out.append(img_dict)
             return out
         finally:
             session.close()

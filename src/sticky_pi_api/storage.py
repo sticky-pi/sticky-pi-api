@@ -246,7 +246,6 @@ class DiskStorage(BaseStorage):
 
 class S3Storage(BaseStorage):
 
-
     _expiration = 3600
 
     def __init__(self, api_conf: RemoteAPIConf, *args, **kwargs):
