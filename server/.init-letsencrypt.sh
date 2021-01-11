@@ -2,6 +2,8 @@
 
 ## from https://raw.githubusercontent.com/wmnnd/nginx-certbot/master/init-letsencrypt.sh
 
+alias docker-compose="docker-compose -f docker-compose.yml  -f docker-compose.prod.yml"
+
 if ! [ -x "$(command -v docker-compose)" ]; then
   echo 'Error: docker-compose is not installed.' >&2
   exit 1
@@ -14,7 +16,8 @@ if [ -z ${ADMIN_EMAIL} ]; then echo "ADMIN_EMAIL undefined" ; exit 1; fi
 if [ -z ${LOCAL_VOLUME_ROOT} ]; then echo "LOCAL_VOLUME_ROOT undefined" ; exit 1; fi
 
 
-domains=(api.${ROOT_DOMAIN_NAME} webapp.${ROOT_DOMAIN_NAME})
+domains=(${ROOT_DOMAIN_NAME} api.${ROOT_DOMAIN_NAME} webapp.${ROOT_DOMAIN_NAME})
+echo ${domains[*]}
 rsa_key_size=4096
 data_path="${LOCAL_VOLUME_ROOT}/data/certbot"
 email=${ADMIN_EMAIL} # Adding a valid address is strongly recommended
@@ -37,9 +40,10 @@ if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/
 fi
 
 echo "### Creating dummy certificate for $domains ..."
+
 path="/etc/letsencrypt/live/$domains"
 mkdir -p "$data_path/conf/live/$domains"
-docker-compose run --rm --entrypoint "\
+docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entrypoint "\
   openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1\
     -keyout '$path/privkey.pem' \
     -out '$path/fullchain.pem' \
@@ -48,21 +52,22 @@ echo
 
 
 echo "### Starting nginx ..."
-docker-compose up --force-recreate -d spi_nginx
+docker-compose -f docker-compose.yml  -f docker-compose.prod.yml up --force-recreate -d spi_nginx
 echo
 
 echo "### Deleting dummy certificate for $domains ..."
-docker-compose run --rm --entrypoint "\
+docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entrypoint "\
   rm -Rf /etc/letsencrypt/live/$domains && \
   rm -Rf /etc/letsencrypt/archive/$domains && \
   rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
 echo
 
 
-echo "### Requesting Let's Encrypt certificate for $domains ..."
+
 #Join $domains to -d args
 domain_args=""
 for domain in "${domains[@]}"; do
+  echo "### Requesting Let's Encrypt certificate for $domain ..."
   domain_args="$domain_args -d $domain"
 done
 
@@ -75,7 +80,7 @@ esac
 # Enable staging mode if needed
 if [ $staging != "0" ]; then staging_arg="--staging"; fi
 
-docker-compose run --rm --entrypoint "\
+docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     $staging_arg \
     $email_arg \
@@ -86,4 +91,4 @@ docker-compose run --rm --entrypoint "\
 echo
 
 echo "### Reloading nginx ..."
-docker-compose exec spi_nginx nginx -s reload
+docker-compose -f docker-compose.yml  -f docker-compose.prod.yml exec spi_nginx nginx -s reload

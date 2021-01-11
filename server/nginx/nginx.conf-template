@@ -14,8 +14,8 @@ server {
     listen 443 ssl;
     server_name api.${ROOT_DOMAIN_NAME};
 
-    ssl_certificate /etc/letsencrypt/live/api.${ROOT_DOMAIN_NAME}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.${ROOT_DOMAIN_NAME}/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -47,8 +47,8 @@ server {
             gzip on;
             gzip_min_length 1000;
     }
-    ssl_certificate /etc/letsencrypt/live/webapp.${ROOT_DOMAIN_NAME}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/webapp.${ROOT_DOMAIN_NAME}/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 }
