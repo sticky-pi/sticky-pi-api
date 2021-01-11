@@ -7,6 +7,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
+import multiprocessing.dummy
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import sqlite3
@@ -636,20 +637,14 @@ class BaseAPI(BaseAPISpec, ABC):
                     logging.warning('No data for series %s' % str(i))
                     # raise Exception("more than one match for %s" % i)
 
-                # concurrently get multiple urls
-                import multiprocessing.dummy
                 def mapping_fun(img):
                     img_dict = img.to_dict()
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
                     return img_dict
 
-                p = multiprocessing.dummy.Pool(32)
+                p = multiprocessing.dummy.Pool(16)
                 out = p.map(mapping_fun, q.all())
 
-                # for img in q.all():
-                #     img_dict = img.to_dict()
-                #     img_dict['url'] = self._storage.get_url_for_image(img, what)
-                #     out.append(img_dict)
             return out
         finally:
             session.close()
