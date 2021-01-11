@@ -49,18 +49,19 @@ handle_new_experiment_metavariable <- function(dt,  name, code){
   return(map[[code]](name))
 }
 
-image_ids_in_scope <- function(state, input){
+images_in_scope <- function(state, input){
   req(state$data_scope$selected_experiment)
   sel <- state$data_scope$selected_experiment
   if(sel == 0){
     req(input$data_scope_dates)
     dates <- as.Date(input$data_scope_dates)
-    sel_ids <- api_get_images(state, dates)
+    images <- api_get_images(state, dates)
   }
   else{
-    sel_ids <- api_get_images_id_for_experiment(state, sel)
+    #fixme
+    images <- api_get_images_id_for_experiment(state, sel)
   }
-  unlist(sel_ids)
+  images
 }
 
 datatable_options <- function(d, excluded_names="ID"){
@@ -275,7 +276,7 @@ downloadHandler(
       'data.csv.gz'
     },
     content = function(file) {
-      data = get_comp_prop(state, 'all_image_data')
+      data = get_comp_prop(state, 'all_images_data')
       req(data)
       data = data[, grep('^\\.',colnames(data), invert=T), with=FALSE]
       fwrite(data, file, row.names = FALSE)

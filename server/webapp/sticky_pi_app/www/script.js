@@ -11,7 +11,7 @@ shinyjs.click_thumbnail_button = function (args) {
       };
   params = shinyjs.getParams(args, defaultParams);
   const annot_obj = JSON.parse(params.annotation_json);
-//  console.log(annot_obj);
+  console.log("click_thumbnail_button");
 
   var call = "";
   if(params.urls[0]!= null){

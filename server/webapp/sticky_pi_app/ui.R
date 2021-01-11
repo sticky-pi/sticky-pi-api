@@ -12,8 +12,8 @@ side_panel <- function(state){renderUI({
     if (state$user$is_logged_in == TRUE ){
         # scope <- h2(sprintf("Scope:\n%i images\n%i devices", user$scope$n_images, user$scope$n_devices))
         # scope <- h2(sprintf("\n%i images in scope", length(state$data_scope$selected_image_ids)))
-        data <- get_comp_prop(state, "image_ids_in_scope") # fixme, canno call by deparsing...?
-        scope <- h3(id='scope_title', sprintf(" %i", length(data)), br()," images in scope")
+        data <- get_comp_prop(state, "images_in_scope") # fixme, canno call by deparsing...?
+        scope <- h3(id='scope_title', sprintf(" %i", nrow(data)), br()," images in scope")
       # scope <- h2("images in scope")
       sidebarMenu(
         scope,
@@ -33,7 +33,7 @@ make_ui <- function(){
     sidebar <- dashboardSidebar(uiOutput("sidebarpanel"))
 
     body <- dashboardBody(shinyjs::useShinyjs(),
-                          shinyjs::extendShinyjs(script = 'www/script.js', functions='click_thumbnail_button'),
+                          shinyjs::extendShinyjs('script.js', functions='click_thumbnail_button'),
                           tags$head(
           tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
         ),uiOutput("body"))
@@ -127,7 +127,7 @@ renderUI({
         ),
         tabItem(tabName ="data",
                 fluidRow(
-                  box(width = 12, dataTableOutput('all_image_data'))
+                  box(width = 12, dataTableOutput('all_images_data'))
                 )
               )
       )

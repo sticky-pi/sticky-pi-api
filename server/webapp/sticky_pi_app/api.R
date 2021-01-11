@@ -12,12 +12,43 @@ api_verify_passwd <- function(state, u, p){
   return(token$token)
 }
 
+
+api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annotations="data"){
+
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  dt <- get_comp_prop(state, all_images_data)
+
+  query = dt[id %in% ids, .(device, datetime)]
+  query[, datetime:=strftime(as.POSIXct(datetime), '%Y-%m-%d_%H-%M-%S', tz='GMT')]
+  post <- jsonlite::toJSON(query)
+  api_entry = "get_images"
+  url =sprintf('%s://%s:%s/%s/%s', state$config$PROTOCOL,
+                state$config$API_ROOT_URL,state$config$API_PORT, api_entry,
+                what_images)
+  print(post)
+  print(url)
+  o = POST(url, body=post,
+          authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text')
+  print(ct)
+  dt <- jsonlite::fromJSON(ct)
+  print(dt)
+  out = as.list( dt$url)
+  print(out)
+  out
+
+}
+
+
 api_get_images <- function(state, dates, what_images="thumbnail-mini", what_annotations="metadata"){
 
   state$updaters$api_fetch_time
   token <- state$user$auth_token
   api_entry = "get_image_series"
-  url  =sprintf('%s://%s:%s/%s/%s', state$config$PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_images)
+  url  =sprintf('%s://%s:%s/%s/%s', state$config$PROTOCOL,
+                state$config$API_ROOT_URL,state$config$API_PORT, api_entry,
+                what_images)
 
   dates <- strftime(as.POSIXct(dates), '%Y-%m-%d_%H-%M-%S', tz='GMT')
 
@@ -33,9 +64,13 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
 
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
+
+
   if(nrow(images) == 0){
-    return()
+    return(data.table())
   }
+
+
 
   post <- jsonlite::toJSON(images[, .(device, datetime)])
   api_entry = 'get_uid_annotations'
@@ -48,6 +83,28 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
   annotations <- as.data.table(dt)
   print('annotations')
   print(annotations)
+  if(nrow(annotations) == 0){
+    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0))
+  }
+  images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
+
+  print('merged')
+  print(images)
+
+    # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
+  # We will then just convert timezone when rendering
+
+  o <- as.data.table(
+    lapply(names(images),function(x){
+      if(x %like% "*datetime*")
+        fasttime::fastPOSIXct(images[[x]], tz='UTC')
+      else
+        images[[x]]
+    })
+  )
+  setnames(o, colnames(images))
+  images <- o
+
   images
 }
 

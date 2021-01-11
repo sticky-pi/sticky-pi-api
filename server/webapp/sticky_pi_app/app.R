@@ -43,8 +43,8 @@ server <- function(input, output, session) {
 
     state <- set_comp_prop(state, experiment_table)
     state <- set_comp_prop(state, experiment_list_table)
-    state <- set_comp_prop(state, image_ids_in_scope)
-    state <- set_comp_prop(state, all_image_data)
+    state <- set_comp_prop(state, images_in_scope)
+    state <- set_comp_prop(state, all_images_data)
 
     observe({login_fun(state, input)})
 
@@ -85,7 +85,7 @@ server <- function(input, output, session) {
     #output$experiment_list_table = render_experiment_list_table(state)
     #output$experiment_table =   render_experiment_table(state)
 
-    output$all_image_data = DT::renderDataTable(get_comp_prop(state, all_image_data))
+    output$all_imagess_data = DT::renderDataTable(get_comp_prop(state, all_image_data))
     output$time_plot = render_time_plot(state, input)
     
     output$time_plot_tooltip_widget <- render_time_plot_tooltip(state, input)
