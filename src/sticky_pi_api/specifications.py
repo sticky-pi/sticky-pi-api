@@ -642,20 +642,16 @@ class BaseAPI(BaseAPISpec, ABC):
                 logging.warning('dicts')
                 for img in q.all():
                     img_dict = img.to_dict()
+                    img_dict['url'] = self._storage.get_url_for_image(img, what)
                     out.append(img_dict)
-
-                logging.warning('urls')
-                def mapping_fun(img_):
-                    return self._storage.get_url_for_image(img_, what)
-
-                logging.warning('p0' % i)
-                #fixme this should be some parameter...
-                pool = Pool(16)
-                logging.warning('p1' % i)
-
-                urls = pool.map(mapping_fun, out)
-                for j in range(urls):
-                    out[j]['url'] = urls[j]
+                #
+                # from joblib import Parallel, delayed
+                # urls = Parallel(n_jobs=8)(delayed(mapping_fun)(img, storage=self._storage) for img in q.all())
+                #
+                # logging.warning('p0' % i)
+                #
+                # for j, u in enumerate(urls):
+                #     out[j]['url'] = u
 
             return out
         finally:

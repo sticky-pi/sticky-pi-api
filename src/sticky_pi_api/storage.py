@@ -127,11 +127,11 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    def get_url_for_image(self, image: Dict, what: str = 'metadata') -> str:
+    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
         """
         Retrieves the URL to the file corresponding to an image in the database.
 
-        :param image: an dict reprensenting an Image object
+        :param image: an image object
         :param what:  One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
         :return: a url/path as a string. For ``what='metadata'``, an empty string is returned. for consistency
         """
@@ -216,11 +216,11 @@ class DiskStorage(BaseStorage):
             os.remove(to_del)
         os.rmdir(target_dir)
 
-    def get_url_for_image(self, image: Dict, what: str = 'metadata') -> str:
+    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
         if what == 'metadata':
             return ""
 
-        url = os.path.join(self._local_dir, self._raw_images_dirname, image['device'], image['filename'])
+        url = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
         if what == "thumbnail":
             url += ".thumbnail"
         elif what == "thumbnail_mini":
@@ -290,10 +290,10 @@ class S3Storage(BaseStorage):
 
     def _image_key(self, image, suffix):
         return os.path.join(self._raw_images_dirname,
-                            image['device'],
-                            image['filename'] + suffix)
+                            image.device,
+                            image.filename + suffix)
 
-    def get_url_for_image(self, image: Dict, what: str = 'metadata') -> str:
+    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
         if what == 'metadata':
             return ""
         suffix = self._suffix_map[what]
