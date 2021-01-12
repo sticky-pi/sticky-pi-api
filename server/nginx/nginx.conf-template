@@ -1,6 +1,12 @@
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+      }
+
+
 server {
    listen 80;
-   server_name api.${ROOT_DOMAIN_NAME};
+   server_name ${ROOT_DOMAIN_NAME};
    server_tokens off;
    location /.well-known/acme-challenge/ {
        root /var/www/certbot;
@@ -30,14 +36,21 @@ server {
 }
 
 server {
+#    listen 80;
     listen 443 ssl;
     server_name webapp.${ROOT_DOMAIN_NAME};
 
+    # apparently this is needed for shiny server
     location / {
-            proxy_pass http://spi_webapp:${WEBAPP_PORT};
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_pass http://spi_webapp;
+            proxy_redirect http://spi_webapp/ $scheme://$host/;
+
+#            proxy_set_header Host webapp.${ROOT_DOMAIN_NAME};
+#            proxy_set_header X-Real-IP $remote_addr;
+#            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
             proxy_connect_timeout 150;
             proxy_send_timeout 100;
             proxy_read_timeout 100;
@@ -47,9 +60,9 @@ server {
             gzip on;
             gzip_min_length 1000;
     }
-    ssl_certificate /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+   ssl_certificate /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/fullchain.pem;
+   ssl_certificate_key /etc/letsencrypt/live/${ROOT_DOMAIN_NAME}/privkey.pem;
+   include /etc/letsencrypt/options-ssl-nginx.conf;
+   ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 }
 
