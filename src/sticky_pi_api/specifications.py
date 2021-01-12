@@ -643,13 +643,15 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 logging.warning('p0' % i)
 
-                pool = Pool(16)
+                pool = Pool(64)
                 logging.warning('p1' % i)
-                for img in q.all():
-                    pool.apply_async(mapping_fun, (img,))
-                pool.close()
-                pool.join()
-                # urls = p.map(mapping_fun, q.all())
+                # for img in q.all():
+                #     pool.apply_async(mapping_fun, (img,))
+                #
+                urls = pool.map(mapping_fun, q.all())
+                # pool.join()
+                # pool.close()
+
                 logging.warning('url' % i)
                 for img, u in zip(q, urls):
                     img_dict = img.to_dict()
