@@ -642,7 +642,7 @@ class BaseAPI(BaseAPISpec, ABC):
                     return self._storage.get_url_for_image(img, what)
 
                 logging.warning('p0' % i)
-                p = multiprocessing.dummy.Pool(16)
+                p = multiprocessing.dummy.Pool(128)
                 logging.warning('p1' % i)
                 urls = p.map(mapping_fun, q.all())
                 logging.warning('url' % i)
