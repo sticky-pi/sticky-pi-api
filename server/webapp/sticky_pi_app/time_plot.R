@@ -131,7 +131,7 @@ populate_thumbail_show <- function(state, input, val=NULL){
      raw_img_width = dt[id==id_, width]
   else
      raw_img_width = 0
-  
+
   js$click_thumbnail_button(id=id_,  urls=thumbnail_urls, text=text,
                             raw_url=raw_url,
                             annotation_json= annot,

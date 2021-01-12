@@ -627,19 +627,23 @@ class BaseAPI(BaseAPISpec, ABC):
 
             info = copy.deepcopy(info)
             for i in info:
+                logging.warning('info: %s' % i )
                 i['start_datetime'] = string_to_datetime(i['start_datetime'])
                 i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                                  Images.datetime < i['end_datetime'],
                                                  Images.device.like(i['device']))
-
+                logging.warning('q: %s' % q)
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
                     # raise Exception("more than one match for %s" % i)
 
                 def mapping_fun(img):
+                    logging.warning('a')
                     img_dict = img.to_dict()
+                    logging.warning('b')
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
+                    logging.warning('c')
                     return img_dict
 
                 p = multiprocessing.dummy.Pool(16)
