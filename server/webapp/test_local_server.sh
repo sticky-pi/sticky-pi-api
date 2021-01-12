@@ -1,5 +1,5 @@
 export API_ROOT_URL=api.sticky-pi.com
-export API_PORT=443
+export API_PROTOCOL=https
 export STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN=FALSE
 export STICKY_PI_TESTING_USER=admin
 

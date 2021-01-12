@@ -13,7 +13,7 @@ config_vars <- list(MYSQL_DATABASE = NA,
                  STICKY_PI_TESTING_RSHINY_AUTOLOGIN = FALSE,
                  STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN = FALSE,
                  STICKY_PI_TESTING_RSHINY_USE_MOCK_API = FALSE,
-                 PROTOCOL = "https"
+                 API_PROTOCOL = "http"
 )
 
 get_config<- function(){
