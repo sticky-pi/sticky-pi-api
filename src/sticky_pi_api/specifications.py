@@ -647,7 +647,8 @@ class BaseAPI(BaseAPISpec, ABC):
                 logging.warning('p1' % i)
                 for img in q.all():
                     pool.apply_async(mapping_fun, (img,))
-
+                pool.close()
+                pool.join()
                 # urls = p.map(mapping_fun, q.all())
                 logging.warning('url' % i)
                 for img, u in zip(q, urls):
