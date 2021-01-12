@@ -7,7 +7,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
-from multiprocessing.pool import ThreadPool as Pool
+from multiprocessing.pool import  Pool
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import sqlite3
@@ -638,26 +638,25 @@ class BaseAPI(BaseAPISpec, ABC):
                     logging.warning('No data for series %s' % str(i))
                     # raise Exception("more than one match for %s" % i)
 
+
+                logging.warning('dicts')
+                for img in q.all():
+                    img_dict = img.to_dict()
+                    out.append(img_dict)
+
+                logging.warning('urls')
                 def mapping_fun(img_):
                     return self._storage.get_url_for_image(img_, what)
 
                 logging.warning('p0' % i)
-
-                pool = Pool(64)
+                #fixme this should be some parameter...
+                pool = Pool(16)
                 logging.warning('p1' % i)
-                # for img in q.all():
-                #     pool.apply_async(mapping_fun, (img,))
-                #
-                urls = pool.map(mapping_fun, q.all())
-                # pool.join()
-                # pool.close()
 
-                logging.warning('url' % i)
-                for img, u in zip(q, urls):
-                    img_dict = img.to_dict()
-                    img_dict['url'] = u
-                    out.append(img_dict)
-                logging.warning('qu' % i)
+                urls = pool.map(mapping_fun, out)
+                for j in range(urls):
+                    out[j]['url'] = urls[j]
+
             return out
         finally:
             session.close()
