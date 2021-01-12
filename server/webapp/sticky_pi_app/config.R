@@ -7,14 +7,14 @@ config_vars <- list(MYSQL_DATABASE = NA,
                  MYSQL_SERVER_IP = NA,
                  MYSQL_PASSWORD = NA,
                  MYSQL_READER_PASSWORD = NA,
-                 API_HOST = NA, #hostname, IP, domain name...
-                 #API_PORT = NA, #hostname, IP, domain name...
+                 API_ROOT_URL = NA, #hostname, IP, domain name...
+                 API_PORT = NA, #hostname, IP, domain name...
                  STICKY_PI_TESTING_USER = NA,
                  STICKY_PI_TESTING_PASSWORD = NA, 
                  STICKY_PI_TESTING_RSHINY_AUTOLOGIN = FALSE,
                  STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN = FALSE,
                  STICKY_PI_TESTING_RSHINY_USE_MOCK_API = FALSE,
-                 API_PROTOCOL = "https"
+                 API_PROTOCOL = "http"
 )
 
 get_config<- function(){

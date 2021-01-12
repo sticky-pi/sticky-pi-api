@@ -1,6 +1,6 @@
 
 api_verify_passwd <- function(state, u, p){
-  url  =sprintf('%s://%s/get_token', state$config$API_PROTOCOL, state$config$API_HOST)
+  url  =sprintf('%s://%s:%s/get_token', state$config$PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT)
   o = POST(url,
           authenticate(u, p, type = "basic"), content_type("application/json"))
   if(o$status_code != 200){
@@ -23,9 +23,10 @@ api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annot
   query[, datetime:=strftime(as.POSIXct(datetime), '%Y-%m-%d_%H-%M-%S', tz='GMT')]
   post <- jsonlite::toJSON(query)
   api_entry = "get_images"
-  url =sprintf('%s://%s/%s/%s', state$config$API_PROTOCOL,
-                state$config$API_HOST, api_entry,
+  url =sprintf('%s://%s:%s/%s/%s', state$config$PROTOCOL,
+                state$config$API_ROOT_URL,state$config$API_PORT, api_entry,
                 what_images)
+
   o = POST(url, body=post,
           authenticate(token, "", type = "basic"), content_type("application/json"))
   ct <- content(o, as='text')
@@ -44,8 +45,8 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
   state$updaters$api_fetch_time
   token <- state$user$auth_token
   api_entry = "get_image_series"
-  url  =sprintf('%s://%s/%s/%s', state$config$API_PROTOCOL,
-                state$config$API_HOST, api_entry,
+  url  =sprintf('%s://%s:%s/%s/%s', state$config$PROTOCOL,
+                state$config$API_ROOT_URL,state$config$API_PORT, api_entry,
                 what_images)
 
   dates <- strftime(as.POSIXct(dates), '%Y-%m-%d_%H-%M-%S', tz='GMT')
@@ -72,17 +73,19 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
 
   post <- jsonlite::toJSON(images[, .(device, datetime)])
   api_entry = 'get_uid_annotations'
-  url  =sprintf('%s://%s/%s/%s', state$config$API_PROTOCOL, state$config$API_HOST, api_entry, what_annotations)
+  url  =sprintf('%s://%s:%s/%s/%s', state$config$PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
   o = POST(url, body=post,
           authenticate(token, "", type = "basic"), content_type("application/json"))
 
   ct <- content(o, as='text')
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
+
   if(nrow(annotations) == 0){
     annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0))
   }
   images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
+
     # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
   # We will then just convert timezone when rendering
 
