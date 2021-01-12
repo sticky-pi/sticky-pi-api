@@ -639,16 +639,17 @@ class BaseAPI(BaseAPISpec, ABC):
                     # raise Exception("more than one match for %s" % i)
 
                 def mapping_fun(img):
-                    logging.warning('a')
-                    img_dict = img.to_dict()
-                    logging.warning('b')
-                    img_dict['url'] = self._storage.get_url_for_image(img, what)
-                    logging.warning('c')
-                    return img_dict
+                    return self._storage.get_url_for_image(img, what)
+
 
                 p = multiprocessing.dummy.Pool(16)
-                out = p.map(mapping_fun, q.all())
-
+                logging.warning('p' % i)
+                urls = p.map(mapping_fun, q.all())
+                logging.warning('url' % i)
+                for img, u in zip(q, urls):
+                    img_dict = img.to_dict()
+                    img_dict['url'] = u
+                logging.warning('qu' % i)
             return out
         finally:
             session.close()
