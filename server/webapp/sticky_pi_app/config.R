@@ -8,7 +8,6 @@ config_vars <- list(MYSQL_DATABASE = NA,
                  MYSQL_PASSWORD = NA,
                  MYSQL_READER_PASSWORD = NA,
                  API_ROOT_URL = NA, #hostname, IP, domain name...
-                 API_PORT = NA,
                  STICKY_PI_TESTING_USER = NA, 
                  STICKY_PI_TESTING_PASSWORD = NA, 
                  STICKY_PI_TESTING_RSHINY_AUTOLOGIN = FALSE,

@@ -1,7 +1,7 @@
-    map $http_upgrade $connection_upgrade {
-        default upgrade;
-        ''      close;
-      }
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+  }
 
 
 server {
@@ -36,19 +36,13 @@ server {
 }
 
 server {
-#    listen 80;
     listen 443 ssl;
     server_name webapp.${ROOT_DOMAIN_NAME};
 
-    # apparently this is needed for shiny server
+
     location / {
             proxy_pass http://spi_webapp;
             proxy_redirect http://spi_webapp/ $scheme://$host/;
-
-#            proxy_set_header Host webapp.${ROOT_DOMAIN_NAME};
-#            proxy_set_header X-Real-IP $remote_addr;
-#            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
             proxy_connect_timeout 150;
