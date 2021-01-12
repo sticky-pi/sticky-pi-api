@@ -112,16 +112,18 @@ populate_thumbail_show <- function(state, input, val=NULL){
   previous_img_id <- dt[id==id_, previous_ID]
   next_img_id <- dt[id==id_, next_ID]
 
-  thumbnail_urls <- api_fetch_download_s3(state, c(previous_img_id, id_, next_img_id))
-  raw_url= api_fetch_download_s3(state, id_, what_images = 'image')
+  thumbnails <- api_fetch_download_s3(state, c(previous_img_id, id_, next_img_id))
+  thumbnail_urls = as.list(thumbnails$url)
+  raw_url= api_fetch_download_s3(state, id_, what_images = 'image', what_annotations = 'data')$url
 
 
   text = as.character(make_modal_text(state, dt[id==id_]))
 
   thumbnail_urls <- sapply(thumbnail_urls, function(x)ifelse(is.null(x), NA, x))
 
-  if('json' %in% colnames(dt))
-     annot = dt[id==id_, json]
+  if(!is.na(thumbnails[ id == id_, json])){
+    annot = thumbnails[ id == id_, json]
+  }
   else
      annot = NA
 
@@ -129,13 +131,7 @@ populate_thumbail_show <- function(state, input, val=NULL){
      raw_img_width = dt[id==id_, width]
   else
      raw_img_width = 0
-
-  print('thumbnail_urls')
-  print(thumbnail_urls)
-  print(raw_url)
-  print(raw_img_width)
-  print(text)
-  print(js$click_thumbnail_button)
+  
   js$click_thumbnail_button(id=id_,  urls=thumbnail_urls, text=text,
                             raw_url=raw_url,
                             annotation_json= annot,

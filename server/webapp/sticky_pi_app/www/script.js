@@ -43,16 +43,15 @@ shinyjs.click_thumbnail_button = function (args) {
   // draw actual annotations on the client side
   //var ctx = canvas.getContext("2d");
   var ctx =  $("canvas#current_thumbnail")[0].getContext('2d');
-
-    ctx.clearRect(0, 0, $("canvas#current_thumbnail")[0].width, $("canvas#current_thumbnail")[0].height);
-  if(params.raw_img_width == 0)
+  ctx.clearRect(0, 0, $("canvas#current_thumbnail")[0].width, $("canvas#current_thumbnail")[0].height);
+  if(params.raw_img_width == 0 || annot_obj === null)
     return null;
   ctx.lineWidth = 5;
   var raw_img_width = params.raw_img_width;
-  // fixme this number is hardcodedin the dimention of the canvas
+  // fixme this number is hard-coding the dimension of the canvas
   var ratio = raw_img_width/ 1200;
   console.log(ratio);
-  console.log(annot_obj.annotations);
+  ;
   for(j in annot_obj.annotations){
       var a = annot_obj.annotations[j];
       if(a.contour.length >2){

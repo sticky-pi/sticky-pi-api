@@ -32,11 +32,33 @@ api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annot
   ct <- content(o, as='text')
 
   dt <- jsonlite::fromJSON(ct)
+  images <- as.data.table(dt)
 
-  out = as.list( dt$url)
+  api_entry = 'get_uid_annotations'
+  url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
+  o = POST(url, body=post,
+          authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text')
+  dt <- jsonlite::fromJSON(ct)
+  annotations <- as.data.table(dt)
+  if(nrow(annotations) == 0){
+    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0))
+  }
+  images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
 
-  out
+    # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
+  # We will then just convert timezone when rendering
 
+  o <- as.data.table(
+    lapply(names(images),function(x){
+      if(x %like% "*datetime*")
+        fasttime::fastPOSIXct(images[[x]], tz='UTC')
+      else
+        images[[x]]
+    })
+  )
+  setnames(o, colnames(images))
+  images <- o
 }
 
 
@@ -82,7 +104,7 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
   annotations <- as.data.table(dt)
 
   if(nrow(annotations) == 0){
-    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0))
+    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0))
   }
   images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
 
