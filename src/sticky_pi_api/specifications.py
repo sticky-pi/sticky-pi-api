@@ -641,14 +641,15 @@ class BaseAPI(BaseAPISpec, ABC):
                 def mapping_fun(img):
                     return self._storage.get_url_for_image(img, what)
 
-
+                logging.warning('p0' % i)
                 p = multiprocessing.dummy.Pool(16)
-                logging.warning('p' % i)
+                logging.warning('p1' % i)
                 urls = p.map(mapping_fun, q.all())
                 logging.warning('url' % i)
                 for img, u in zip(q, urls):
                     img_dict = img.to_dict()
                     img_dict['url'] = u
+                    out.append(img_dict)
                 logging.warning('qu' % i)
             return out
         finally:
