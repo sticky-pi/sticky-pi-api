@@ -8,6 +8,7 @@ import json
 from decimal import Decimal
 import re
 import datetime
+import functools
 
 STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
@@ -49,45 +50,49 @@ def chunker(seq, size: int):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
-import functools
-def format_io(func):
-    def io_converter(o):
-        if isinstance(o, datetime.datetime):
-            if o:
-                return datetime_to_string(o)
-            else:
-                return None
-        elif isinstance(o, Decimal):
-            return float(o)
-        elif hasattr(o, 'read'):
-            return o
-        else:
-            raise Exception('Un-parsable json object: %s' % o)
 
-    def out_parser(o):
-        for k, v in o.items():
-            if isinstance(v, str) and re.search(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$", v):
-                o[k] = string_to_datetime(o[k])
+
+def json_io_converter(o):
+    if isinstance(o, datetime.datetime):
+        if o:
+            return datetime_to_string(o)
+        else:
+            return None
+    elif isinstance(o, Decimal):
+        return float(o)
+    elif hasattr(o, 'read'):
         return o
+    else:
+        raise Exception('Un-parsable json object: %s' % o)
+
+
+def json_out_parser(o):
+    for k, v in o.items():
+        if isinstance(v, str) and re.search(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$", v):
+            o[k] = string_to_datetime(o[k])
+    return o
+
+
+def format_io(func):
 
     @functools.wraps(func)
     def _format_input_output(self, *args, **kwargs):
         formated_a = []
         for a in args:
-            json_a = json.dumps(a, default=io_converter)
+            json_a = json.dumps(a, default=json_io_converter)
             a = json.loads(json_a)
             formated_a.append(a)
 
         formated_k = {}
         for k, v in kwargs.items():
-            json_v = json.dumps(v, default=io_converter)
+            json_v = json.dumps(v, default=json_io_converter)
             v = json.loads(json_v)
             formated_k[k] = v
 
         out = func(self, *formated_a, **formated_k)
-        json_out = json.dumps(out, default=io_converter)
+        json_out = json.dumps(out, default=json_io_converter)
 
-        out = json.loads(json_out, object_hook=out_parser)
+        out = json.loads(json_out, object_hook=json_out_parser)
 
         return out
 

@@ -246,7 +246,7 @@ class DiskStorage(BaseStorage):
 
 class S3Storage(BaseStorage):
 
-    _expiration = 3600
+    _expiration = 3600 * 24
 
     def __init__(self, api_conf: RemoteAPIConf, *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)

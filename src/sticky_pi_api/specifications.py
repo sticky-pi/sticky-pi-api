@@ -40,7 +40,7 @@ class BaseAPISpec(ABC):
         :param client_info: optional information about the client/user contains key ``'username'``
         :param info: A list of dicts. each dicts has, at least, keys: ``'device'`` and ``'datetime'``
         :param what: The nature of the objects to retrieve.
-            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
+            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail-mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
             the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
             (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
@@ -97,7 +97,7 @@ class BaseAPISpec(ABC):
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
             For instance,one can match all devices with ``device="%"``.
         :param what: The nature of the objects to retrieve.
-            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
+            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail-mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
             the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
             (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
@@ -627,24 +627,32 @@ class BaseAPI(BaseAPISpec, ABC):
 
             info = copy.deepcopy(info)
             for i in info:
-                logging.warning('info: %s' % i )
+                # logging.warning('info: %s' % i )
                 i['start_datetime'] = string_to_datetime(i['start_datetime'])
                 i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                                  Images.datetime < i['end_datetime'],
                                                  Images.device.like(i['device']))
-                logging.warning('q: %s' % q)
+                # logging.warning('q: %s' % q)
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
                     # raise Exception("more than one match for %s" % i)
 
-
-                logging.warning('dicts')
+                # logging.warning('dicts')
+                n_to_cache = 0
                 for img in q.all():
-                    img_dict = img.to_dict()
-                    img_dict['url'] = self._storage.get_url_for_image(img, what)
+                    img_dict = img.get_cached_repr()
+                    if img_dict is None:
+                        url = {'url': self._storage.get_url_for_image(img, what)}
+                        img_dict = img.set_cached_repr(url)
+                        n_to_cache += 1
+
                     out.append(img_dict)
-                #
+
+                if n_to_cache > 0:
+                    logging.info('%i image representations were cached' % n_to_cache)
+                    session.commit()
+
                 # from joblib import Parallel, delayed
                 # urls = Parallel(n_jobs=8)(delayed(mapping_fun)(img, storage=self._storage) for img in q.all())
                 #

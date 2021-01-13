@@ -47,8 +47,8 @@ class LocalAndRemoteTests(object):
         cli.delete_tiled_tuboids(todel)
 
 
-    ###########################################################################################################
-
+# ###########################################################################################################
+    #
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -150,6 +150,15 @@ class LocalAndRemoteTests(object):
                                         'end_datetime': "2020-06-22_00-00-00"}], what='image')
 
             self.assertEqual(len(out), 5)
+            out2 = db.get_image_series([{'device': "0a5bb6f4",
+                                        'start_datetime': "2020-06-20_00-00-00",
+                                        'end_datetime': "2020-06-22_00-00-00"}], what='image')
+
+            self.assertEqual(len(out2), 5)
+            for o, o2 in zip(out, out2):
+                self.assertDictEqual(o, o2)
+
+
         finally:
             shutil.rmtree(temp_dir)
     # #
