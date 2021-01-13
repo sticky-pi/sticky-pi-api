@@ -23,8 +23,7 @@ all_images_data <- function(state, input){
             return(NA_integer_)
         c(ids[2:length(ids)], NA_integer_)
     }
-  print('dt___')
-  print(dt)
+
   dt[, previous_ID := previous_id(id), by=device]
   dt[, next_ID := next_id(id), by=device]
 

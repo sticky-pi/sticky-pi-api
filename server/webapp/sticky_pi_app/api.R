@@ -48,7 +48,7 @@ api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annot
 
     # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
   # We will then just convert timezone when rendering
-
+  images <- images[match(ids, id)]
   o <- as.data.table(
     lapply(names(images),function(x){
       if(x %like% "*datetime*")
@@ -100,7 +100,6 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
   ct <- content(o, as='text')
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
-
 
 
   if(nrow(annotations) == 0){

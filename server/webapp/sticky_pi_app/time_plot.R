@@ -116,7 +116,6 @@ populate_thumbail_show <- function(state, input, val=NULL){
   thumbnail_urls = as.list(thumbnails$url)
   raw_url= api_fetch_download_s3(state, current_id, what_images = 'image', what_annotations = 'data')$url
 
-
   text = as.character(make_modal_text(state, dt[id==current_id]))
 
   thumbnail_urls <- sapply(thumbnail_urls, function(x)ifelse(is.null(x), NA, x))
