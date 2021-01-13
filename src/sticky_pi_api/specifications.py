@@ -470,10 +470,12 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 parent_img_ids = [i[0] for i in q.all()]
                 q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
-                # q = session.query(UIDAnnotations)
 
-                for annots in q:
-                    annot_dict = annots.to_dict()
+                n_to_cache = 0
+                for annots in q.all():
+                    annot_dict = annots.get_cached_repr()
+                    if annot_dict is None:
+                        annot_dict = annots.set_cached_repr()
                     if what == 'metadata':
                         del annot_dict['json']
                     elif what == 'data':
@@ -481,6 +483,10 @@ class BaseAPI(BaseAPISpec, ABC):
                     else:
                         raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
                     out.append(annot_dict)
+
+                if n_to_cache > 0:
+                    logging.info('%i UID annotation representations were cached' % n_to_cache)
+                    session.commit()
             return out
         finally:
             session.close()
@@ -489,6 +495,9 @@ class BaseAPI(BaseAPISpec, ABC):
         out = []
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
+
+        url_what = 'url_%s' % what
+
         try:
             # We fetch images by chunks:
             for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
@@ -504,10 +513,25 @@ class BaseAPI(BaseAPISpec, ABC):
                               for inf in info_chunk]
 
                 q = session.query(Images).filter(or_(*conditions))
-                for img in q:
-                    img_dict = img.to_dict()
-                    img_dict['url'] = self._storage.get_url_for_image(img, what)
+                n_to_cache = 0
+
+                for img in q.all():
+                    img_dict = img.get_cached_repr()
+                    if img_dict is None or url_what not in img_dict.keys():
+                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
+                        img_dict = img.set_cached_repr(extra_fields)
+                        n_to_cache += 1
+                    img_dict['url'] = img_dict[url_what]
+
+                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
+                        del img_dict['url_%s' % w]
+
                     out.append(img_dict)
+
+                if n_to_cache > 0:
+                    logging.info('%i image representations were cached' % n_to_cache)
+                    session.commit()
+
             return out
         finally:
             session.close()
@@ -622,7 +646,9 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
+
         try:
+            url_what = "url_%s" % what
             out = []
 
             info = copy.deepcopy(info)
@@ -633,33 +659,28 @@ class BaseAPI(BaseAPISpec, ABC):
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                                  Images.datetime < i['end_datetime'],
                                                  Images.device.like(i['device']))
-                # logging.warning('q: %s' % q)
+
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
-                    # raise Exception("more than one match for %s" % i)
 
-                # logging.warning('dicts')
                 n_to_cache = 0
                 for img in q.all():
                     img_dict = img.get_cached_repr()
-                    if img_dict is None:
-                        url = {'url': self._storage.get_url_for_image(img, what)}
-                        img_dict = img.set_cached_repr(url)
+                    if img_dict is None or url_what not in img_dict.keys():
+                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in
+                                        ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
+                        img_dict = img.set_cached_repr(extra_fields)
                         n_to_cache += 1
+                    img_dict['url'] = img_dict[url_what]
 
+                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
+                        del img_dict['url_%s' % w]
                     out.append(img_dict)
 
                 if n_to_cache > 0:
                     logging.info('%i image representations were cached' % n_to_cache)
                     session.commit()
 
-                # from joblib import Parallel, delayed
-                # urls = Parallel(n_jobs=8)(delayed(mapping_fun)(img, storage=self._storage) for img in q.all())
-                #
-                # logging.warning('p0' % i)
-                #
-                # for j, u in enumerate(urls):
-                #     out[j]['url'] = u
 
             return out
         finally:

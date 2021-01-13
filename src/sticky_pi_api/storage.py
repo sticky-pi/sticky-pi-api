@@ -132,7 +132,7 @@ class BaseStorage(ABC):
         Retrieves the URL to the file corresponding to an image in the database.
 
         :param image: an image object
-        :param what:  One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail_mini'``}
+        :param what:  One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail-mini'``}
         :return: a url/path as a string. For ``what='metadata'``, an empty string is returned. for consistency
         """
         pass
@@ -223,13 +223,13 @@ class DiskStorage(BaseStorage):
         url = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
         if what == "thumbnail":
             url += ".thumbnail"
-        elif what == "thumbnail_mini":
-            url += ".thumbnail_mini"
+        elif what == "thumbnail-mini":
+            url += ".thumbnail-mini"
         elif what == "image":
             pass
         else:
             raise ValueError(
-                "Unexpected `what` argument: %s. Should be in {'metadata', 'image', 'thumbnail', 'thumbnail_mini'}")
+                "Unexpected `what` argument: %s. Should be in {'metadata', 'image', 'thumbnail', 'thumbnail-mini'}")
 
         return url
 

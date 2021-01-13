@@ -52,7 +52,8 @@ class BaseCustomisations(Base):
         expiration = now + self._cache_expiration
         self.cached_json_expire_datetime = expiration
         content = self.to_dict()
-        content.update(extra_fields)
+        if extra_fields is not None:
+            content.update(extra_fields)
         self.cached_json_repr = json.dumps(content, default=json_io_converter)
         return content
 

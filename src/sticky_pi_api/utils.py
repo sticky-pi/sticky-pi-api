@@ -11,9 +11,9 @@ import datetime
 import functools
 
 STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
+DATESTRING_REGEX=re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 
 class URLOrFileOpen(object):
-
     def __init__(self, file_or_url, mode):
         self._file_or_url = file_or_url
         self.mode = mode
@@ -68,7 +68,7 @@ def json_io_converter(o):
 
 def json_out_parser(o):
     for k, v in o.items():
-        if isinstance(v, str) and re.search(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$", v):
+        if isinstance(v, str) and DATESTRING_REGEX.search(v):
             o[k] = string_to_datetime(o[k])
     return o
 
