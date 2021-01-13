@@ -91,10 +91,8 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
     return(data.table())
   }
 
-
-
-  post <- jsonlite::toJSON(images[, .(device, datetime)])
-  api_entry = 'get_uid_annotations'
+  #post <- jsonlite::toJSON(images[, .(device, datetime)])
+  api_entry = 'get_uid_annotations_series'
   url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
   o = POST(url, body=post,
           authenticate(token, "", type = "basic"), content_type("application/json"))
@@ -103,9 +101,12 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
 
+
+
   if(nrow(annotations) == 0){
     annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0))
   }
+  #fixme we should only get the unique by algo name x version so we don't have multiple matches for annots
   images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
 
     # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)

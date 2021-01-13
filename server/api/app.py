@@ -150,6 +150,7 @@ make_endpoint(api.delete_images, role="admin")
 make_endpoint(api.delete_tiled_tuboids, role="admin")
 make_endpoint(api.put_uid_annotations, role="")
 make_endpoint(api.get_uid_annotations, role="", what=True)
+make_endpoint(api.get_uid_annotations_series, role="", what=True)
 
 # see below
 # make_endpoint(api._put_tiled_tuboids, role="", what=True)

@@ -89,26 +89,26 @@ class BaseClient(BaseAPISpec, ABC):
     def local_dir(self):
         return self._local_dir
 
-    def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata') -> MetadataType:
-        """
-        Retrieves annotations for images within a given datetime range
-
-        TODO add ref to api specs, where params should be inherited (so we don't write twice the same doc)
-
-        :param info: A list of dicts. each dicts has, at least, the keys:
-            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
-        :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'data'``}.
-        :return: A list of dictionaries with one element for each queried value.
-            Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
-            In the case of ``what='metadata'``, the field ``json=''``.
-            Otherwise, it contains a json string with the actual annotation data.
-        """
-        # we first fetch the parent images matching a series
-        parent_images = self.get_image_series(info, what="metadata")
-        # we filter the metadata as only these two fields are necessary
-        info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
-
-        return self.get_uid_annotations(info, what=what)
+    # def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata') -> MetadataType:
+    #     """
+    #     Retrieves annotations for images within a given datetime range
+    #
+    #     TODO add ref to api specs, where params should be inherited (so we don't write twice the same doc)
+    #
+    #     :param info: A list of dicts. each dicts has, at least, the keys:
+    #         ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
+    #     :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'data'``}.
+    #     :return: A list of dictionaries with one element for each queried value.
+    #         Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
+    #         In the case of ``what='metadata'``, the field ``json=''``.
+    #         Otherwise, it contains a json string with the actual annotation data.
+    #     """
+    #     # we first fetch the parent images matching a series
+    #     parent_images = self.get_image_series(info, what="metadata")
+    #     # we filter the metadata as only these two fields are necessary
+    #     info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
+    #
+    #     return self.get_uid_annotations(info, what=what)
 
     def get_images_with_uid_annotations_series(self, info: InfoType, what_image: str = 'metadata', what_annotation: str = 'metadata') -> MetadataType:
         """
@@ -133,11 +133,11 @@ class BaseClient(BaseAPISpec, ABC):
             return [{}]
 
         # we filter the metadata as only these two fields are necessary
-        info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
+        # info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
 
         parent_images = pd.DataFrame(parent_images)
 
-        annots = self.get_uid_annotations(info, what=what_annotation)
+        annots = self.get_uid_annotations_series(info, what=what_annotation)
 
         if len(annots) == 0:
             annots = pd.DataFrame([], columns=['parent_image_id'])
@@ -444,6 +444,9 @@ class RemoteAPIConnector(BaseAPISpec):
 
     def get_uid_annotations(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_uid_annotations', info, what=what)
+
+    def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('get_uid_annotations_series', info, what=what)
 
     def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata", client_info: Dict[str, Any] = None) \
             -> MetadataType:

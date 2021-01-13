@@ -143,6 +143,22 @@ class BaseAPISpec(ABC):
             Otherwise, it contains a json string with the actual annotation data.
         """
         pass
+    @abstractmethod
+    def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata',
+                            client_info: Dict[str, Any] = None) -> MetadataType:
+        """
+        Retrieves annotations for a given set of images.
+
+        :param info:  A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
+        :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'json'``}.
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: A list of dictionaries with one element for each queried value.
+            Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
+            In the case of ``what='metadata'``, the field ``json=''``.
+            Otherwise, it contains a json string with the actual annotation data.
+        """
+        pass
 
     @abstractmethod
     def _put_tiled_tuboids(self, files: List[Dict[str, Union[Dict, str]]],
@@ -401,6 +417,127 @@ class BaseAPI(BaseAPISpec, ABC):
             out += self._storage.get_ml_bundle_upload_links(bundle_name, info)
         return out
 
+    def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
+        out = []
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+
+        url_what = 'url_%s' % what
+
+        try:
+            # We fetch images by chunks:
+            for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
+
+                logging.info("Getting images... %i-%i / %i" %
+                             (i * self._get_image_chunk_size,
+                              i * self._get_image_chunk_size + len(info_chunk),
+                              len(info)))
+
+                for inf in info_chunk:
+                    inf['datetime'] = string_to_datetime(inf['datetime'])
+                conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
+                              for inf in info_chunk]
+
+                q = session.query(Images).filter(or_(*conditions))
+                n_to_cache = 0
+
+                for img in q.all():
+                    img_dict = img.get_cached_repr()
+                    if img_dict is None or url_what not in img_dict.keys():
+                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
+                        img_dict = img.set_cached_repr(extra_fields)
+                        n_to_cache += 1
+                    img_dict['url'] = img_dict[url_what]
+
+                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
+                        del img_dict['url_%s' % w]
+
+                    out.append(img_dict)
+
+                if n_to_cache > 0:
+                    logging.info('%i image representations were cached' % n_to_cache)
+                    session.commit()
+
+            return out
+        finally:
+            session.close()
+
+    def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            url_what = "url_%s" % what
+            out = []
+
+            info = copy.deepcopy(info)
+            for i in info:
+                # logging.warning('info: %s' % i )
+                i['start_datetime'] = string_to_datetime(i['start_datetime'])
+                i['end_datetime'] = string_to_datetime(i['end_datetime'])
+                q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
+                                                 Images.datetime < i['end_datetime'],
+                                                 Images.device.like(i['device']))
+
+                if q.count() == 0:
+                    logging.warning('No data for series %s' % str(i))
+
+                n_to_cache = 0
+                for img in q.all():
+                    img_dict = img.get_cached_repr()
+                    if img_dict is None or url_what not in img_dict.keys():
+                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in
+                                        ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
+                        img_dict = img.set_cached_repr(extra_fields)
+                        n_to_cache += 1
+                    img_dict['url'] = img_dict[url_what]
+
+                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
+                        del img_dict['url_%s' % w]
+                    out.append(img_dict)
+
+                if n_to_cache > 0:
+                    logging.info('%i image representations were cached' % n_to_cache)
+                    session.commit()
+
+            return out
+        finally:
+            session.close()
+
+    def delete_images(self, info: MetadataType, client_info: Dict[str, Any] = None) -> MetadataType:
+        out = []
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            # We fetch images by chunks:
+            for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
+                logging.info("Deleting images... %i-%i / %i" %
+                             (i * self._get_image_chunk_size,
+                              i * self._get_image_chunk_size + len(info_chunk),
+                              len(info)))
+
+                for inf in info_chunk:
+                    inf['datetime'] = string_to_datetime(inf['datetime'])
+
+                conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
+                              for inf in info_chunk]
+
+                q = session.query(Images).filter(or_(*conditions))
+
+                for img in q:
+                    img_dict = img.to_dict()
+                    session.delete(img)
+                    try:
+                        self._storage.delete_image_files(img)
+                        session.commit()
+                    except Exception as e:
+                        session.rollback()
+                        logging.error("Storage Error. Failed to delete image %s" % img)
+                        logging.error(e)
+                        raise e
+                    out.append(img_dict)
+            return out
+        finally:
+            session.close()
+
     def put_uid_annotations(self, info: AnnotType, client_info: Dict[str, Any] = None):
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
@@ -491,83 +628,42 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-    def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
-        out = []
-        info = copy.deepcopy(info)
+    def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
-
-        url_what = 'url_%s' % what
-
         try:
-            # We fetch images by chunks:
-            for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
+            url_what = "url_%s" % what
+            out = []
 
-                logging.info("Getting images... %i-%i / %i" %
-                             (i * self._get_image_chunk_size,
-                              i * self._get_image_chunk_size + len(info_chunk),
-                              len(info)))
+            info = copy.deepcopy(info)
+            for i in info:
+                # logging.warning('info: %s' % i )
+                i['start_datetime'] = string_to_datetime(i['start_datetime'])
+                i['end_datetime'] = string_to_datetime(i['end_datetime'])
+                q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image.has(and_(
+                                                Images.datetime >= i['start_datetime'],
+                                                Images.datetime < i['end_datetime'],
+                                                Images.device.like(i['device']))))
 
-                for inf in info_chunk:
-                    inf['datetime'] = string_to_datetime(inf['datetime'])
-                conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
-                              for inf in info_chunk]
+                if q.count() == 0:
+                    logging.warning('No data for series %s' % str(i))
 
-                q = session.query(Images).filter(or_(*conditions))
                 n_to_cache = 0
-
-                for img in q.all():
-                    img_dict = img.get_cached_repr()
-                    if img_dict is None or url_what not in img_dict.keys():
-                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
-                        img_dict = img.set_cached_repr(extra_fields)
-                        n_to_cache += 1
-                    img_dict['url'] = img_dict[url_what]
-
-                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
-                        del img_dict['url_%s' % w]
-
-                    out.append(img_dict)
+                for annots in q.all():
+                    annot_dict = annots.get_cached_repr()
+                    if annot_dict is None:
+                        annot_dict = annots.set_cached_repr()
+                    if what == 'metadata':
+                        del annot_dict['json']
+                    elif what == 'data':
+                        pass
+                    else:
+                        raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
+                    out.append(annot_dict)
 
                 if n_to_cache > 0:
                     logging.info('%i image representations were cached' % n_to_cache)
                     session.commit()
 
-            return out
-        finally:
-            session.close()
-
-    def delete_images(self, info: MetadataType, client_info: Dict[str, Any] = None) -> MetadataType:
-        out = []
-        info = copy.deepcopy(info)
-        session = sessionmaker(bind=self._db_engine)()
-        try:
-            # We fetch images by chunks:
-            for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
-                logging.info("Deleting images... %i-%i / %i" %
-                             (i * self._get_image_chunk_size,
-                              i * self._get_image_chunk_size + len(info_chunk),
-                              len(info)))
-
-                for inf in info_chunk:
-                    inf['datetime'] = string_to_datetime(inf['datetime'])
-
-                conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
-                              for inf in info_chunk]
-
-                q = session.query(Images).filter(or_(*conditions))
-
-                for img in q:
-                    img_dict = img.to_dict()
-                    session.delete(img)
-                    try:
-                        self._storage.delete_image_files(img)
-                        session.commit()
-                    except Exception as e:
-                        session.rollback()
-                        logging.error("Storage Error. Failed to delete image %s" % img)
-                        logging.error(e)
-                        raise e
-                    out.append(img_dict)
             return out
         finally:
             session.close()
@@ -644,47 +740,6 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-    def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
-        session = sessionmaker(bind=self._db_engine)()
-
-        try:
-            url_what = "url_%s" % what
-            out = []
-
-            info = copy.deepcopy(info)
-            for i in info:
-                # logging.warning('info: %s' % i )
-                i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                i['end_datetime'] = string_to_datetime(i['end_datetime'])
-                q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
-                                                 Images.datetime < i['end_datetime'],
-                                                 Images.device.like(i['device']))
-
-                if q.count() == 0:
-                    logging.warning('No data for series %s' % str(i))
-
-                n_to_cache = 0
-                for img in q.all():
-                    img_dict = img.get_cached_repr()
-                    if img_dict is None or url_what not in img_dict.keys():
-                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in
-                                        ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
-                        img_dict = img.set_cached_repr(extra_fields)
-                        n_to_cache += 1
-                    img_dict['url'] = img_dict[url_what]
-
-                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
-                        del img_dict['url_%s' % w]
-                    out.append(img_dict)
-
-                if n_to_cache > 0:
-                    logging.info('%i image representations were cached' % n_to_cache)
-                    session.commit()
-
-
-            return out
-        finally:
-            session.close()
 
     def put_itc_labels(self, info: List[Dict[str, Union[str, int]]],
                        client_info: Dict[str, Any] = None) -> MetadataType:
@@ -706,7 +761,6 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
-
 
     def _get_itc_labels(self, info: List[Dict], client_info: Dict[str, Any] = None) -> MetadataType:
         info = copy.deepcopy(info)
