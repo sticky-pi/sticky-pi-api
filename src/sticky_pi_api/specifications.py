@@ -450,26 +450,26 @@ class BaseAPI(BaseAPISpec, ABC):
             session.close()
 
     def get_uid_annotations(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
-        images = self.get_images(info)
 
+        # images = self.get_images(info)
         out = []
-
         session = sessionmaker(bind=self._db_engine)()
         try:
 
-            for i, images_chunk in enumerate(chunker(images, self._get_image_chunk_size)):
+            for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
                 logging.info("Getting image annotations... %i-%i / %i" %
                              (i * self._get_image_chunk_size,
-                              i * self._get_image_chunk_size + len(images_chunk),
+                              i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
 
-                image_ids = [Images.id == img['id'] for img in images_chunk]
-                conditions = or_(*image_ids)
+                for inf in info_chunk:
+                    inf['datetime'] = string_to_datetime(inf['datetime'])
 
-                q = session.query(Images.id).filter(conditions)
+                conditions = [UIDAnnotations.parent_image.has(and_(Images.datetime == inf['datetime'],
+                                                              Images.device == inf['device']))
+                              for inf in info_chunk]
 
-                parent_img_ids = [i[0] for i in q.all()]
-                q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image_id.in_(parent_img_ids))
+                q = session.query(UIDAnnotations).filter(or_(*conditions))
 
                 n_to_cache = 0
                 for annots in q.all():
@@ -832,6 +832,7 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
+    _get_image_chunk_size = 1024  # the maximal number of images to request from the database in one go
 
     def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
         session = sessionmaker(bind=self._db_engine)()
