@@ -97,42 +97,42 @@ populate_thumbail_show <- function(state, input, val=NULL){
   dt <- get_comp_prop(state, 'all_images_data')
 
   if(type == 1){ # next
-    id_ <- dt[id==current_id, next_ID]
+    id_clicked <- dt[id==current_id, next_ID]
   } 
   else if(type == -1){ # next
-    id_ <- dt[id==current_id, previous_ID]
+    id_clicked <- dt[id==current_id, previous_ID]
   } 
   else if(type==0){
-    id_ <- current_id
-    req(id_)
+    id_clicked <- current_id
+    req(id_clicked)
   }
   else(
     stop('invalid type')
   )
-  previous_img_id <- dt[id==id_, previous_ID]
-  next_img_id <- dt[id==id_, next_ID]
+  previous_img_id <- dt[id==current_id, previous_ID]
+  next_img_id <- dt[id==current_id, next_ID]
 
-  thumbnails <- api_fetch_download_s3(state, c(previous_img_id, id_, next_img_id))
+  thumbnails <- api_fetch_download_s3(state, c(previous_img_id, current_id, next_img_id))
   thumbnail_urls = as.list(thumbnails$url)
-  raw_url= api_fetch_download_s3(state, id_, what_images = 'image', what_annotations = 'data')$url
+  raw_url= api_fetch_download_s3(state, current_id, what_images = 'image', what_annotations = 'data')$url
 
 
-  text = as.character(make_modal_text(state, dt[id==id_]))
+  text = as.character(make_modal_text(state, dt[id==current_id]))
 
   thumbnail_urls <- sapply(thumbnail_urls, function(x)ifelse(is.null(x), NA, x))
 
-  if(!is.na(thumbnails[ id == id_, json])){
-    annot = thumbnails[ id == id_, json]
+  if(!is.na(thumbnails[ id == current_id, json])){
+    annot = thumbnails[ id == current_id, json]
   }
   else
      annot = NA
 
    if('width' %in% colnames(dt))
-     raw_img_width = dt[id==id_, width]
+     raw_img_width = dt[id==current_id, width]
   else
      raw_img_width = 0
 
-  js$click_thumbnail_button(id=id_,  urls=thumbnail_urls, text=text,
+  js$click_thumbnail_button(id=id_clicked,  urls=thumbnail_urls, text=text,
                             raw_url=raw_url,
                             annotation_json= annot,
                             raw_img_width =raw_img_width)
