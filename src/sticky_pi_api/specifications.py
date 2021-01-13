@@ -832,7 +832,7 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
-    _get_image_chunk_size = 1024  # the maximal number of images to request from the database in one go
+    _get_image_chunk_size = 16  # the maximal number of images to request from the database in one go
 
     def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
         session = sessionmaker(bind=self._db_engine)()
