@@ -419,12 +419,10 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         out = []
-        info = copy.deepcopy(info)
+        # info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
-
-        url_what = 'url_%s' % what
-
         try:
+            url_what = 'url_%s' % what
             # We fetch images by chunks:
             for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
 
@@ -433,9 +431,9 @@ class BaseAPI(BaseAPISpec, ABC):
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
 
-                for inf in info_chunk:
-                    inf['datetime'] = string_to_datetime(inf['datetime'])
-                conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
+                # for inf in info_chunk:
+                #     inf['datetime'] = string_to_datetime(inf['datetime'])
+                conditions = [and_(Images.datetime == string_to_datetime(inf['datetime']), Images.device == inf['device'])
                               for inf in info_chunk]
 
                 q = session.query(Images).filter(or_(*conditions))
