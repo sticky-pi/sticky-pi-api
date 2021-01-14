@@ -16,8 +16,7 @@ class Users(BaseCustomisations):
     email = DescribedColumn(String(64), index=True, nullable=True)
     password_hash = DescribedColumn(String(128), nullable=False)
     is_admin = DescribedColumn(Boolean, default=False)
-    # datetime_created = DescribedColumn(DateTime, nullable=False,
-    #                                    description="UTC datetime of the upload of the image to the DB")
+    can_write = DescribedColumn(Boolean, default=True)
 
     def __init__(self, password, api_user=None, **kwargs):
         my_dict = kwargs

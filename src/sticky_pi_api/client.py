@@ -380,6 +380,8 @@ class RemoteAPIException(Exception):
 
 @decorate_all_methods(format_io, exclude=['__init__', '_default_client_to_api'])
 class RemoteAPIConnector(BaseAPISpec):
+    _max_retry_attempts = 5
+    _sleep_time_between_attempts = 1
 
     def __init__(self, host: str, username: str, password: str, protocol: str = 'https', port: int = 443):
         self._host = host
@@ -389,7 +391,7 @@ class RemoteAPIConnector(BaseAPISpec):
         self._port = int(port)
         self._token = {'token': None, 'expiration': 0}
 
-    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None):
+    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, attempt=0):
 
         if entry_point != 'get_token':
             if self._token['expiration'] < int(time.time()) - 60:  # we add 60s just to be sure
@@ -406,8 +408,15 @@ class RemoteAPIConnector(BaseAPISpec):
         if response.status_code == 200:
             return response.json()
         else:
-            logging.error("Failed to request url: %s" % url)
-            raise RemoteAPIException(response.content)
+
+            if attempt >= self._max_retry_attempts:
+                logging.error("Failed to request url: %s" % url)
+                raise RemoteAPIException(response.content)
+            else:
+                time.sleep(self._sleep_time_between_attempts)
+                attempt += 1
+                logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt))
+                self._default_client_to_api(entry_point, info, what, files, attempt)
 
     def get_token(self, client_info: Dict[str, Any] = None) -> str:
         return self._default_client_to_api('get_token', info=None)

@@ -1,10 +1,10 @@
 from sticky_pi_api._version import __version__
 import datetime
-import json
+import pickle
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column
 from sticky_pi_api.utils import datetime_to_string, json_io_converter, json_out_parser
-from sqlalchemy import Integer, DateTime, String, Text
+from sqlalchemy import Integer, DateTime, String, Text, BLOB
 
 Base = declarative_base()
 
@@ -25,14 +25,13 @@ class BaseCustomisations(Base):
     api_version = Column(String(8), default="1.0.0", nullable=True)
     api_user = Column(String(32), nullable=True)
     #
-    cached_json_repr = Column(Text(16000000), nullable=True) # mediumtext
-    cached_json_expire_datetime = Column(DateTime, nullable=True) # mediumtext
+    cached_repr = Column(BLOB(16000000), nullable=True)  # mediumtext
+    cached_expire_datetime = Column(DateTime, nullable=True)  # mediumtext
 
     def __init__(self, api_user=None, **kwargs):
         kwargs['datetime_created'] = datetime.datetime.now()
         kwargs['api_user'] = api_user
         kwargs['api_version'] = __version__
-
         super().__init__(**kwargs)
 
     def to_dict(self):
@@ -50,19 +49,19 @@ class BaseCustomisations(Base):
     def set_cached_repr(self, extra_fields=None):
         now = datetime.datetime.now()
         expiration = now + self._cache_expiration
-        self.cached_json_expire_datetime = expiration
+        self.cached_expire_datetime = expiration
         content = self.to_dict()
         if extra_fields is not None:
             content.update(extra_fields)
-        self.cached_json_repr = json.dumps(content, default=json_io_converter)
+        self.cached_repr = pickle.dumps(content)
         return content
 
     def get_cached_repr(self):
         now = datetime.datetime.now()
-        if self.cached_json_expire_datetime is None or now > self.cached_json_expire_datetime:
+        if self.cached_expire_datetime is None or now > self.cached_expire_datetime:
             return None
         else:
-            return json.loads(self.cached_json_repr, object_hook=json_out_parser)
+            return pickle.loads(self.cached_repr)
 
     @classmethod
     def column_names(cls):
