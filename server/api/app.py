@@ -70,8 +70,10 @@ def verify_password(username_or_token, password):
 def get_user_roles(user):
     users = api.get_users([{'username': user}])
     assert len(users) == 1
+    if not users[0]['can_write']:
+        return "read_only_user"
     is_admin = users[0]['is_admin']
-    return 'admin' if is_admin else 'user'
+    return 'admin' if is_admin else 'read_write_user'
 
 
 class CustomJSONEncoder(JSONEncoder):
@@ -120,10 +122,15 @@ def %s(**kwargs):
 """
 
 
-def make_endpoint(method, role='admin', what=False):
+def make_endpoint(method, role = 'admin', what=False):
+    if not role:
+        role = ""
+    elif isinstance(role, str):
+        role = str([role])
+
     endpoint = method.__name__
     sub_route = "/<what>" if what else ""
-    role_str = "role='%s'" % role if role else ""
+    role_str = "role=%s" % role if role else ""
     assert endpoint in dir(api), "all endpoint must point to api methods. got %s" % endpoint
     # print(template_function % (endpoint, sub_route, role_str, endpoint, endpoint))
     exec(template_function % (endpoint, sub_route, role_str, endpoint, endpoint))
@@ -148,7 +155,7 @@ make_endpoint(api.get_images, role="", what=True)
 make_endpoint(api.get_image_series, role="", what=True)
 make_endpoint(api.delete_images, role="admin")
 make_endpoint(api.delete_tiled_tuboids, role="admin")
-make_endpoint(api.put_uid_annotations, role="")
+make_endpoint(api.put_uid_annotations, role=['admin', 'read_write_user'])
 make_endpoint(api.get_uid_annotations, role="", what=True)
 make_endpoint(api.get_uid_annotations_series, role="", what=True)
 
@@ -159,13 +166,13 @@ make_endpoint(api.get_tiled_tuboid_series, role="", what=True)
 make_endpoint(api._get_ml_bundle_upload_links, role="")
 make_endpoint(api._get_ml_bundle_file_list, role="", what=True)
 
-make_endpoint(api.put_itc_labels, role="")
+make_endpoint(api.put_itc_labels, role=['admin', 'read_write_user'])
 make_endpoint(api._get_itc_labels, role="")
 
 
 
 @app.route('/_put_new_images', methods=['POST'])
-@auth.login_required()
+@auth.login_required(role=["admin", "read_write_user"])
 def _put_new_images():
     files = request.files
     assert len(files) > 0
@@ -175,7 +182,7 @@ def _put_new_images():
     return jsonify(out)
 
 @app.route('/_put_tiled_tuboids', methods=['POST'])
-@auth.login_required()
+@auth.login_required(role=["admin", "read_write_user"])
 def _put_tiled_tuboids():
     files = request.files
     assert len(files) > 0
@@ -184,7 +191,6 @@ def _put_tiled_tuboids():
         if k == 'tuboid_id' or k == 'series_info':
             f = json.load(f)
         data[k] = f
-
     out = [api._put_tiled_tuboids([data], client_info={'username': auth.current_user()})]
     return jsonify(out)
 
