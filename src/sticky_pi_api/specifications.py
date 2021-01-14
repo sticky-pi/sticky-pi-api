@@ -904,4 +904,4 @@ class RemoteAPI(BaseAPI):
                                                                       self._configuration.MYSQL_HOST,
                                                                       self._configuration.MYSQL_DATABASE
                                                                       )
-        return sqlalchemy.create_engine(engine_url)
+        return sqlalchemy.create_engine(engine_url, pool_recycle=3600)
