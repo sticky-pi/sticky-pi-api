@@ -26,9 +26,12 @@ server {
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
-        #include uwsgi_params;
-        #uwsgi_pass spi_api:${API_PORT};
-        proxy_pass http://spi_api:${API_PORT};
+        include uwsgi_params;
+        uwsgi_pass spi_api:${API_PORT};
+        uwsgi_read_timeout 600;
+
+        # proxy_pass http://spi_api:${API_PORT};
+
         client_max_body_size 100M;
         gzip on;
         gzip_min_length 1000;

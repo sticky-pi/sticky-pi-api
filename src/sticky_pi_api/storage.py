@@ -1,17 +1,18 @@
 import datetime
-import json
 import shutil
 import os
 import logging
+import boto3
+from io import BytesIO
+from abc import ABC, abstractmethod
+
 from sticky_pi_api.types import List, Dict, Union, Any
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf, RemoteAPIConf
-from abc import ABC, abstractmethod, ABCMeta
-import boto3
-from io import BytesIO
-
 from sticky_pi_api.utils import multipart_etag
+
+
 
 class BaseStorage(ABC):
     _multipart_chunk_size = 8 * 1024 * 1024
@@ -252,7 +253,8 @@ class S3Storage(BaseStorage):
         super().__init__(api_conf, *args, **kwargs)
         credentials = {"aws_access_key_id": api_conf.S3_ACCESS_KEY,
                        "aws_secret_access_key": api_conf.S3_PRIVATE_KEY,
-                       "endpoint_url": "http://%s" % api_conf.S3_HOST,
+                       "endpoint_url": "https://%s" % api_conf.S3_HOST,
+                       "use_ssl":  True
                        }
         self._bucket_name = api_conf.S3_BUCKET_NAME
         self._s3_ressource = boto3.resource('s3', **credentials)

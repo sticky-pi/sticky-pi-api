@@ -2,19 +2,15 @@ CONFIG_ENV_FILE <- '/home/shiny/env.R'
 
 # The default config . typically for testing offline with rstudio (no api)
 # these are overwritten with environement variables in API testing and production
-config_vars <- list(MYSQL_DATABASE = NA, 
-                 MYSQL_READER = NA,
-                 MYSQL_SERVER_IP = NA,
-                 MYSQL_PASSWORD = NA,
-                 MYSQL_READER_PASSWORD = NA,
-                 API_ROOT_URL = NA, #hostname, IP, domain name...
-                 API_PORT = NA, #hostname, IP, domain name...
+config_vars <- list(
                  STICKY_PI_TESTING_USER = NA,
                  STICKY_PI_TESTING_PASSWORD = NA, 
                  STICKY_PI_TESTING_RSHINY_AUTOLOGIN = FALSE,
                  STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN = FALSE,
                  STICKY_PI_TESTING_RSHINY_USE_MOCK_API = FALSE,
-                 API_PROTOCOL = "http"
+                 RSHINY_UPSTREAM_ROOT_URL = NA, #hostname, IP, domain name...
+                 RSHINY_UPSTREAM_PORT = NA, #hostname, IP, domain name...
+                 RSHINY_UPSTREAM_PROTOCOL = "http"
 )
 
 get_config<- function(){

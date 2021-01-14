@@ -1,8 +1,13 @@
+export STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN=FALSE
+export STICKY_PI_TESTING_USER=admin
+
 export API_ROOT_URL=api.sticky-pi.com
 export API_PROTOCOL=https
 export API_PORT=443
-export STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN=FALSE
-export STICKY_PI_TESTING_USER=admin
+
+export RSHINY_UPSTREAM_ROOT_URL=api.sticky-pi.com
+export RSHINY_UPSTREAM_PORT=443
+export RSHINY_UPSTREAM_PROTOCOL=https
 
 #defined elsewhere
 #export STICKY_PI_TESTING_PASSWORD=**************

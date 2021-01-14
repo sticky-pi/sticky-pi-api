@@ -1,13 +1,20 @@
+make_url <- function(state, entry_point, what=NULL){
+  loc = paste(c(entry_point, what), collapse='/')
+  url  =sprintf('%s://%s:%s/%s', state$config$RSHINY_UPSTREAM_PROTOCOL,
+                state$config$RSHINY_UPSTREAM_ROOT_URL,
+                state$config$RSHINY_UPSTREAM_PORT,loc)
+  url
+}
 
 api_verify_passwd <- function(state, u, p){
-  url  =sprintf('%s://%s:%s/get_token', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT)
-  o = POST(url,
-          authenticate(u, p, type = "basic"), content_type("application/json"))
+  #url  =sprintf('%s://%s:%s/get_token', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT)
+  url = make_url(state, 'get_token')
+  o = POST(url,  authenticate(u, p, type = "basic"), content_type("application/json"))
   if(o$status_code != 200){
     Sys.sleep(1)
     return("")
   }
-  token <- content(o, as='parsed')
+  token <- content(o, as='parsed', encoding="UTF-8")
   # also has an `expiration field`
   return(token$token)
 }
@@ -22,23 +29,21 @@ api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annot
   query = dt[id %in% ids, .(device, datetime)]
   query[, datetime:=strftime(as.POSIXct(datetime), '%Y-%m-%d_%H-%M-%S', tz='GMT')]
   post <- jsonlite::toJSON(query)
-  api_entry = "get_images"
-  url =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL,
-                state$config$API_ROOT_URL,state$config$API_PORT, api_entry,
-                what_images)
 
-  o = POST(url, body=post,
-          authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text')
+  url = make_url(state, 'get_images', what_images)
+
+  o <- POST(url, body=post,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text', encoding="UTF-8")
 
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
 
-  api_entry = 'get_uid_annotations'
-  url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
-  o = POST(url, body=post,
-          authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text')
+  #api_entry = 'get_uid_annotations'
+  #url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
+  url = make_url(state, 'get_uid_annotations', what_annotations)
+  o = POST(url, body=post, authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
   if(nrow(annotations) == 0){
@@ -66,10 +71,8 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
 
   state$updaters$api_fetch_time
   token <- state$user$auth_token
-  api_entry = "get_image_series"
-  url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL,
-                state$config$API_ROOT_URL,state$config$API_PORT, api_entry,
-                what_images)
+
+  url = make_url(state, 'get_image_series', what_images)
 
   dates <- strftime(as.POSIXct(dates), '%Y-%m-%d_%H-%M-%S', tz='GMT')
 
@@ -78,10 +81,9 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
                                      end_datetime=dates[2] )),
                            auto_unbox = TRUE)
 
-  o = POST(url, body=post,
-          authenticate(token, "", type = "basic"), content_type("application/json"))
+  o = POST(url, body=post,  authenticate(token, "", type = "basic"), content_type("application/json"))
 
-  ct <- content(o, as='text')
+  ct <- content(o, as='text', encoding="UTF-8")
 
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
@@ -92,12 +94,14 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
   }
 
   #post <- jsonlite::toJSON(images[, .(device, datetime)])
-  api_entry = 'get_uid_annotations_series'
-  url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
+  #api_entry = 'get_uid_annotations_series'
+  #url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
+  url = make_url(state, 'get_uid_annotations_series', what_annotations)
+
   o = POST(url, body=post,
           authenticate(token, "", type = "basic"), content_type("application/json"))
 
-  ct <- content(o, as='text')
+  ct <- content(o, as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
 
