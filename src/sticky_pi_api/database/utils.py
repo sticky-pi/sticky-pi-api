@@ -56,8 +56,7 @@ class BaseCustomisations(Base):
         self.cached_repr = pickle.dumps(content)
         return content
 
-    def get_cached_repr(self):
-        now = datetime.datetime.now()
+    def get_cached_repr(self, now):
         if self.cached_expire_datetime is None or now > self.cached_expire_datetime:
             return None
         else:

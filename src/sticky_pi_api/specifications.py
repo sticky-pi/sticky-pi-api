@@ -1,3 +1,4 @@
+import datetime
 import copy
 import logging
 import os
@@ -437,8 +438,12 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 q = session.query(Images).filter(or_(*conditions))
                 n_to_cache = 0
+
+                now = datetime.datetime.now()
                 for img in q:
-                    img_dict = img.get_cached_repr()
+
+                    img_dict = img.get_cached_repr(now)
+
                     if img_dict is None or url_what not in img_dict.keys():
                         extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
                         img_dict = img.set_cached_repr(extra_fields)
@@ -476,8 +481,9 @@ class BaseAPI(BaseAPISpec, ABC):
                     logging.warning('No data for series %s' % str(i))
 
                 n_to_cache = 0
+                now = datetime.datetime.now()
                 for img in q.all():
-                    img_dict = img.get_cached_repr()
+                    img_dict = img.get_cached_repr(now)
                     if img_dict is None or url_what not in img_dict.keys():
                         extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in
                                         ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
@@ -604,8 +610,9 @@ class BaseAPI(BaseAPISpec, ABC):
                 q = session.query(UIDAnnotations).filter(or_(*conditions))
 
                 n_to_cache = 0
+                now = datetime.datetime.now()
                 for annots in q.all():
-                    annot_dict = annots.get_cached_repr()
+                    annot_dict = annots.get_cached_repr(now)
                     if annot_dict is None:
                         annot_dict = annots.set_cached_repr()
                     if what == 'metadata':
@@ -643,8 +650,9 @@ class BaseAPI(BaseAPISpec, ABC):
                     logging.warning('No data for series %s' % str(i))
 
                 n_to_cache = 0
+                now = datetime.datetime.now()
                 for annots in q.all():
-                    annot_dict = annots.get_cached_repr()
+                    annot_dict = annots.get_cached_repr(now)
                     if annot_dict is None:
                         annot_dict = annots.set_cached_repr()
                     if what == 'metadata':
