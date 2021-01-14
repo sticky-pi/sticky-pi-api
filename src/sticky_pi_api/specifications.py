@@ -436,12 +436,23 @@ class BaseAPI(BaseAPISpec, ABC):
                 conditions = [and_(Images.datetime == string_to_datetime(inf['datetime']), Images.device == inf['device'])
                               for inf in info_chunk]
 
+                # todo: 1 : get all ID, reprs and expirations:
+                # for if expiration is in the past: just use repr
+                #     else:   get the Image at id (or store the ID) and get image after
+                # the output should have the same order as the input query
+
+
+                # q = session.query(Images.id, Images.cached_expire_datetime, Images.cached_repr).filter(or_(*conditions))
+
+                # out = []
+                # for i, ced, dr in q:
+                #     if ced <= now:
+                #
+
                 q = session.query(Images).filter(or_(*conditions))
                 n_to_cache = 0
-
                 now = datetime.datetime.now()
                 for img in q:
-
                     img_dict = img.get_cached_repr(now)
 
                     if img_dict is None or url_what not in img_dict.keys():
