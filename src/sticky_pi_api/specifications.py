@@ -425,7 +425,6 @@ class BaseAPI(BaseAPISpec, ABC):
             url_what = 'url_%s' % what
             # We fetch images by chunks:
             for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
-
                 logging.info("Getting images... %i-%i / %i" %
                              (i * self._get_image_chunk_size,
                               i * self._get_image_chunk_size + len(info_chunk),
@@ -438,8 +437,7 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 q = session.query(Images).filter(or_(*conditions))
                 n_to_cache = 0
-
-                for img in q.all():
+                for img in q:
                     img_dict = img.get_cached_repr()
                     if img_dict is None or url_what not in img_dict.keys():
                         extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
@@ -451,7 +449,6 @@ class BaseAPI(BaseAPISpec, ABC):
                         del img_dict['url_%s' % w]
 
                     out.append(img_dict)
-
                 if n_to_cache > 0:
                     logging.info('%i image representations were cached' % n_to_cache)
                     session.commit()
@@ -884,7 +881,7 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
-    _get_image_chunk_size = 16  # the maximal number of images to request from the database in one go
+    _get_image_chunk_size = 128  # the maximal number of images to request from the database in one go
 
     def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
         session = sessionmaker(bind=self._db_engine)()
