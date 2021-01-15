@@ -575,24 +575,29 @@ class BaseAPI(BaseAPISpec, ABC):
                               for inf in info_chunk]
 
                 q = session.query(UIDAnnotations).filter(or_(*conditions))
-
-                n_to_cache = 0
-                now = datetime.datetime.now()
-                for annots in q.all():
-                    annot_dict = annots.get_cached_repr(now)
-                    if annot_dict is None:
-                        annot_dict = annots.set_cached_repr()
+                for annots in q:
+                    annot_dict = annots.to_dict()
                     if what == 'metadata':
                         del annot_dict['json']
-                    elif what == 'data':
-                        pass
-                    else:
-                        raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
                     out.append(annot_dict)
+                #
+                # n_to_cache = 0
+                # now = datetime.datetime.now()
+                # for annots in q.all():
+                #     annot_dict = annots.get_cached_repr(now)
+                #     if annot_dict is None:
+                #         annot_dict = annots.set_cached_repr()
+                #     if what == 'metadata':
+                #         del annot_dict['json']
+                #     elif what == 'data':
+                #         pass
+                #     else:
+                #         raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
+                #     out.append(annot_dict)
 
-                if n_to_cache > 0:
-                    logging.info('%i UID annotation representations were cached' % n_to_cache)
-                    session.commit()
+                # if n_to_cache > 0:
+                #     logging.info('%i UID annotation representations were cached' % n_to_cache)
+                #     session.commit()
             return out
         finally:
             session.close()
@@ -618,21 +623,27 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 n_to_cache = 0
                 now = datetime.datetime.now()
-                for annots in q.all():
-                    annot_dict = annots.get_cached_repr(now)
-                    if annot_dict is None:
-                        annot_dict = annots.set_cached_repr()
+
+                for annots in q:
+                    annot_dict = annots.to_dict()
                     if what == 'metadata':
                         del annot_dict['json']
-                    elif what == 'data':
-                        pass
-                    else:
-                        raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
                     out.append(annot_dict)
+                # for annots in q.all():
+                #     annot_dict = annots.get_cached_repr(now)
+                #     if annot_dict is None:
+                #         annot_dict = annots.set_cached_repr()
+                #     if what == 'metadata':
+                #         del annot_dict['json']
+                #     elif what == 'data':
+                #         pass
+                #     else:
+                #         raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
+                #     out.append(annot_dict)
 
-                if n_to_cache > 0:
-                    logging.info('%i image representations were cached' % n_to_cache)
-                    session.commit()
+                # if n_to_cache > 0:
+                #     logging.info('%i image representations were cached' % n_to_cache)
+                #     session.commit()
 
             return out
         finally:

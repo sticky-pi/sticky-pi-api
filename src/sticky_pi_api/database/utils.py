@@ -25,8 +25,8 @@ class BaseCustomisations(Base):
     api_version = Column(String(8), default="1.0.0", nullable=True)
     api_user = Column(String(32), nullable=True)
     #
-    cached_repr = Column(BLOB(16000000), nullable=True)  # mediumtext
-    cached_expire_datetime = Column(DateTime, nullable=True)  # mediumtext
+    # cached_repr = Column(BLOB(16000000), nullable=True)  # mediumtext
+    # cached_expire_datetime = Column(DateTime, nullable=True)  # mediumtext
 
     def __init__(self, api_user=None, **kwargs):
         kwargs['datetime_created'] = datetime.datetime.now()
@@ -37,30 +37,30 @@ class BaseCustomisations(Base):
     def to_dict(self):
         out = {}
         for column in self.__table__.columns:
-            if column.name.startswith('cached_'):
-                continue
+            # if column.name.startswith('cached_'):
+            #     continue
             value = getattr(self, column.name)
             if isinstance(value, datetime.datetime):
                 value = datetime_to_string(value)
             out[column.name] = value
         return out
 
-
-    def set_cached_repr(self, extra_fields=None):
-        now = datetime.datetime.now()
-        expiration = now + self._cache_expiration
-        self.cached_expire_datetime = expiration
-        content = self.to_dict()
-        if extra_fields is not None:
-            content.update(extra_fields)
-        self.cached_repr = pickle.dumps(content)
-        return content
-
-    def get_cached_repr(self, now):
-        if self.cached_expire_datetime is None or now > self.cached_expire_datetime:
-            return None
-        else:
-            return pickle.loads(self.cached_repr)
+    #
+    # def set_cached_repr(self, extra_fields=None):
+    #     now = datetime.datetime.now()
+    #     expiration = now + self._cache_expiration
+    #     self.cached_expire_datetime = expiration
+    #     content = self.to_dict()
+    #     if extra_fields is not None:
+    #         content.update(extra_fields)
+    #     self.cached_repr = pickle.dumps(content)
+    #     return content
+    #
+    # def get_cached_repr(self, now):
+    #     if self.cached_expire_datetime is None or now > self.cached_expire_datetime:
+    #         return None
+    #     else:
+    #         return json.loads(self.cached_repr)
 
     @classmethod
     def column_names(cls):
