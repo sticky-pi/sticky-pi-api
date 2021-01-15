@@ -354,16 +354,19 @@ class S3Storage(BaseStorage):
 
     def _presigned_url(self, key) -> str:
         now = time.time()
-        if key in self._cached_urls and self._cached_urls[key][1] < now:
+        if key in self._cached_urls and self._cached_urls[key][1] > now:
             out = self._cached_urls[key]
+        #    logging.warning('cahced version')
         else:
             out = self._s3_ressource.meta.client.generate_presigned_url('get_object',
                                                                     Params={'Bucket': self._bucket_name,
                                                                             'Key': key},
                                                                     ExpiresIn=self._expiration)
+         #   logging.warning('UNcahced version')
+
         # todo. here, we can parse the url so that we keep only the changing part
         # todo, we can purge old urls/?
-        self._cached_urls[key] = (out, now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
+            self._cached_urls[key] = (out, now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:

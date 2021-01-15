@@ -1,3 +1,4 @@
+import logging
 import requests
 import tempfile
 import shutil
@@ -87,11 +88,14 @@ def format_io(func):
             json_v = json.dumps(v, default=json_io_converter)
             v = json.loads(json_v)
             formated_k[k] = v
-
+        logging.warning('f')
         out = func(self, *formated_a, **formated_k)
         #fixme... should not need to do that to clean arbitrary json outputs...
+        logging.warning('g')
         json_out = json.dumps(out, default=json_io_converter)
+        logging.warning('g')
         out = json.loads(json_out, object_hook=json_out_parser)
+        logging.warning('i')
         return out
     return _format_input_output
 
