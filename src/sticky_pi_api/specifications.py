@@ -456,7 +456,6 @@ class BaseAPI(BaseAPISpec, ABC):
                 now = datetime.datetime.now()
                 for img in q:
                     img_dict = img.get_cached_repr(now)
-
                     if img_dict is None or url_what not in img_dict.keys():
                         extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
                         img_dict = img.set_cached_repr(extra_fields)
@@ -466,10 +465,10 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 logging.warning('c')
                 for img_dict in out:
+                    logging.warning(img_dict)
                     for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
                         del img_dict['url_%s' % w]
 
-                    out.append(img_dict)
                 logging.warning('d')
                 if n_to_cache > 0:
                     logging.info('%i image representations were cached' % n_to_cache)

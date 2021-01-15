@@ -48,66 +48,66 @@ class LocalAndRemoteTests(object):
 
 
 # ###########################################################################################################
+
+    def test_init(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = self._make_client(temp_dir)
+        finally:
+            shutil.rmtree(temp_dir)
+
     #
-    # def test_init(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #         db = self._make_client(temp_dir)
-    #     finally:
-    #         shutil.rmtree(temp_dir)
-    #
+
+    def test_users(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            users = [
+                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+                    ]
+            cli = self._make_client(temp_dir)
+            self._clean_persistent_resources(cli)
+            cli.put_users(users)
+            cli.get_token({'username':'ada'})
+
+            # cannot add same users twice
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    cli.put_users(users)
+
+            out = cli.get_users()
+            self.assertEqual(len(out), 2 + self._initial_n_users)
+
+            out = cli.get_users(info=[{'username': '%'}])
+            self.assertEqual(len(out), 2 + self._initial_n_users)
+
+            out = cli.get_users(info=[{'username': 'ada'}])
+            self.assertEqual(len(out), 1)
+
+        finally:
+            shutil.rmtree(temp_dir)
     # #
+    def test_put_images(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            uploaded = db.put_images(self._test_images[0:2])
+
+            self.assertEqual(len(uploaded), 2)
+            uploaded = db.put_images(self._test_images)
+            self.assertEqual(len(uploaded), len(self._test_images) - 2)
+
+            uploaded = db.put_images(self._test_images)
+
+            # should fail to put images that are already there:
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    db._put_new_images(self._test_images[0:1])
+
+        finally:
+            shutil.rmtree(temp_dir)
     #
-    # def test_users(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #         users = [
-    #             {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
-    #             {'username': 'grace', 'password': 'hopper', 'is_admin': True},
-    #                 ]
-    #         cli = self._make_client(temp_dir)
-    #         self._clean_persistent_resources(cli)
-    #         cli.put_users(users)
-    #         cli.get_token({'username':'ada'})
-    #
-    #         # cannot add same users twice
-    #         with redirect_stderr(StringIO()) as stdout:
-    #             with self.assertRaises(self._server_error) as context:
-    #                 cli.put_users(users)
-    #
-    #         out = cli.get_users()
-    #         self.assertEqual(len(out), 2 + self._initial_n_users)
-    #
-    #         out = cli.get_users(info=[{'username': '%'}])
-    #         self.assertEqual(len(out), 2 + self._initial_n_users)
-    #
-    #         out = cli.get_users(info=[{'username': 'ada'}])
-    #         self.assertEqual(len(out), 1)
-    #
-    #     finally:
-    #         shutil.rmtree(temp_dir)
-    # # #
-    # def test_put_images(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #         db = self._make_client(temp_dir)
-    #         self._clean_persistent_resources(db)
-    #         uploaded = db.put_images(self._test_images[0:2])
-    #
-    #         self.assertEqual(len(uploaded), 2)
-    #         uploaded = db.put_images(self._test_images)
-    #         self.assertEqual(len(uploaded), len(self._test_images) - 2)
-    #
-    #         uploaded = db.put_images(self._test_images)
-    #
-    #         # should fail to put images that are already there:
-    #         with redirect_stderr(StringIO()) as stdout:
-    #             with self.assertRaises(self._server_error) as context:
-    #                 db._put_new_images(self._test_images[0:1])
-    #
-    #     finally:
-    #         shutil.rmtree(temp_dir)
-    # #
 
     def test_get_images(self):
         import tempfile
