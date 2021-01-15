@@ -361,9 +361,9 @@ class S3Storage(BaseStorage):
                                                                     Params={'Bucket': self._bucket_name,
                                                                             'Key': key},
                                                                     ExpiresIn=self._expiration)
-        # todo. here, we can parse the url so that we keep only the changing part
-        # todo, we can purge old urls/?
-        self._cached_urls[key] = (out, now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
+            # todo. here, we can parse the url so that we keep only the changing part
+            # todo, we can purge old urls/?
+            self._cached_urls[key] = (out, now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:

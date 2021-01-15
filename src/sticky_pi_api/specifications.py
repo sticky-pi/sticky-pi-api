@@ -456,6 +456,9 @@ class BaseAPI(BaseAPISpec, ABC):
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                                  Images.datetime < i['end_datetime'],
                                                  Images.device.like(i['device']))
+                statement = q.statement
+                logging.warning('statement.compile(self._db_engine)')
+                logging.warning(statement.compile(self._db_engine))
 
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
@@ -464,8 +467,7 @@ class BaseAPI(BaseAPISpec, ABC):
                     img_dict = img.to_dict()
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
                     out.append(img_dict)
-
-
+                    
             return out
         finally:
             session.close()
