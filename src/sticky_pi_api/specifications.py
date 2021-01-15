@@ -1,3 +1,4 @@
+import pickle
 import datetime
 import copy
 import logging
@@ -8,7 +9,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
-from multiprocessing.pool import  Pool
+# from multiprocessing.pool import Pool
 from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import sqlite3
@@ -420,6 +421,8 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         out = []
+        ids_to_cache = []
+
         # info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         try:
@@ -433,6 +436,7 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 # for inf in info_chunk:
                 #     inf['datetime'] = string_to_datetime(inf['datetime'])
+                logging.warning('0')
                 conditions = [and_(Images.datetime == string_to_datetime(inf['datetime']), Images.device == inf['device'])
                               for inf in info_chunk]
 
@@ -449,24 +453,30 @@ class BaseAPI(BaseAPISpec, ABC):
                 #     if ced <= now:
                 #
                 logging.warning('a')
-                q = session.query(Images).filter(or_(*conditions))
+                q = session.query(Images.id, Images.cached_repr, Images.cached_expire_datetime).filter(or_(*conditions))
                 logging.warning('b')
 
                 n_to_cache = 0
                 now = datetime.datetime.now()
-                for img in q:
-                    img_dict = img.get_cached_repr(now)
-                    if img_dict is None or url_what not in img_dict.keys():
+                for id, cached_repr, expiration in q:
+                    if expiration is None or now > expiration:
+                        q = session.query(Images).filter(or_(Images.id == id))
+                        assert q.count() == 1
+                        img = q.first()
                         extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
-                        img_dict = img.set_cached_repr(extra_fields)
+                        cached_repr = img.set_cached_repr(extra_fields)
                         n_to_cache += 1
-                    img_dict['url'] = img_dict[url_what]
-                    out.append(img_dict)
-
-                logging.warning('c')
-                for img_dict in out:
+                        logging.warning('caACHING')
+                    else:
+                        cached_repr = pickle.loads(cached_repr)
+                    logging.warning('cache_repr')
+                    logging.warning(cached_repr)
+                    cached_repr['url'] = cached_repr['url_%s' % what]
                     for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
-                        del img_dict['url_%s' % w]
+                        del cached_repr['url_%s' % w]
+
+                    out.append(cached_repr)
+
 
                 logging.warning('d')
                 if n_to_cache > 0:
