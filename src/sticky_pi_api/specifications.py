@@ -448,8 +448,10 @@ class BaseAPI(BaseAPISpec, ABC):
                 # for i, ced, dr in q:
                 #     if ced <= now:
                 #
-
+                logging.warning('a')
                 q = session.query(Images).filter(or_(*conditions))
+                logging.warning('b')
+
                 n_to_cache = 0
                 now = datetime.datetime.now()
                 for img in q:
@@ -460,15 +462,20 @@ class BaseAPI(BaseAPISpec, ABC):
                         img_dict = img.set_cached_repr(extra_fields)
                         n_to_cache += 1
                     img_dict['url'] = img_dict[url_what]
+                    out.append(img_dict)
 
+                logging.warning('c')
+                for img_dict in out:
                     for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
                         del img_dict['url_%s' % w]
 
                     out.append(img_dict)
+                logging.warning('d')
                 if n_to_cache > 0:
                     logging.info('%i image representations were cached' % n_to_cache)
+                    logging.warning('e')
                     session.commit()
-
+                logging.warning('f')
             return out
         finally:
             session.close()
@@ -900,7 +907,7 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
-    _get_image_chunk_size = 128  # the maximal number of images to request from the database in one go
+    _get_image_chunk_size = 999999  # the maximal number of images to request from the database in one go
 
     def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
         session = sessionmaker(bind=self._db_engine)()
