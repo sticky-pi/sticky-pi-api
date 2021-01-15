@@ -465,7 +465,6 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 logging.warning('c')
                 for img_dict in out:
-                    logging.warning(img_dict)
                     for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
                         del img_dict['url_%s' % w]
 

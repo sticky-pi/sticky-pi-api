@@ -1,13 +1,13 @@
 import datetime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
+from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String, Index
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 
 class Images(BaseCustomisations):
     __tablename__ = 'images'
-    __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'),)
+    __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'), Index("image_uid", 'device', 'datetime'))
 
     uid_annotations = relationship("UIDAnnotations",
                                    back_populates="parent_image",
@@ -24,6 +24,7 @@ class Images(BaseCustomisations):
                                          "acquired the image")
     datetime = DescribedColumn(DateTime, nullable=False,
                                description="The UTC date and time at which the image was taken")
+
     md5 = DescribedColumn(String(32), nullable=False,
                           description="An md5 checksum of the whole JPEG image. Used internally for"
                                       "sanity checks and  incremental transfers")
