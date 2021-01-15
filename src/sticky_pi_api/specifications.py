@@ -451,6 +451,7 @@ class BaseAPI(BaseAPISpec, ABC):
             info = copy.deepcopy(info)
             for i in info:
                 # logging.warning('info: %s' % i )
+                logging.warning('0')
                 i['start_datetime'] = string_to_datetime(i['start_datetime'])
                 i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
@@ -459,15 +460,16 @@ class BaseAPI(BaseAPISpec, ABC):
                 statement = q.statement
                 logging.warning('statement.compile(self._db_engine)')
                 logging.warning(statement.compile(self._db_engine))
-
+                logging.warning('1')
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
+                logging.warning('2')
 
-                for img in q.all():
+                for img in q:
                     img_dict = img.to_dict()
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
                     out.append(img_dict)
-                    
+                logging.warning('4')
             return out
         finally:
             session.close()
