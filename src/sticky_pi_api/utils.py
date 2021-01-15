@@ -50,9 +50,6 @@ def chunker(seq, size: int):
     """
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-
-
-
 def json_io_converter(o):
     if isinstance(o, datetime.datetime):
         if o:
@@ -74,9 +71,52 @@ def json_out_parser(o):
     return o
 
 
-def format_io(func):
+# def format_io(func):
+#     @functools.wraps(func)
+#     def _format_input_output(self, *args, **kwargs):
+#         formated_a = []
+#         for a in args:
+#             json_a = json.dumps(a, default=json_io_converter)
+#             a = json.loads(json_a, object_hook=json_out_parser)
+#             formated_a.append(a)
+#
+#         formated_k = {}
+#         for k, v in kwargs.items():
+#             json_v = json.dumps(v, default=json_io_converter)
+#             v = json.loads(json_v, object_hook=json_out_parser)
+#             formated_k[k] = v
+#
+#         out = func(self, *formated_a, **formated_k)
+#         logging.warning('out')
+#         logging.warning(out)
+#         return out
+#     return _format_input_output
+
+
+def json_inputs_to_python(func):
     @functools.wraps(func)
-    def _format_input_output(self, *args, **kwargs):
+    def _json_inputs_to_python(self, *args, **kwargs):
+        formated_a = []
+        for a in args:
+            json_a = json.dumps(a, default=json_io_converter)
+            a = json.loads(json_a, object_hook=json_out_parser)
+            formated_a.append(a)
+
+        formated_k = {}
+        for k, v in kwargs.items():
+            json_v = json.dumps(v, default=json_io_converter)
+            v = json.loads(json_v, object_hook=json_out_parser)
+            formated_k[k] = v
+
+        out = func(self, *formated_a, **formated_k)
+        # it it the responsibility of the serializer to then encode to json, on the remote api
+        return out
+    return _json_inputs_to_python
+
+
+def python_inputs_to_json(func):
+    @functools.wraps(func)
+    def _python_inputs_to_json(self, *args, **kwargs):
         formated_a = []
         for a in args:
             json_a = json.dumps(a, default=json_io_converter)
@@ -90,8 +130,10 @@ def format_io(func):
             formated_k[k] = v
 
         out = func(self, *formated_a, **formated_k)
+        # it it the responsibility of the serializer to then decode to json, on the remote client
         return out
-    return _format_input_output
+    return _python_inputs_to_json
+
 
 
 def md5(file, chunk_size=32768):

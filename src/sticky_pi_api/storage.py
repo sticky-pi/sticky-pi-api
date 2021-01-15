@@ -355,7 +355,7 @@ class S3Storage(BaseStorage):
     def _presigned_url(self, key) -> str:
         now = time.time()
         if key in self._cached_urls and self._cached_urls[key][1] > now:
-            out = self._cached_urls[key]
+            out = self._cached_urls[key][0]
         else:
             out = self._s3_ressource.meta.client.generate_presigned_url('get_object',
                                                                     Params={'Bucket': self._bucket_name,

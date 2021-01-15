@@ -4,6 +4,7 @@ from flask_httpauth import HTTPBasicAuth
 from flask.json import JSONEncoder
 from flask import request
 from retry import retry
+from decimal import Decimal
 import datetime
 import logging
 import json
@@ -12,8 +13,6 @@ import io
 
 from sticky_pi_api.configuration import RemoteAPIConf
 from sticky_pi_api.specifications import RemoteAPI
-
-
 from sticky_pi_api.utils import datetime_to_string
 
 
@@ -81,6 +80,8 @@ class CustomJSONEncoder(JSONEncoder):
         try:
             if isinstance(o, datetime.datetime):
                 return datetime_to_string(o)
+            elif isinstance(o, Decimal):
+                return float(o)
             iterable = iter(o)
         except TypeError:
             pass

@@ -16,7 +16,7 @@ from typing import Any
 import json
 from decorate_all_methods import decorate_all_methods
 from sticky_pi_api.image_parser import ImageParser
-from sticky_pi_api.utils import datetime_to_string, chunker, format_io
+from sticky_pi_api.utils import datetime_to_string, chunker, python_inputs_to_json, json_out_parser
 from sticky_pi_api.storage import BaseStorage
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType, AnnotType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
@@ -65,7 +65,12 @@ class Cache(dict):
             logging.error('trying to detect cache, but file does not exist')
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
+
+# all the client methods may take python argument, the argument are implicitly transformed
+# to json-compatible values using this decorator
+
+
+@decorate_all_methods(python_inputs_to_json, exclude=['__init__', '_diff_images_to_upload'])
 class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
     _cache_dirname = "cache"
@@ -88,27 +93,6 @@ class BaseClient(BaseAPISpec, ABC):
     @property
     def local_dir(self):
         return self._local_dir
-
-    # def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata') -> MetadataType:
-    #     """
-    #     Retrieves annotations for images within a given datetime range
-    #
-    #     TODO add ref to api specs, where params should be inherited (so we don't write twice the same doc)
-    #
-    #     :param info: A list of dicts. each dicts has, at least, the keys:
-    #         ``'device'``, ``'start_datetime'`` and ``'end_datetime'``
-    #     :param what: The nature of the object to retrieve. One of {``'metadata'``, ``'data'``}.
-    #     :return: A list of dictionaries with one element for each queried value.
-    #         Each dictionary contains the fields present in the underlying database table (see ``UIDAnnotations``).
-    #         In the case of ``what='metadata'``, the field ``json=''``.
-    #         Otherwise, it contains a json string with the actual annotation data.
-    #     """
-    #     # we first fetch the parent images matching a series
-    #     parent_images = self.get_image_series(info, what="metadata")
-    #     # we filter the metadata as only these two fields are necessary
-    #     info = [{k: v for k, v in p.items() if k in {"device", 'datetime'}} for p in parent_images]
-    #
-    #     return self.get_uid_annotations(info, what=what)
 
     def get_images_with_uid_annotations_series(self, info: InfoType, what_image: str = 'metadata', what_annotation: str = 'metadata') -> MetadataType:
         """
@@ -216,7 +200,7 @@ class BaseClient(BaseAPISpec, ABC):
             assert os.path.isfile(metadata_file)
             assert os.path.isfile(context_file)
             assert os.path.isfile(tuboid_file)
-            assert all([k in series_info.keys() for k in ('algo_name', 'algo_version', 'start_datetime', 'end_datetime', 'device', 'n_images', ) ])
+            assert all([k in series_info.keys() for k in ('algo_name', 'algo_version', 'start_datetime', 'end_datetime', 'device', 'n_images', )])
 
             return {'tuboid_id': dirname,
                     'series_info': series_info,
@@ -353,7 +337,7 @@ class BaseClient(BaseAPISpec, ABC):
         pass
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
+@decorate_all_methods(python_inputs_to_json, exclude=['__init__'])
 class LocalClient(LocalAPI, BaseClient):
     def __init__(self, local_dir: str, n_threads: int = 8, *args, **kwargs):
         # ad hoc API config for the local API. define the local_dir variable
@@ -378,7 +362,10 @@ class LocalClient(LocalAPI, BaseClient):
 class RemoteAPIException(Exception):
     pass
 
-@decorate_all_methods(format_io, exclude=['__init__', '_default_client_to_api'])
+
+# all the client methods may take python argument, the argument are implicitly transformed
+# to json-compatible values using this decorator
+@decorate_all_methods(python_inputs_to_json, exclude=['__init__', '_default_client_to_api'])
 class RemoteAPIConnector(BaseAPISpec):
     _max_retry_attempts = 5
     _sleep_time_between_attempts = 1
@@ -406,7 +393,8 @@ class RemoteAPIConnector(BaseAPISpec):
         logging.debug('Requesting %s' % url)
         response = requests.post(url, json=info, files=files, auth=auth)
         if response.status_code == 200:
-            return response.json()
+
+            return response.json(object_hook=json_out_parser)
         else:
 
             if attempt >= self._max_retry_attempts:
@@ -491,7 +479,7 @@ class RemoteAPIConnector(BaseAPISpec):
         return self._default_client_to_api('_get_ml_bundle_upload_links', info)
 
 
-@decorate_all_methods(format_io, exclude=['__init__'])
+@decorate_all_methods(python_inputs_to_json, exclude=['__init__'])
 class RemoteClient(RemoteAPIConnector, BaseClient):
     def __init__(self, local_dir: str, host, username, password, protocol: str = 'https', port: int = 443,  n_threads: int = 8):
         BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)

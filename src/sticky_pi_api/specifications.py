@@ -14,7 +14,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import event
 import sqlite3
 
-from sticky_pi_api.utils import string_to_datetime
+from sticky_pi_api.utils import json_io_converter
 from sticky_pi_api.database.utils import Base
 from sticky_pi_api.storage import DiskStorage, BaseStorage, S3Storage
 from sticky_pi_api.configuration import BaseAPIConf
@@ -26,12 +26,14 @@ from sticky_pi_api.database.tuboid_series_table import TuboidSeries
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.database.itc_labels_table import ITCLabels
 
-from sticky_pi_api.utils import chunker, format_io
+from sticky_pi_api.utils import chunker, json_inputs_to_python
 from decorate_all_methods import decorate_all_methods
 from abc import ABC, abstractmethod
 
 
-@decorate_all_methods(format_io, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
+
+#this decorator ensures json inputs are formated as python objects
+@decorate_all_methods(json_inputs_to_python, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
 class BaseAPISpec(ABC):
     @abstractmethod
     def get_images(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
@@ -300,7 +302,7 @@ class BaseAPISpec(ABC):
         pass
 
 
-@decorate_all_methods(format_io, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
+@decorate_all_methods(json_inputs_to_python, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
 class BaseAPI(BaseAPISpec, ABC):
     _storage_class = BaseStorage
     _get_image_chunk_size = 64  # the maximal number of images to request from the database in one go
@@ -432,7 +434,7 @@ class BaseAPI(BaseAPISpec, ABC):
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
 
-                conditions = [and_(Images.datetime == string_to_datetime(inf['datetime']), Images.device == inf['device'])
+                conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
                               for inf in info_chunk]
                 q = session.query(Images).filter(or_(*conditions))
 
@@ -451,25 +453,25 @@ class BaseAPI(BaseAPISpec, ABC):
             info = copy.deepcopy(info)
             for i in info:
                 # logging.warning('info: %s' % i )
-                logging.warning('0')
-                i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                i['end_datetime'] = string_to_datetime(i['end_datetime'])
+                # logging.warning('0')
+                # i['start_datetime'] = string_to_datetime(i['start_datetime'])
+                # i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                                  Images.datetime < i['end_datetime'],
                                                  Images.device.like(i['device']))
                 statement = q.statement
                 logging.warning('statement.compile(self._db_engine)')
                 logging.warning(statement.compile(self._db_engine))
-                logging.warning('1')
+                # logging.warning('1')
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
-                logging.warning('2')
+                # logging.warning('2')
 
                 for img in q:
                     img_dict = img.to_dict()
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
                     out.append(img_dict)
-                logging.warning('4')
+                # logging.warning('4')
             return out
         finally:
             session.close()
@@ -486,8 +488,8 @@ class BaseAPI(BaseAPISpec, ABC):
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
 
-                for inf in info_chunk:
-                    inf['datetime'] = string_to_datetime(inf['datetime'])
+                # for inf in info_chunk:
+                #     inf['datetime'] = string_to_datetime(inf['datetime'])
 
                 conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
                               for inf in info_chunk]
@@ -518,7 +520,9 @@ class BaseAPI(BaseAPISpec, ABC):
             # for each image
             for data in info:
 
-                json_str = json.dumps(data, default=str)
+                json_str = json.dumps(data, default=json_io_converter)
+                logging.warning('json_str')
+                logging.warning(json_str)
                 dic = data['metadata']
                 annotations = data['annotations']
 
@@ -527,7 +531,7 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 # fixme. here we should get multiple images in one go, prior to parsing annotations ?
 
-                q = session.query(Images).filter(Images.datetime == string_to_datetime(dic['datetime']), Images.device == dic['device'])
+                q = session.query(Images).filter(Images.datetime == dic['datetime'], Images.device == dic['device'])
 
                 if q.count() == 0:
                     raise ValueError("could not find parent image for %s" % str(dic))
@@ -571,8 +575,8 @@ class BaseAPI(BaseAPISpec, ABC):
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
 
-                for inf in info_chunk:
-                    inf['datetime'] = string_to_datetime(inf['datetime'])
+                # for inf in info_chunk:
+                #     inf['datetime'] = string_to_datetime(inf['datetime'])
 
                 conditions = [UIDAnnotations.parent_image.has(and_(Images.datetime == inf['datetime'],
                                                               Images.device == inf['device']))
@@ -615,8 +619,8 @@ class BaseAPI(BaseAPISpec, ABC):
             info = copy.deepcopy(info)
             for i in info:
                 # logging.warning('info: %s' % i )
-                i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                i['end_datetime'] = string_to_datetime(i['end_datetime'])
+                # i['start_datetime'] = string_to_datetime(i['start_datetime'])
+                # i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image.has(and_(
                                                 Images.datetime >= i['start_datetime'],
                                                 Images.datetime < i['end_datetime'],
@@ -662,8 +666,8 @@ class BaseAPI(BaseAPISpec, ABC):
 
             info = copy.deepcopy(info)
             for i in info:
-                i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                i['end_datetime'] = string_to_datetime(i['end_datetime'])
+                # i['start_datetime'] = string_to_datetime(i['start_datetime'])
+                # i['end_datetime'] = string_to_datetime(i['end_datetime'])
 
                 # first we get the series that are completely included in the datetime-device range
                 q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
@@ -697,9 +701,8 @@ class BaseAPI(BaseAPISpec, ABC):
             # We fetch images by chunks:
 
             for inf in info:
-
-                inf['start_datetime'] = string_to_datetime(inf['start_datetime'])
-                inf['end_datetime'] = string_to_datetime(inf['end_datetime'])
+                # inf['start_datetime'] = string_to_datetime(inf['start_datetime'])
+                # inf['end_datetime'] = string_to_datetime(inf['end_datetime'])
 
                 q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= inf['start_datetime'],
                                                        TuboidSeries.end_datetime <= inf['end_datetime'],
