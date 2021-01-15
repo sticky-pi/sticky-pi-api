@@ -1,3 +1,4 @@
+import time
 import datetime
 import shutil
 import os
@@ -5,6 +6,7 @@ import logging
 import boto3
 from io import BytesIO
 from abc import ABC, abstractmethod
+import joblib
 
 from sticky_pi_api.types import List, Dict, Union, Any
 from sticky_pi_api.database.images_table import Images
@@ -256,6 +258,8 @@ class S3Storage(BaseStorage):
                        "endpoint_url": "https://%s" % api_conf.S3_HOST,
                        "use_ssl":  True
                        }
+        self._cached_urls = {}
+
         self._bucket_name = api_conf.S3_BUCKET_NAME
         self._s3_ressource = boto3.resource('s3', **credentials)
 
@@ -347,11 +351,19 @@ class S3Storage(BaseStorage):
                                                                      ExpiresIn=self._expiration)
         return out
 
+
     def _presigned_url(self, key) -> str:
-        out = self._s3_ressource.meta.client.generate_presigned_url('get_object',
+        now = time.time()
+        if key in self._cached_urls and self._cached_urls[key][1] < now:
+            out = self._cached_urls[key]
+        else:
+            out = self._s3_ressource.meta.client.generate_presigned_url('get_object',
                                                                     Params={'Bucket': self._bucket_name,
                                                                             'Key': key},
                                                                     ExpiresIn=self._expiration)
+        # todo. here, we can parse the url so that we keep only the changing part
+        # todo, we can purge old urls/?
+        self._cached_urls[key] = (out, now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:

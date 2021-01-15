@@ -1,4 +1,4 @@
-import pickle
+
 import datetime
 import copy
 import logging
@@ -421,12 +421,10 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         out = []
-        ids_to_cache = []
-
         # info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         try:
-            url_what = 'url_%s' % what
+
             # We fetch images by chunks:
             for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
                 logging.info("Getting images... %i-%i / %i" %
@@ -434,56 +432,14 @@ class BaseAPI(BaseAPISpec, ABC):
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
 
-                # for inf in info_chunk:
-                #     inf['datetime'] = string_to_datetime(inf['datetime'])
-                logging.warning('0')
                 conditions = [and_(Images.datetime == string_to_datetime(inf['datetime']), Images.device == inf['device'])
                               for inf in info_chunk]
+                q = session.query(Images).filter(or_(*conditions))
 
-                # todo: 1 : get all ID, reprs and expirations:
-                # for if expiration is in the past: just use repr
-                #     else:   get the Image at id (or store the ID) and get image after
-                # the output should have the same order as the input query
-
-
-                # q = session.query(Images.id, Images.cached_expire_datetime, Images.cached_repr).filter(or_(*conditions))
-
-                # out = []
-                # for i, ced, dr in q:
-                #     if ced <= now:
-                #
-                logging.warning('a')
-                q = session.query(Images.id, Images.cached_repr, Images.cached_expire_datetime).filter(or_(*conditions))
-                logging.warning('b')
-
-                n_to_cache = 0
-                now = datetime.datetime.now()
-                for id, cached_repr, expiration in q:
-                    if expiration is None or now > expiration:
-                        q = session.query(Images).filter(or_(Images.id == id))
-                        assert q.count() == 1
-                        img = q.first()
-                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
-                        cached_repr = img.set_cached_repr(extra_fields)
-                        n_to_cache += 1
-                        logging.warning('caACHING')
-                    else:
-                        cached_repr = pickle.loads(cached_repr)
-                    logging.warning('cache_repr')
-                    logging.warning(cached_repr)
-                    cached_repr['url'] = cached_repr['url_%s' % what]
-                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
-                        del cached_repr['url_%s' % w]
-
-                    out.append(cached_repr)
-
-
-                logging.warning('d')
-                if n_to_cache > 0:
-                    logging.info('%i image representations were cached' % n_to_cache)
-                    logging.warning('e')
-                    session.commit()
-                logging.warning('f')
+                for img in q:
+                    img_dict = img.to_dict()
+                    img_dict['url'] = self._storage.get_url_for_image(img, what)
+                    out.append(img_dict)
             return out
         finally:
             session.close()
@@ -491,9 +447,7 @@ class BaseAPI(BaseAPISpec, ABC):
     def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
         try:
-            url_what = "url_%s" % what
             out = []
-
             info = copy.deepcopy(info)
             for i in info:
                 # logging.warning('info: %s' % i )
@@ -506,24 +460,11 @@ class BaseAPI(BaseAPISpec, ABC):
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
 
-                n_to_cache = 0
-                now = datetime.datetime.now()
                 for img in q.all():
-                    img_dict = img.get_cached_repr(now)
-                    if img_dict is None or url_what not in img_dict.keys():
-                        extra_fields = {'url_%s' % w: self._storage.get_url_for_image(img, w) for w in
-                                        ['metadata', 'image', 'thumbnail', 'thumbnail-mini']}
-                        img_dict = img.set_cached_repr(extra_fields)
-                        n_to_cache += 1
-                    img_dict['url'] = img_dict[url_what]
-
-                    for w in ['metadata', 'image', 'thumbnail', 'thumbnail-mini']:
-                        del img_dict['url_%s' % w]
+                    img_dict = img.to_dict()
+                    img_dict['url'] = self._storage.get_url_for_image(img, what)
                     out.append(img_dict)
 
-                if n_to_cache > 0:
-                    logging.info('%i image representations were cached' % n_to_cache)
-                    session.commit()
 
             return out
         finally:
@@ -915,7 +856,7 @@ class LocalAPI(BaseAPI):
 
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
-    _get_image_chunk_size = 999999  # the maximal number of images to request from the database in one go
+    _get_image_chunk_size = 1024  # the maximal number of images to request from the database in one go
 
     def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
         session = sessionmaker(bind=self._db_engine)()
