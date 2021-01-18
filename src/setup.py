@@ -24,6 +24,7 @@ setup(
                       'itsdangerous',
                       'decorate_all_methods'],
     extras_require={
+        'remote_api': ['pymysql', 'boto3', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
         'test': ['nose', 'pytest', 'pytest-cov', 'codecov', 'coverage'],
         'docs': ['mock', 'sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },

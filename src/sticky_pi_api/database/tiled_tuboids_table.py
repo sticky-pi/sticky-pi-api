@@ -1,11 +1,13 @@
+import io
+import logging
 import datetime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
+from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String, ForeignKey, Column
 from sticky_pi_api.utils import string_to_datetime
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 
-class TiledTuboids(Base, BaseCustomisations):
+class TiledTuboids(BaseCustomisations):
     __tablename__ = 'tiled_tuboids'
     __table_args__ = (UniqueConstraint('tuboid_id', name='tuboid_id'),)
 
@@ -18,15 +20,14 @@ class TiledTuboids(Base, BaseCustomisations):
     id = DescribedColumn(Integer, primary_key=True,
                          description="The unique identifier of each series")
 
+    parent_series_id = Column(Integer, ForeignKey('tuboid_series.id', ondelete="CASCADE"), nullable=False)
+    parent_series = relationship("TuboidSeries", back_populates="tiled_tuboids")
+
     tuboid_id = DescribedColumn(String(100), nullable=False,
                                 description="the dirname of the tuboid, acting as a uid")
 
     id_in_series = DescribedColumn(Integer, nullable=False,
                                    description="the original series id")
-
-    device = DescribedColumn(String(8), nullable=False,
-                             description="An 8 char hexadecimal code describing the hardware chip of the device that"
-                                         "acquired the image")
 
     start_datetime = DescribedColumn(DateTime, nullable=False,
                                      description="The UTC date and time at the first shot was taken")
@@ -34,61 +35,55 @@ class TiledTuboids(Base, BaseCustomisations):
     end_datetime = DescribedColumn(DateTime, nullable=False,
                                    description="The UTC date and time at which the last shot was taken")
 
-    series_start_datetime = DescribedColumn(DateTime, nullable=False,
-                                            description="The UTC date and time at the analysed series started")
-
-    series_end_datetime = DescribedColumn(DateTime, nullable=False,
-                                          description="The UTC date and time at which the analysed series ended")
-
     n_shots = DescribedColumn(Integer, nullable=False,
                               description="the number of shots taken")
 
-    algo_version = DescribedColumn(String(46),
-                                   nullable=False)  # something like "1598113346-ad2cd78dfaca12821046dfb8994724d5" ( `X-Y` X:timestamp of the model, Y:md5 of the model)
+    def __init__(self, data, parent_tuboid_series, api_user=None):
 
-    datetime_created = DescribedColumn(DateTime, nullable=False)
-    uploader = DescribedColumn(Integer, nullable=True)  # the user_id of the user who uploaded the data
+        info = {'id_in_series':int(data['tuboid_id'].split('.')[-1])}
+        info['tuboid_id'] = data['tuboid_id']
+        file = data['metadata']
 
-    def __init__(self, data):
-
-        input = \
-            {k: v for k, v in
-             zip(['device', 'series_start_datetime', 'series_end_datetime', 'algo_version', 'id_in_series'],
-                 data['tuboid_id'].split('.'))}
-
-        assert len(input) == 5, input
-
-        input['id_in_series'] = int(input['id_in_series'])
-        input['tuboid_id'] = data['tuboid_id']
-        input['n_shots'] = 0
-        first_shot_datetime = None
-
-        with open(data['metadata'], 'r') as f:
-            while True:
-                line = f.readline().rstrip()
-                if not line:
-                    break
-                prefix, center_real, center_imag, scale = line.split(',')
-                device, annotation_datetime = prefix.split('.')
-                assert device == input['device']
-                if first_shot_datetime is None:
-                    first_shot_datetime = annotation_datetime
-                input['n_shots'] += 1
-        input['start_datetime'] = first_shot_datetime
-        input['end_datetime'] = annotation_datetime
-
-        input['datetime_created'] = datetime.datetime.now()
+        if type(file) == str:
+            with open(file, 'r') as f:
+                info.update(self._parse(f))
+        elif hasattr(file, 'read'):
+            f = io.TextIOWrapper(file, encoding='utf-8')
+            info.update(self._parse(f))
+            f.detach()
+        else:
+            raise TypeError('Unexpected type for file. Should be either a path or a file-like. file is %s' % type(file))
 
         i_dict = {}
-        for k, v in input.items():
-
+        for k, v in info.items():
             try:
                 i_dict[k] = string_to_datetime(v)
             except (TypeError, ValueError) as e:
                 i_dict[k] = v
+        i_dict['api_user'] = api_user
 
-        Base.__init__(self, **i_dict)
+        super().__init__(parent_series_id=parent_tuboid_series.id, **i_dict)
+
+    @staticmethod
+    def _parse(file):
+        out = {'n_shots': 0}
+        file.seek(0)
+        first_shot_datetime = None
+        annotation_datetime = 0
+        while True:
+            line = file.readline().rstrip()
+            if not line:
+                break
+            prefix, center_real, center_imag, scale = line.split(',')
+            dev, annotation_datetime = prefix.split('.')
+            if first_shot_datetime is None:
+                first_shot_datetime = annotation_datetime
+            out['n_shots'] += 1
+        out['start_datetime'] = first_shot_datetime
+        out['end_datetime'] = annotation_datetime
+
+        return out
 
     def __repr__(self):
-        return "<TiledTuboid(device='%s', start_datetime='%s', id_in_series='%s')>" % (
-            self.device, self.start_datetime, self.id_in_series)
+        return "<TiledTuboid(%s)>" % (
+            self.tuboid_id)

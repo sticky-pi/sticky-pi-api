@@ -35,8 +35,6 @@ class BaseAPIConf(dict):
                                  "Using internal default value" % var_name)
                     self[var_name] = default_value
 
-                # self[var] = os.getenv(var)
-
     def __getattr__(self, attr):
         return self[attr]
 

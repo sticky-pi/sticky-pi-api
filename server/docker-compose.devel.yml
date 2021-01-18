@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  spi_db:
+    env_file:
+      - .devel.env
+  spi_api:
+    env_file:
+      - .devel.env
+
+  spi_api_tests:
+    build: ./api
+    container_name: spi_api_tests
+    command: 'python -m unittest api_tests.py'
+    restart: "no"
+    depends_on:
+      - spi_api
+      - spi_db
+      - spi_nginx
+    env_file:
+      - .env
+      - .secret.env
+      - .devel.env
+
+
+  spi_webapp:
+      env_file:
+        - .devel.env
+
+  spi_nginx:
+    env_file:
+      - .devel.env
+    build:
+      args:
+          TESTING: "TRUE"
+          ROOT_DOMAIN_NAME: "localhost"
+

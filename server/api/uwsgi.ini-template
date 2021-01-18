@@ -1,0 +1,6 @@
+[uwsgi]
+wsgi-file = app.py
+callable = app
+socket = :${API_PORT}
+processes = 1
+#buffer-size = 32768

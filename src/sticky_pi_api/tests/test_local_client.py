@@ -11,17 +11,13 @@ import shutil
 import glob
 import logging
 
+
 logging.getLogger().setLevel(logging.INFO)
 test_dir = os.path.dirname(__file__)
-_tiled_tuboid_root_dir = os.path.join(test_dir, 'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
 
-class TestLocalClient(unittest.TestCase):
-    _test_images = [i for i in sorted(glob.glob(os.path.join(test_dir, "raw_images/**/*.jpg")))]
+
+class LocalAndRemoteTests(object):
     _ml_bundle_dir = os.path.join(test_dir, 'ml_bundle')
-
-
-    _tiled_tuboid_dirs = [os.path.join(_tiled_tuboid_root_dir, d) for d in os.listdir(_tiled_tuboid_root_dir)]
-
     _test_annotation = {"annotations": [
         dict(contour=[[[2194, 1597]], [[2189, 1602]], [[2189, 1617]], [[2200, 1630]], [[2201, 1634]], [[2221, 1656]],
                       [[2240, 1656]], [[2245, 1647]], [[2245, 1632]], [[2236, 1621]], [[2241, 1613]], [[2239, 1607]],
@@ -33,71 +29,95 @@ class TestLocalClient(unittest.TestCase):
         "metadata": dict(algo_name="sticky-pi-universal-insect-detector",
                          algo_version="1598113346-ad2cd78dfaca12821046dfb8994724d5", device="5c173ff2",
                          datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
+    _test_dir = test_dir
 
-    _test_image_for_annotation = os.path.join(test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
-    #
+    def __init__(self):
+        self._test_image_for_annotation = os.path.join(self._test_dir, "raw_images/5c173ff2/5c173ff2.2020-06-20_21-33-24.jpg")
+        self._tiled_tuboid_root_dir = os.path.join(self._test_dir,
+                                              'tiled_tuboids/08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5')
+        self._tiled_tuboid_dirs = [os.path.join(self._tiled_tuboid_root_dir, d) for d in os.listdir(self._tiled_tuboid_root_dir)]
+        self._test_images = [i for i in sorted(glob.glob(os.path.join(self._test_dir, "raw_images/**/*.jpg")))]
 
+    def _clean_persistent_resources(self, cli):
+        todel = [{'device': '%',
+                                     'start_datetime': '2020-01-01_00-00-00',
+                                     'end_datetime': '2020-12-31_00-00-00'}]
+        out = cli.get_image_series(todel)
+        cli.delete_images(out)
+        cli.delete_tiled_tuboids(todel)
+
+
+# ###########################################################################################################
+#
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
         finally:
             shutil.rmtree(temp_dir)
 
     #
-    def test_users(self):
 
+    def test_users(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             users = [
                 {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
                 {'username': 'grace', 'password': 'hopper', 'is_admin': True},
                     ]
-            cli = LocalClient(temp_dir)
+            cli = self._make_client(temp_dir)
+            self._clean_persistent_resources(cli)
             cli.put_users(users)
+            cli.get_token({'username':'ada'})
 
             # cannot add same users twice
             with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(IntegrityError) as context:
+                with self.assertRaises(self._server_error) as context:
                     cli.put_users(users)
 
             out = cli.get_users()
-            self.assertEqual(len(out), 2)
+            self.assertEqual(len(out), 2 + self._initial_n_users)
 
-            out = cli.get_users(info={'username':'%'})
-            self.assertEqual(len(out), 2)
+            out = cli.get_users(info=[{'username': '%'}])
+            self.assertEqual(len(out), 2 + self._initial_n_users)
 
-            out = cli.get_users(info={'username':'ad%'})
+            out = cli.get_users(info=[{'username': 'ada'}])
             self.assertEqual(len(out), 1)
 
         finally:
             shutil.rmtree(temp_dir)
-
-    def test_put(self):
+    # #
+    def test_put_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
             uploaded = db.put_images(self._test_images[0:2])
+
             self.assertEqual(len(uploaded), 2)
             uploaded = db.put_images(self._test_images)
+            self.assertEqual(len(uploaded), len(self._test_images) - 2)
+
             uploaded = db.put_images(self._test_images)
-            # self.assertEqual(len(uploaded), len(self._test_images) - 2)
-            # # should fail to put images that are already there:
-            # with redirect_stderr(StringIO()) as stdout:
-            #     with self.assertRaises(IntegrityError) as context:
-            #         db._put_new_images(self._test_images[0:1])
+
+            # should fail to put images that are already there:
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    db._put_new_images(self._test_images[0:1])
 
         finally:
             shutil.rmtree(temp_dir)
-
+    #
 
     def test_get_images(self):
         import tempfile
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
             db.put_images(self._test_images)
-            "the input dates of the client can be dates or string"
+
+            #the input dates of the client can be dates or string
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}])
             self.assertEqual(len(out), 1)
             # the output of the client should be a date, always
@@ -114,6 +134,7 @@ class TestLocalClient(unittest.TestCase):
             from sticky_pi_api.image_parser import ImageParser
             img_dict = ImageParser(out[0]['url'])
             self.assertEqual(out[0]['md5'], img_dict['md5'])
+
         finally:
             import shutil
             shutil.rmtree(temp_dir)
@@ -121,41 +142,58 @@ class TestLocalClient(unittest.TestCase):
     def test_get_image_series(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
             db.put_images(self._test_images)
             out = db.get_image_series([{'device': "0a5bb6f4",
                                         'start_datetime': "2020-06-20_00-00-00",
                                         'end_datetime': "2020-06-22_00-00-00"}], what='image')
 
             self.assertEqual(len(out), 5)
-            # self.assertEqual(, img_dict['md5'])
+            out2 = db.get_image_series([{'device': "0a5bb6f4",
+                                        'start_datetime': "2020-06-20_00-00-00",
+                                        'end_datetime': "2020-06-22_00-00-00"}], what='image')
+
+            self.assertEqual(len(out2), 5)
+            for o, o2 in zip(out, out2):
+                self.assertDictEqual(o, o2)
+
+
         finally:
             shutil.rmtree(temp_dir)
     # #
     def test_put_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
-
-            db.put_images([self._test_image_for_annotation])
+            import copy
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            im = db.put_images([self._test_image_for_annotation])
             db.put_uid_annotations([self._test_annotation])
 
             # update algo version should allow reupload of annotation
-            self._test_annotation['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
-            db.put_uid_annotations([self._test_annotation])
-
+            test_annotation2 = copy.deepcopy(self._test_annotation)
+            test_annotation2['metadata']['algo_version'] = '9000000000-ad2cd78dfaca12821046dfb8994724d5'
+            db.put_uid_annotations([test_annotation2])
+            #
             # should fail to upload twice the same annotations (save version/image)
             with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(IntegrityError) as context:
-                    db.put_uid_annotations([self._test_annotation])
+                with self.assertRaises(self._server_error) as context:
+                    db.put_uid_annotations([test_annotation2])
 
             # should fail to upload orphan annotations
-            annot = self._test_annotation
-            annot['metadata']['device'] = '01234567'
+            #
+            test_annotation2['metadata']['device'] = '01234567'
             with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(ValueError) as context:
-                    db.put_uid_annotations([annot])
+                with self.assertRaises((ValueError, self._server_error)) as context:
+                    db.put_uid_annotations([test_annotation2])
+            #
+            # # should clean both images AND annotations, in cascade
 
+            self._clean_persistent_resources(db)
+            # print(db.get_images(im, what='image'))
+            db.put_images([self._test_image_for_annotation])
+            db.put_uid_annotations([self._test_annotation])
 
         finally:
             shutil.rmtree(temp_dir)
@@ -163,7 +201,9 @@ class TestLocalClient(unittest.TestCase):
     def test_get_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
 
             # get annotation of non-existing parent image return an empty list
             out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
@@ -183,19 +223,20 @@ class TestLocalClient(unittest.TestCase):
             self.assertEqual(len(out), 1)
 
             out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}], what='data')
+            print(out)
             self.assertDictEqual(json.loads(out[0]['json']), self._test_annotation)
 
         finally:
             shutil.rmtree(temp_dir)
-    #
+    # #
     def test_get_uid_annotations_series(self):
         import copy
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             from sticky_pi_api.image_parser import ImageParser
             from sticky_pi_api.utils import datetime_to_string
-
+            self._clean_persistent_resources(db)
             to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
             db.put_images(to_upload)
 
@@ -226,10 +267,10 @@ class TestLocalClient(unittest.TestCase):
         import copy
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
             from sticky_pi_api.image_parser import ImageParser
             from sticky_pi_api.utils import datetime_to_string
-
+            self._clean_persistent_resources(db)
             to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
             db.put_images(to_upload)
 
@@ -256,7 +297,7 @@ class TestLocalClient(unittest.TestCase):
 
         finally:
             shutil.rmtree(temp_dir)
-    #
+
 
     def test_ml_bundle(self):
 
@@ -265,20 +306,21 @@ class TestLocalClient(unittest.TestCase):
         dummy_bundle_name = 'dummy_bundle_name'
         try:
 
-            db = LocalClient(temp_dir)
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            #
+            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
+            self.assertEqual(len(out), 8)
+            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
+            self.assertEqual(len(out), 0)
 
-            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
-            # self.assertEqual(len(out), 8)
-            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
-            # self.assertEqual(len(out), 0)
-            # #
-            bundle_dir = os.path.join(dummy_bundle_name, temp_dir2, 'ml_bundle')
+            bundle_dir = os.path.join(temp_dir2, dummy_bundle_name)
 
             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
-
             self.assertEqual(len(out), 3)
 
             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
+
             self.assertEqual(len(out), 5)
 
             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
@@ -293,16 +335,32 @@ class TestLocalClient(unittest.TestCase):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
 
-            db = LocalClient(temp_dir)
-            db.put_tiled_tuboids(self._tiled_tuboid_dirs)
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
 
-            series = [{'device': '%',
-                       'start_datetime': '2020-01-01_00-00-00',
-                       'end_datetime': '2020-12-31_00-00-00'}]
+            series = [{'device': '08038ade',
+                       'start_datetime': '2020-07-08_20-00-00',
+                       'end_datetime': '2020-07-09_15-00-00',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
 
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
             self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
-            # import pandas as pd
-            # print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
+            import pandas as pd
+            print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
+            #
+            self._clean_persistent_resources(db)
+            series = [{'device': '08038ade',
+                       'start_datetime': '2020-07-08_20-00-00',
+                       'end_datetime': '2020-07-09_15-00-00',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
 
         finally:
             shutil.rmtree(temp_dir)
@@ -313,11 +371,17 @@ class TestLocalClient(unittest.TestCase):
 
             series = [{'device': '%',
                        'start_datetime': '2020-01-01_00-00-00',
-                       'end_datetime': '2020-12-31_00-00-00'}]
-            db = LocalClient(temp_dir)
+                       'end_datetime': '2020-12-31_00-00-00',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
             # emp[ty dt should be returned if no series exist
             db.get_tiled_tuboid_series_itc_labels(series)
-            db.put_tiled_tuboids(self._tiled_tuboid_dirs)
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
             # should be missing the itc fields
             db.get_tiled_tuboid_series_itc_labels(series)
             info = [{
@@ -332,22 +396,43 @@ class TestLocalClient(unittest.TestCase):
                 'genus': 'test'
             }
             ]
-
+            #
             out = db.put_itc_labels(info)
             self.assertEqual(len(out), 1)
             # cannot add same label twice
 
             with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(IntegrityError) as context:
+                with self.assertRaises(self._server_error) as context:
                     info[0]['label'] = 2
                     db.put_itc_labels(info)
+            #
             info[0]['algo_name'] = 'another_algo'
             out = db.put_itc_labels(info)
             self.assertEqual(len(out), 1)
-
+            #
             import pandas as pd
+            pd.set_option('display.max_rows', 500)
+            pd.set_option('display.max_columns', 500)
             out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
-            self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+            # print(info[0]['tuboid_id'])
+            print(out)
+            # for i in range(len(out)):
+            #     print(out.tuboid_id[i])
+            # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
 
         finally:
             shutil.rmtree(temp_dir)
+
+
+class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
+    _server_error = IntegrityError
+    _initial_n_users = 0
+
+    def __init__(self, method):
+        LocalAndRemoteTests.__init__(self)
+        unittest.TestCase.__init__(self, method)
+
+    def _make_client(self, directory):
+        return LocalClient(directory)
+
+

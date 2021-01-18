@@ -1,19 +1,21 @@
 import datetime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String
+from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String, Index
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 
-class Images(Base, BaseCustomisations):
+class Images(BaseCustomisations):
     __tablename__ = 'images'
-    __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'),)
+    __table_args__ = (UniqueConstraint('device', 'datetime', name='image_id'), Index("image_uid", 'device', 'datetime'))
 
     uid_annotations = relationship("UIDAnnotations",
                                    back_populates="parent_image",
                                    cascade="all, delete",
                                    passive_deletes=True
                                    )
+
+    # tasks = relationship("Task", back_populates="project", passive_deletes=True)
 
     id = DescribedColumn(Integer, primary_key=True,
                          description="The unique identifier of each image")
@@ -22,17 +24,14 @@ class Images(Base, BaseCustomisations):
                                          "acquired the image")
     datetime = DescribedColumn(DateTime, nullable=False,
                                description="The UTC date and time at which the image was taken")
+
     md5 = DescribedColumn(String(32), nullable=False,
                           description="An md5 checksum of the whole JPEG image. Used internally for"
                                       "sanity checks and  incremental transfers")
-    datetime_created = DescribedColumn(DateTime, nullable=False,
-                                       description="UTC datetime of the upload of the image to the DB")
 
     device_version = DescribedColumn(String(8), default="1.0.0", nullable=True,
                                      description="The version of the firmware on the device -- that took the image")
-    api_version = DescribedColumn(String(8), default="1.0.0", nullable=True)
-    uploader = DescribedColumn(Integer, nullable=True,
-                               description="The user ID (see `users' table of the uploader)")
+
     width = DescribedColumn(SmallInteger, nullable=False,
                             description="Width of the image, in pixels")
     height = DescribedColumn(SmallInteger, nullable=False,
@@ -53,7 +52,7 @@ class Images(Base, BaseCustomisations):
     no_flash_bv = DescribedColumn(Float, nullable=False)
     no_flash_iso = DescribedColumn(Float, nullable=False)
 
-    def __init__(self, file):
+    def __init__(self, file, api_user=None):
         parser = ImageParser(file)
         self._file_blob = parser.file_blob
         self._thumbnail = parser.thumbnail
@@ -68,10 +67,9 @@ class Images(Base, BaseCustomisations):
                 i_dict[k] = parser[k]
             else:
                 i_dict[k] = None
+        i_dict['api_user'] = api_user
+        super().__init__(**i_dict)
 
-        i_dict['datetime_created'] = datetime.datetime.now()
-
-        Base.__init__(self, **i_dict)
 
     @property
     def filename(self):

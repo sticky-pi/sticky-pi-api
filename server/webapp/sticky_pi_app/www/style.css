@@ -1,0 +1,44 @@
+.rotate{
+  -webkit-transform: rotate(90deg);
+  -ms-transform: rotate(90deg); // IE9 only
+  transform: rotate(90deg);
+}
+
+.vertical-align {
+    display: flex;
+    align-items: center;
+}
+
+.thumbnail_action_button{
+  width: 100%;
+}
+#scope_title{
+    margin-left: 10px;
+}
+#time_plot_tooltip{
+    background-color: black;
+    color: #fff;
+    visibility:hidden;
+    text-align: right;
+    border-radius: 6px;
+    padding: 5px;
+    opacity: 0.90;
+    position:absolute;
+    size: 128px;
+    pointer-events: none;
+    overflow: hidden;
+}
+img#thumbnail_mini{
+    width:196px;
+}
+
+canvas#current_thumbnail{
+    background-color: blue;
+    width: 100%;
+    height: auto;
+    background-size: 100% 100%;
+}
+
+.modal-dialog {
+  width: 80%;
+  }

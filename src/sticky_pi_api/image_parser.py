@@ -5,7 +5,7 @@ import PIL.ExifTags
 from imread import imread_from_blob
 from ast import literal_eval
 import datetime
-from sticky_pi_api.utils import md5
+from sticky_pi_api.utils import md5, URLOrFileOpen
 
 
 class ImageParser(dict):
@@ -23,12 +23,12 @@ class ImageParser(dict):
         """
         super().__init__()
         if type(file) == str:
-            with open(file, 'rb') as f:
+            with URLOrFileOpen(file, 'rb') as f:
                 self._parse(f)
         elif hasattr(file, 'read'):
             self._parse(file)
         else:
-            raise TypeError('Unexpected type for file. Should be either a path or a file-like')
+            raise TypeError('Unexpected type for file. Should be either a path or a file-like. file is %s' % type(file))
 
 
     def _device_datetime_info(self, filename):
@@ -45,7 +45,7 @@ class ImageParser(dict):
         fields = filename.split('.')
 
         if len(fields) != 3:
-            raise Exception("Wrong file name, three dot-separated fields expected")
+            raise Exception("Wrong file name: %s. Three dot-separated fields expected." % filename)
 
         device = fields[0]
         try:
