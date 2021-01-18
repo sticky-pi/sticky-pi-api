@@ -381,7 +381,7 @@ class RemoteAPIConnector(BaseAPISpec):
     def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, attempt=0):
 
         if entry_point != 'get_token':
-            if self._token['expiration'] < int(time.time()) - 60:  # we add 60s just to be sure
+            if self._token['expiration'] < int(time.time()) + 60:  # we add 60s just to be sure
                 self._token = self.get_token()
             auth = self._token['token'], ''
         else:
@@ -393,7 +393,6 @@ class RemoteAPIConnector(BaseAPISpec):
         logging.debug('Requesting %s' % url)
         response = requests.post(url, json=info, files=files, auth=auth)
         if response.status_code == 200:
-
             return response.json(object_hook=json_out_parser)
         else:
 
