@@ -329,10 +329,8 @@ class BaseAPI(BaseAPISpec, ABC):
                 # We parse the image file to make to its own DB object
 
                 api_user = client_info['username'] if client_info is not None else None
-                # im = Images(f, api_user=api_user)
                 im = Images(f, api_user=api_user)
                 out.append(im.to_dict())
-
                 session.add(im)
 
                 # try to store images, only commit if storage worked.
@@ -423,7 +421,6 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         out = []
-        # info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         try:
 
@@ -450,35 +447,23 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         try:
             out = []
-            info = copy.deepcopy(info)
             for i in info:
-                # logging.warning('info: %s' % i )
-                # logging.warning('0')
-                # i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                # i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(Images).filter(Images.datetime >= i['start_datetime'],
                                                  Images.datetime < i['end_datetime'],
                                                  Images.device.like(i['device']))
-                statement = q.statement
-                logging.warning('statement.compile(self._db_engine)')
-                logging.warning(statement.compile(self._db_engine))
-                # logging.warning('1')
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
-                # logging.warning('2')
 
                 for img in q:
                     img_dict = img.to_dict()
                     img_dict['url'] = self._storage.get_url_for_image(img, what)
                     out.append(img_dict)
-                # logging.warning('4')
             return out
         finally:
             session.close()
 
     def delete_images(self, info: MetadataType, client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
-        info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
         try:
             # We fetch images by chunks:
@@ -487,9 +472,6 @@ class BaseAPI(BaseAPISpec, ABC):
                              (i * self._get_image_chunk_size,
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
-
-                # for inf in info_chunk:
-                #     inf['datetime'] = string_to_datetime(inf['datetime'])
 
                 conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
                               for inf in info_chunk]
@@ -521,8 +503,6 @@ class BaseAPI(BaseAPISpec, ABC):
             for data in info:
 
                 json_str = json.dumps(data, default=json_io_converter)
-                logging.warning('json_str')
-                logging.warning(json_str)
                 dic = data['metadata']
                 annotations = data['annotations']
 
@@ -550,7 +530,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 session.add(annot)
 
                 # https://stackoverflow.com/questions/3659142/bulk-insert-with-sqlalchemy-orm
-             # ... or commit in the very end!
+
             session.commit()
             out = []
             for annot in all_annots:
@@ -563,8 +543,6 @@ class BaseAPI(BaseAPISpec, ABC):
             session.close()
 
     def get_uid_annotations(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
-
-        # images = self.get_images(info)
         out = []
         session = sessionmaker(bind=self._db_engine)()
         try:
@@ -574,9 +552,6 @@ class BaseAPI(BaseAPISpec, ABC):
                              (i * self._get_image_chunk_size,
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
-
-                # for inf in info_chunk:
-                #     inf['datetime'] = string_to_datetime(inf['datetime'])
 
                 conditions = [UIDAnnotations.parent_image.has(and_(Images.datetime == inf['datetime'],
                                                               Images.device == inf['device']))
@@ -588,24 +563,7 @@ class BaseAPI(BaseAPISpec, ABC):
                     if what == 'metadata':
                         del annot_dict['json']
                     out.append(annot_dict)
-                #
-                # n_to_cache = 0
-                # now = datetime.datetime.now()
-                # for annots in q.all():
-                #     annot_dict = annots.get_cached_repr(now)
-                #     if annot_dict is None:
-                #         annot_dict = annots.set_cached_repr()
-                #     if what == 'metadata':
-                #         del annot_dict['json']
-                #     elif what == 'data':
-                #         pass
-                #     else:
-                #         raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
-                #     out.append(annot_dict)
 
-                # if n_to_cache > 0:
-                #     logging.info('%i UID annotation representations were cached' % n_to_cache)
-                #     session.commit()
             return out
         finally:
             session.close()
@@ -613,14 +571,9 @@ class BaseAPI(BaseAPISpec, ABC):
     def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
         try:
-            url_what = "url_%s" % what
             out = []
-
             info = copy.deepcopy(info)
             for i in info:
-                # logging.warning('info: %s' % i )
-                # i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                # i['end_datetime'] = string_to_datetime(i['end_datetime'])
                 q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image.has(and_(
                                                 Images.datetime >= i['start_datetime'],
                                                 Images.datetime < i['end_datetime'],
@@ -629,30 +582,11 @@ class BaseAPI(BaseAPISpec, ABC):
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
 
-                n_to_cache = 0
-                now = datetime.datetime.now()
-
                 for annots in q:
                     annot_dict = annots.to_dict()
                     if what == 'metadata':
                         del annot_dict['json']
                     out.append(annot_dict)
-                # for annots in q.all():
-                #     annot_dict = annots.get_cached_repr(now)
-                #     if annot_dict is None:
-                #         annot_dict = annots.set_cached_repr()
-                #     if what == 'metadata':
-                #         del annot_dict['json']
-                #     elif what == 'data':
-                #         pass
-                #     else:
-                #         raise ValueError("Unexpected `what` argument: %s. Should be in {'metadata', 'data'}")
-                #     out.append(annot_dict)
-
-                # if n_to_cache > 0:
-                #     logging.info('%i image representations were cached' % n_to_cache)
-                #     session.commit()
-
             return out
         finally:
             session.close()
@@ -666,9 +600,6 @@ class BaseAPI(BaseAPISpec, ABC):
 
             info = copy.deepcopy(info)
             for i in info:
-                # i['start_datetime'] = string_to_datetime(i['start_datetime'])
-                # i['end_datetime'] = string_to_datetime(i['end_datetime'])
-
                 # first we get the series that are completely included in the datetime-device range
                 q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
                                                        # here we need to include both bounds in case a tuboid ends just in between
@@ -701,22 +632,17 @@ class BaseAPI(BaseAPISpec, ABC):
             # We fetch images by chunks:
 
             for inf in info:
-                # inf['start_datetime'] = string_to_datetime(inf['start_datetime'])
-                # inf['end_datetime'] = string_to_datetime(inf['end_datetime'])
-
                 q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= inf['start_datetime'],
                                                        TuboidSeries.end_datetime <= inf['end_datetime'],
                                                        TuboidSeries.device.like(inf['device']))
 
                 for ts in q:
                     img_dict = ts.to_dict()
+                    all_tuboids = [t for t in session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)]
                     session.delete(ts)
                     try:
-                        # q = session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)
-                        for tub in q.all():
+                        for tub in all_tuboids:
                             self._storage.delete_tiled_tuboid_files(tub)
-                            # fixme should cascade delete here!
-                            # session.delete(tub)
                         session.commit()
                     except Exception as e:
                         session.rollback()

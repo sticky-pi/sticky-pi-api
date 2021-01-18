@@ -249,7 +249,7 @@ class DiskStorage(BaseStorage):
 
 class S3Storage(BaseStorage):
 
-    _expiration = 3600 * 24
+    _expiration = 3600 * 24 * 7 # urls are valid for a week
 
     def __init__(self, api_conf: RemoteAPIConf, *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)

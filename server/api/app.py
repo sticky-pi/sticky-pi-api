@@ -21,7 +21,6 @@ from sticky_pi_api.utils import datetime_to_string
 def get_api(config: RemoteAPIConf) -> RemoteAPI:
     return RemoteAPI(config)
 
-
 #  to create initial admin user if does not exist
 def create_initial_admin(api):
     admin_user = {'username': os.getenv('API_ADMIN_NAME'),
@@ -93,24 +92,6 @@ class CustomJSONEncoder(JSONEncoder):
 app = Flask(__name__)
 app.json_encoder = CustomJSONEncoder
 
-
-# fixme. an attempt to programatically define entrypoints
-# def add_entry_point(name, role='admin', methods=['POST']):
-#     @app.route('/' + name, endpoint=name,  methods=methods)
-#
-#     @auth.login_required(role=role)
-#     def foo():
-#         data = request.get_json()
-#         out = api.get_users(data)
-#         return jsonify(out)
-#
-#     app.add_url_rule('/' + name,
-#                      endpoint=name,
-#                      view_func=foo)
-#
-#
-# add_entry_point('get_users')
-# add_entry_point('put_users')
 template_function = \
 """
 @app.route('/%s%s', methods = ['POST'])
@@ -133,7 +114,6 @@ def make_endpoint(method, role = 'admin', what=False):
     sub_route = "/<what>" if what else ""
     role_str = "role=%s" % role if role else ""
     assert endpoint in dir(api), "all endpoint must point to api methods. got %s" % endpoint
-    # print(template_function % (endpoint, sub_route, role_str, endpoint, endpoint))
     exec(template_function % (endpoint, sub_route, role_str, endpoint, endpoint))
 
 
@@ -143,7 +123,6 @@ def get_token():
     client_info = {'username': auth.current_user()}
     out = api.get_token(client_info=client_info)
     return jsonify(out)
-
 
 
 make_endpoint(api.get_users, role='admin')
@@ -169,7 +148,6 @@ make_endpoint(api._get_ml_bundle_file_list, role="", what=True)
 
 make_endpoint(api.put_itc_labels, role=['admin', 'read_write_user'])
 make_endpoint(api._get_itc_labels, role="")
-
 
 
 @app.route('/_put_new_images', methods=['POST'])
