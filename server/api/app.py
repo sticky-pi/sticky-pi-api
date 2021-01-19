@@ -21,10 +21,11 @@ from sticky_pi_api.utils import datetime_to_string
 def get_api(config: RemoteAPIConf) -> RemoteAPI:
     return RemoteAPI(config)
 
+
 #  to create initial admin user if does not exist
-def create_initial_admin(api):
-    admin_user = {'username': os.getenv('API_ADMIN_NAME'),
-                  'password': os.getenv('API_ADMIN_PASSWORD'),
+def create_initial_user(api, username, password):
+    admin_user = {'username': username,
+                  'password': password,
                   'is_admin': True}
 
     assert admin_user['username'], 'Cannot find admin username in env (API_ADMIN_NAME)'
@@ -56,7 +57,11 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:
 conf = RemoteAPIConf()
 auth = HTTPBasicAuth()
 api = get_api(conf)
-create_initial_admin(api)
+
+create_initial_user(api, os.getenv('API_ADMIN_NAME'), os.getenv('API_ADMIN_PASSWORD'))
+
+# user for the universal insect detector BG process
+create_initial_user(api, os.getenv('UID_USER'), os.getenv('UID_PASSWORD'))
 
 
 # configure authentication

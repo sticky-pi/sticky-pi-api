@@ -39,9 +39,19 @@ services:
 
   spi_uid:
     container_name: spi_uid
-      restart: always
+    restart: always
+    build:
+      context: ./ml
+    command: 'python uid.py -v predict'
+    environment:
+      - BUNDLE_ROOT_DIR=/opt/ml_bundle_dir/ # - ${LOCAL_VOLUME_ROOT}/client/ml/
+      - LOCAL_CLIENT_DIR=/opt/api_api_client/ #${LOCAL_VOLUME_ROOT}/client/
+
     depends_on:
       - spi_api
+    env_file:
+      - .env
+      - .secret.env
 
   spi_nginx:
     container_name: spi_nginx

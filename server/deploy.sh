@@ -10,6 +10,8 @@ fi
 
 # fixme rm this line
 rsync -a ../src/ api/src
+# this line should also go when packages are installed from github
+rsync -a ../../sticky-pi-ml-git/src/ ml/src
 
 docker-compose  down --remove-orphans  -v
 
