@@ -6,8 +6,6 @@ import logging
 import boto3
 from io import BytesIO
 from abc import ABC, abstractmethod
-import joblib
-
 from sticky_pi_api.types import List, Dict, Union, Any
 from sticky_pi_api.database.images_table import Images
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
@@ -28,7 +26,7 @@ class BaseStorage(ABC):
     _suffix_map = {'image': '',
                    'thumbnail': '.thumbnail',
                    'thumbnail-mini': '.thumbnail-mini'}
-    _allowed_ml_bundle_suffixes = ('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg', 'txt')
+    _allowed_ml_bundle_suffixes = ('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg', '.txt')
     _ml_bundle_ml_data_subdir = ('data', 'config')
     _ml_bundle_ml_model_subdir = ('output', 'config')
 
