@@ -240,7 +240,7 @@ class BaseAPISpec(ABC):
         :param what: One of {``'all'``, ``'data'``,``'model'`` }, to return all files, only the training data(training),
             or only the model (inference), respectively.
         :param client_info: optional information about the client/user contains key ``'username'``
-        :return: A list of dict containing the fields ``key`` and ``url`` of the files to be downloaded,
+        :return: A list of dict containing the fields ``key``, ``url`` and ``mtime`` of the files to be downloaded,
          which can be used to download the files
         """
         pass
@@ -401,8 +401,8 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-    def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str, Any] = None) -> List[
-        Dict[str, Union[float, str]]]:
+    def _get_ml_bundle_file_list(self, info: str, what: str = "all", client_info: Dict[str, Any] = None) -> \
+            List[Dict[str, Union[float, str]]]:
         return self._storage.get_ml_bundle_file_list(info, what)
 
     def _get_ml_bundle_upload_links(self, info: List[Dict[str, Union[float, str]]],

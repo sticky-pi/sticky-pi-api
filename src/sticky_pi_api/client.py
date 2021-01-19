@@ -309,6 +309,7 @@ class BaseClient(BaseAPISpec, ABC):
 
         for f in files_to_download:
             self._get_ml_bundle_file(f['url'], os.path.join(bundle_dir, f['key']))
+            os.utime(os.path.join(bundle_dir, f['key']), (time.time(), f['mtime']))
 
         return files_to_download
 
