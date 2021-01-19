@@ -6,6 +6,7 @@ RUN apt-get update -y
 # gcc compiler and opencv prerequisites
 RUN apt-get -y install nano git build-essential libglib2.0-0 libsm6 libxext6 libxrender-dev sudo cmake ninja-build
 
+RUN apt-get -y install libgl1-mesa-dev libcairo-dev
 # fixme to develop (src must be a local copy of sticky_pi_ml/src)
 
 RUN pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
@@ -23,14 +24,19 @@ RUN pip install -U 'git+https://github.com/facebookresearch/fvcore'
 RUN git clone https://github.com/facebookresearch/detectron2 detectron2_repo
 RUN pip install -e detectron2_repo
 
-RUN python -m pip install git+https://github.com/sticky-pi/sticky-pi-api@develop#egg=sticky_pi_api&subdirectory=src
-RUN git clone https://github.com/sticky-pi/sticky-pi-api && cd sticky-pi-api/src && git checkout develop && pip install -e .
+# RUN python -m pip install git+https://github.com/sticky-pi/sticky-pi-api@develop#egg=sticky_pi_api&subdirectory=src
+# RUN git clone https://github.com/sticky-pi/sticky-pi-api && cd sticky-pi-api/src && git checkout develop && pip install -e .
+
+
+COPY src_api /tmp/sticky_pi_api
+RUN pip uninstall sticky_pi_api -y
+RUN pip install -e /tmp/sticky_pi_api
 
 COPY src /tmp/sticky_pi_ml
 RUN pip uninstall sticky_pi_ml -y
 RUN pip install -e /tmp/sticky_pi_ml
 
-RUN apt-get -y install libgl1-mesa-dev libcairo-dev
+
 
 # fixme... when stable:
 #RUN pip install git+https://github.com/sticky-pi/sticky-pi-ml@develop#egg=sticky_pi_ml&subdirectory=src
