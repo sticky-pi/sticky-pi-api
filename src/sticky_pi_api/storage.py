@@ -13,7 +13,6 @@ from sticky_pi_api.configuration import LocalAPIConf, BaseAPIConf, RemoteAPIConf
 from sticky_pi_api.utils import multipart_etag
 
 
-
 class BaseStorage(ABC):
     _multipart_chunk_size = 8 * 1024 * 1024
     _raw_images_dirname = 'raw_images'
@@ -308,9 +307,11 @@ class S3Storage(BaseStorage):
         bucket = self._s3_ressource.Bucket(self._bucket_name)
         out = []
 
-        for obj in bucket.objects.filter(Prefix=self._ml_storage_dirname + '/'):
+        bundle_dir = os.path.join(self._ml_storage_dirname, bundle_name)
+
+        for obj in bucket.objects.filter(Prefix=bundle_dir):
             # strip the bundle dirname
-            key = os.path.relpath(obj.key, os.path.join(self._ml_storage_dirname, bundle_name))
+            key = os.path.relpath(obj.key, bundle_dir)
 
             matches = [s for s in self._allowed_ml_bundle_suffixes if key.endswith(s)]
 

@@ -288,7 +288,6 @@ class BaseClient(BaseAPISpec, ABC):
     def get_ml_bundle_dir(self, bundle_name: str, bundle_dir: str, what: str) -> List[Dict[str, Union[float, str]]]:
         # bundle_name = os.path.basename(os.path.normpath(bundle_dir))
         local_files = BaseStorage.local_bundle_files_info(bundle_dir, what)
-        remote_files = self._get_ml_bundle_file_list(bundle_name, what)
         already_downloaded_dict = {au['key']: au for au in local_files}
         files_to_download = []
         for r in remote_files:
