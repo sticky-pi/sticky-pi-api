@@ -349,8 +349,10 @@ class LocalAndRemoteTests(object):
             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
             self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
             import pandas as pd
-            print(pd.DataFrame(db.get_tiled_tuboid_series(series)))
-            #
+            res = pd.DataFrame(db.get_tiled_tuboid_series(series))
+
+            self.assertTrue(len(res) == res.iloc[0].n_tuboids)
+
             self._clean_persistent_resources(db)
             series = [{'device': '08038ade',
                        'start_datetime': '2020-07-08_20-00-00',
@@ -361,10 +363,15 @@ class LocalAndRemoteTests(object):
                        'algo_version':'11111111-19191919'}]
 
             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+
+
 
         finally:
             shutil.rmtree(temp_dir)
-
+    #
     def test_itc_labels(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:

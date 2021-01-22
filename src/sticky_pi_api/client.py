@@ -212,7 +212,7 @@ class BaseClient(BaseAPISpec, ABC):
             to_upload = [parse_tuboid_dir(g) for g in group]
             logging.info("Putting tuboids... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
                                                                             i * self._put_chunk_size + len(group),
-                                                                            len(to_upload)))
+                                                                            len(tuboid_directories)))
 
             out += self._put_tiled_tuboids(to_upload)
 

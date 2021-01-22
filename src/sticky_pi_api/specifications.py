@@ -11,6 +11,7 @@ from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 # from multiprocessing.pool import Pool
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import event
 import sqlite3
 
@@ -378,8 +379,8 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 tub = TiledTuboids(data, parent_tuboid_series=ts, api_user=api_user)
                 q = session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)
-                assert q.count() < ts.n_tuboids, \
-                    'Cannot add more tuboids to parent series %s. Already all of them are there' % ts
+                if not (q.count() < ts.n_tuboids):
+                    raise IntegrityError('Cannot add more tuboids to parent series %s. Already all of them are there' % ts, None, None)
 
                 assert tub.start_datetime >= ts.start_datetime, 'tuboid starts before its parent series'
                 assert tub.end_datetime <= ts.end_datetime, 'tuboid ends after its parent series'
@@ -601,22 +602,34 @@ class BaseAPI(BaseAPISpec, ABC):
             info = copy.deepcopy(info)
             for i in info:
                 # first we get the series that are completely included in the datetime-device range
-                q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
+                # q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
+                #                                        # here we need to include both bounds in case a tuboid ends just in between
+                #                                        TuboidSeries.end_datetime <= i['end_datetime'],
+                #                                        TuboidSeries.device.like(i['device']))
+
+                # conditions = [UIDAnnotations.parent_image.has(and_(Images.datetime == inf['datetime'],
+                #                                               Images.device == inf['device']))
+                #               for inf in info_chunk]
+                #
+                # q = session.query(UIDAnnotations).filter(or_(*conditions))
+
+                # then, we use all these valid series to output tuboids
+                # parent_tuboid_ids = [TiledTuboids.parent_series_id == r.id for r in q.all()]
+                # conditions = or_(*parent_tuboid_ids)
+                # q = session.query(TiledTuboids).filter(conditions)
+                # q = session.query(TiledTuboids).filter()
+
+                q = session.query(TiledTuboids).join(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
                                                        # here we need to include both bounds in case a tuboid ends just in between
                                                        TuboidSeries.end_datetime <= i['end_datetime'],
                                                        TuboidSeries.device.like(i['device']))
 
-                # then, we use all these valid series to output tuboids
-                parent_tuboid_ids = [TiledTuboids.parent_series_id == r.id for r in q.all()]
-                conditions = or_(*parent_tuboid_ids)
-                q = session.query(TiledTuboids).filter(conditions)
-
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
-                    # raise Exception("more than one match for %s" % i)
 
                 for tub in q.all():
                     tub_dict = tub.to_dict()
+                    tub_dict.update(tub.parent_series.to_dict())
                     if what == 'data':
                         tub_dict.update(self._storage.get_urls_for_tiled_tuboids(tub_dict))
                     out.append(tub_dict)
@@ -653,7 +666,6 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
-
 
     def put_itc_labels(self, info: List[Dict[str, Union[str, int]]],
                        client_info: Dict[str, Any] = None) -> MetadataType:
@@ -699,7 +711,6 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
-
 
     def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         info = copy.deepcopy(info)
@@ -768,7 +779,6 @@ class BaseAPI(BaseAPISpec, ABC):
 
     def _make_db_session(self):
         return sessionmaker(bind=self._db_engine)()
-
 
 
 # from https://docs.sqlalchemy.org/en/13/dialects/sqlite.html#foreign-key-support
