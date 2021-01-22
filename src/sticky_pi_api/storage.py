@@ -25,7 +25,7 @@ class BaseStorage(ABC):
     _suffix_map = {'image': '',
                    'thumbnail': '.thumbnail',
                    'thumbnail-mini': '.thumbnail-mini'}
-    _allowed_ml_bundle_suffixes = ('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg', '.txt')
+    _allowed_ml_bundle_suffixes = ('.yaml', '.yml', 'model_final.pth', '.svg', '.jpeg', '.jpg', '.txt', '.db')
     _ml_bundle_ml_data_subdir = ('data', 'config')
     _ml_bundle_ml_model_subdir = ('output', 'config')
 
