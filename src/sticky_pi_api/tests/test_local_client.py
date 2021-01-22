@@ -303,12 +303,12 @@ class LocalAndRemoteTests(object):
 
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
-        dummy_bundle_name = 'dummy_bundle_name'
+        dummy_bundle_name = os.path.basename(self._ml_bundle_dir)
         try:
 
             db = self._make_client(temp_dir)
             self._clean_persistent_resources(db)
-            #
+
             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
             self.assertEqual(len(out), 8)
             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
