@@ -4,3 +4,5 @@ callable = app
 socket = :${API_PORT}
 processes = 1
 #buffer-size = 32768
+
+; todo https://uwsgi-docs.readthedocs.io/en/latest/WebCaching.html

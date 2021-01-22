@@ -212,7 +212,7 @@ class BaseClient(BaseAPISpec, ABC):
             to_upload = [parse_tuboid_dir(g) for g in group]
             logging.info("Putting tuboids... Uploading files %i-%i / %i" % (i*self._put_chunk_size,
                                                                             i * self._put_chunk_size + len(group),
-                                                                            len(to_upload)))
+                                                                            len(tuboid_directories)))
 
             out += self._put_tiled_tuboids(to_upload)
 
@@ -309,6 +309,7 @@ class BaseClient(BaseAPISpec, ABC):
 
         for f in files_to_download:
             self._get_ml_bundle_file(f['url'], os.path.join(bundle_dir, f['key']))
+            os.utime(os.path.join(bundle_dir, f['key']), (time.time(), f['mtime']))
 
         return files_to_download
 

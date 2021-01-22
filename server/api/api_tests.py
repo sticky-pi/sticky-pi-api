@@ -24,7 +24,7 @@ class TestRemoteAPIEndToEnd(unittest.TestCase, LocalAndRemoteTests):
                    'protocol': 'http',
                    'port': 80}
     _client_n_threads = 4
-    _initial_n_users = 1
+    _initial_n_users = 2
     _server_error = RemoteAPIException
 
     def _make_client(self, directory):
