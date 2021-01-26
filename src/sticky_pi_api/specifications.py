@@ -65,14 +65,16 @@ class BaseAPISpec(ABC):
         """
         pass
 
+    #fixme should be called series?
     @abstractmethod
     def delete_tiled_tuboids(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         """
-        Delete a set of tiled tuboids, defined by their parent device and the
+        Delete a set of tiled tuboids series, defined by their parent device, start a
         datetime.
 
         :param client_info: optional information about the client/user contains key ``'username'``
-        :param info: A list of dicts. each dicts has, at least, keys: ``'device'`` and ``'datetime'``
+        :param info: A list of dicts. each dicts has, at least, keys: ``'device'``,
+            ``'start_datetime'`` and ``'end_datetime'``
         :return: A list of dictionaries with one element for each deleted image.
         """
         pass

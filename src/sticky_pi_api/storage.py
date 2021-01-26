@@ -370,6 +370,7 @@ class S3Storage(BaseStorage):
             assert k in data, (k, data)
             key = os.path.join(self._tiled_tuboids_storage_dirname, series_id, tuboid_id, v)
             logging.debug("%s => %s" % (data[k], os.path.join(k, v)))
+            data[k].seek(0)
             self._s3_ressource.Object(self._bucket_name,
                                       key).put(Body=data[k])
 
