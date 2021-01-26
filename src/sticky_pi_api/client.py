@@ -307,9 +307,17 @@ class BaseClient(BaseAPISpec, ABC):
             else:
                 logging.info("Skipping %s (already on local)" % str(r['key']))
 
-        for f in files_to_download:
-            self._get_ml_bundle_file(f['url'], os.path.join(bundle_dir, f['key']))
+        def download_single_file(cls, f, bundle_dir):
+            cls._get_ml_bundle_file(f, bundle_dir)
             os.utime(os.path.join(bundle_dir, f['key']), (time.time(), f['mtime']))
+
+
+        if self._n_threads > 1:
+            Parallel(n_jobs=self._n_threads)(delayed(download_single_file)(self.__class__, f, bundle_dir)
+                                                        for f in files_to_download)
+        else:
+            for f in files_to_download:
+                download_single_file(self.__class__, f, bundle_dir)
 
         return files_to_download
 
@@ -318,8 +326,10 @@ class BaseClient(BaseAPISpec, ABC):
         files_to_upload = BaseStorage.local_bundle_files_info(bundle_dir, what)
         for f in files_to_upload:
             f['bundle_name'] = bundle_name
+        n_local_files =len(files_to_upload)
+        logging.info(f'Found {n_local_files} local files to upload')
         files_to_upload = self._get_ml_bundle_upload_links(files_to_upload)
-
+        logging.info(f'{n_local_files - len(files_to_upload)} already uploaded)')
         for f in files_to_upload:
             if f['url'] is not None:
                 self._put_ml_bundle_file(f['path'], f['url'])
@@ -329,8 +339,9 @@ class BaseClient(BaseAPISpec, ABC):
     def _put_ml_bundle_file(self, path: str, url: str):
         pass
 
+    @classmethod
     @abstractmethod
-    def _get_ml_bundle_file(self, url: str, target: str):
+    def _get_ml_bundle_file(cls, file: Dict[str, str], bundle_dir: str):
         pass
 
     @abstractmethod
@@ -353,7 +364,11 @@ class LocalClient(LocalAPI, BaseClient):
         logging.info("%s => %s" % (os.path.basename(path), url))
         shutil.copy(path, url)
 
-    def _get_ml_bundle_file(self, url: str, target: str):
+    @classmethod
+    def _get_ml_bundle_file(cls, file_dict, bundle_dir):
+        url = file_dict['url']
+        target = os.path.join(bundle_dir, file_dict['key'])
+
         if not os.path.isdir(os.path.dirname(target)):
             os.makedirs(os.path.dirname(target), exist_ok=True)
         logging.info("%s => %s" % (url, target))
@@ -449,7 +464,6 @@ class RemoteAPIConnector(BaseAPISpec):
             -> MetadataType:
         return self._default_client_to_api('get_tiled_tuboid_series', info=info, what=what)
 
-
     def _put_tiled_tuboids(self, files: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
         for dic in files:
@@ -495,15 +509,23 @@ class RemoteClient(RemoteAPIConnector, BaseClient):
             http_response = requests.post(response['url'], data=response['fields'], files=files)
         assert http_response.status_code == 204, response
 
-    def _get_ml_bundle_file(self, url: str, target: str):
+    @classmethod
+    def _get_ml_bundle_file(cls, file_dict, bundle_dir):
+        url = file_dict['url']
+        target = os.path.join(bundle_dir, file_dict['key'])
 
         dirname = os.path.dirname(target)
         if not os.path.isdir(dirname):
             os.makedirs(dirname, exist_ok=True)
 
-        with open(target, 'wb') as data:
+        target_tmp = target + ".tmp"
+        with open(target_tmp, 'wb') as data:
             logging.info("%s => %s" % (url, target))
             r = requests.get(url)
             data.write(r.content)
-        assert os.path.isfile(target), 'File not writen!'
+        from sticky_pi_api.utils import md5
+
+        assert os.path.isfile(target_tmp), f'{file_dict["key"]}: file not writen!'
+        assert md5(target_tmp) == file_dict['md5'], f'{file_dict["key"]}: md5s differ !'
+        os.rename(target_tmp, target)
 
