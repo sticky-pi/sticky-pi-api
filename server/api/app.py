@@ -162,7 +162,7 @@ def _put_new_images():
     assert len(files) > 0
     out = []
     for k, f in files.items():
-        out += api.put_images([f],client_info = {'username': auth.current_user()})
+        out += api.put_images([f], client_info = {'username': auth.current_user()})
     return jsonify(out)
 
 @app.route('/_put_tiled_tuboids', methods=['POST'])
