@@ -418,6 +418,15 @@ class RemoteAPIConnector(BaseAPISpec):
             else:
                 time.sleep(self._sleep_time_between_attempts)
                 attempt += 1
+                if files is not None:
+                    for k in files.keys():
+                        try:
+                            files[k].seek(0)
+                        except AttributeError:
+                            try:
+                                files[k][1].seek(0)
+                            except AttributeError:
+                                pass
                 logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt))
                 self._default_client_to_api(entry_point, info, what, files, attempt)
 
@@ -468,6 +477,7 @@ class RemoteAPIConnector(BaseAPISpec):
         out = []
         for dic in files:
             # data = {'tuboid_id': dic.pop('tuboid_id')}
+            # logging.info(("Metadata file sent:", dic['tuboid_id'], dic['metadata'], os.path.getsize(dic['metadata'])))
 
             with open(dic['metadata'], 'r') as m, open(dic['tuboid'], 'rb') as t, open(dic['context'], 'rb') as c:
                 payload = {'metadata': ('metadata.txt', m,  'application/text'),
