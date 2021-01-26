@@ -81,7 +81,7 @@ class TiledTuboids(BaseCustomisations):
             out['n_shots'] += 1
         out['start_datetime'] = first_shot_datetime
         out['end_datetime'] = annotation_datetime
-
+        assert out['n_shots'] > 0, 'Empty tuboid sent (0 shots)'
         return out
 
     def __repr__(self):
