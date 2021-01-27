@@ -47,7 +47,7 @@ class LocalAndRemoteTests(object):
         cli.delete_tiled_tuboids(todel)
 
 
-# ###########################################################################################################
+# # ###########################################################################################################
 #
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -129,7 +129,9 @@ class LocalAndRemoteTests(object):
 
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}], what='image')
             self.assertEqual(len(out), 1)
-
+            # second image should ba cached
+            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}], what='image')
+            self.assertEqual(len(out), 1)
             # we try to parse the image from its url
             from sticky_pi_api.image_parser import ImageParser
             img_dict = ImageParser(out[0]['url'])

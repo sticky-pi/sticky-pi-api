@@ -55,7 +55,6 @@ class BaseStorage(ABC):
                     out.append({'key': key, 'path': path, 'md5': local_md5, 'mtime': local_mtime})
         return out
 
-
     @abstractmethod
     def get_ml_bundle_file_list(self, bundle_name: str, what: str = "all") -> List[Dict[str, Union[float, str]]]:
         """
@@ -118,6 +117,7 @@ class BaseStorage(ABC):
         :param image: an image object
         """
         pass
+
     @abstractmethod
     def delete_tiled_tuboid_files(self, tuboid: TiledTuboids) -> None:
         """
@@ -209,7 +209,8 @@ class DiskStorage(BaseStorage):
     def delete_tiled_tuboid_files(self, tuboid: TiledTuboids) -> None:
         # name of the series
         tuboid_dirname, _ = os.path.splitext(tuboid.tuboid_id)
-        target_dir = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, tuboid_dirname, tuboid.tuboid_id)
+        target_dir = os.path.join(self._local_dir, self._tiled_tuboids_storage_dirname, tuboid_dirname,
+                                  tuboid.tuboid_id)
         for k, v in self._tiled_tuboid_filenames.items():
             to_del = os.path.join(target_dir, v)
             logging.info('Removing %s' % to_del)
@@ -244,19 +245,48 @@ class DiskStorage(BaseStorage):
         return out
 
 
-class S3Storage(BaseStorage):
+try:
+    import uwsgi
 
-    _expiration = 3600 * 24 * 7 # urls are valid for a week
+
+    class URLCache(object):
+        def __init__(self, expiration, name='s3_url_cache'):
+            self._name = name
+            self._expiration = expiration
+
+        def __getitem__(self, item):
+            logging.error('uwsgi.cache_exists(item, self._name)')
+            logging.error(uwsgi.cache_exists(item, self._name))
+            out = uwsgi.cache_get(item, self._name)
+            if out is not None:
+                return out.decode('ascii')
+
+        def __setitem__(self, item, value):
+            expire = int(time.time() + self._expiration - 60)
+
+            # expire = self._expiration - 60
+            logging.error(('setting cache!', item,value,expire))
+
+            uwsgi.cache_update(item, value.encode('ascii'), expire, self._name)
+
+
+except ImportError:
+    # TODO alternative, dict base class
+    pass
+
+
+class S3Storage(BaseStorage):
+    _expiration = 3600 * 24 * 7  # urls are valid for a week
 
     def __init__(self, api_conf: RemoteAPIConf, *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
         credentials = {"aws_access_key_id": api_conf.S3_ACCESS_KEY,
                        "aws_secret_access_key": api_conf.S3_PRIVATE_KEY,
                        "endpoint_url": "https://%s" % api_conf.S3_HOST,
-                       "use_ssl":  True
+                       "use_ssl": True
                        }
-        self._cached_urls = {}
 
+        self._cached_urls = URLCache(expiration=self._expiration)
         self._bucket_name = api_conf.S3_BUCKET_NAME
         self._s3_ressource = boto3.resource('s3', **credentials)
 
@@ -350,17 +380,17 @@ class S3Storage(BaseStorage):
                                                                      ExpiresIn=self._expiration)
         return out
 
-
     def _presigned_url(self, key) -> str:
-        now = time.time()
-        if key in self._cached_urls and self._cached_urls[key][1] > now:
-            out = self._cached_urls[key][0]
-        else:
+        out = self._cached_urls[key]
+        if not out:
             out = self._s3_ressource.meta.client.generate_presigned_url('get_object',
-                                                                    Params={'Bucket': self._bucket_name,
-                                                                            'Key': key},
-                                                                    ExpiresIn=self._expiration)
-            self._cached_urls[key] = (out, now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
+                                                                        Params={'Bucket': self._bucket_name,
+                                                                                'Key': key},
+                                                                        ExpiresIn=self._expiration)
+
+            #fixme here we can actually only store the variable part of the s3url...
+            self._cached_urls[key] = out  # , now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
+
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
@@ -378,5 +408,6 @@ class S3Storage(BaseStorage):
         tuboid_id = data['tuboid_id']
         series_id = ".".join(tuboid_id.split('.')[0: -1])  # strip out the tuboid specific part
         target_dirname = os.path.join(self._tiled_tuboids_storage_dirname, series_id, tuboid_id)
-        files_urls = {k: self._presigned_url(os.path.join(target_dirname, v)) for k, v in self._tiled_tuboid_filenames.items()}
+        files_urls = {k: self._presigned_url(os.path.join(target_dirname, v)) for k, v in
+                      self._tiled_tuboid_filenames.items()}
         return files_urls

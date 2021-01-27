@@ -2,7 +2,11 @@
 wsgi-file = app.py
 callable = app
 socket = :${API_PORT}
-processes = 1
+processes = 8
+master = true
+harakiri = 300
 #buffer-size = 32768
+
+cache2 = name=s3_url_cache,items=100000,blocksize=256
 
 ; todo https://uwsgi-docs.readthedocs.io/en/latest/WebCaching.html
