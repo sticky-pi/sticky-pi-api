@@ -477,7 +477,7 @@ class RemoteAPIConnector(BaseAPISpec):
         out = []
         for dic in files:
             # data = {'tuboid_id': dic.pop('tuboid_id')}
-            # logging.info(("Metadata file sent:", dic['tuboid_id'], dic['metadata'], os.path.getsize(dic['metadata'])))
+            logging.info(("Metadata file sent:", dic['tuboid_id'], dic['metadata'], os.path.getsize(dic['metadata'])))
 
             with open(dic['metadata'], 'r') as m, open(dic['tuboid'], 'rb') as t, open(dic['context'], 'rb') as c:
                 payload = {'metadata': ('metadata.txt', m,  'application/text'),
