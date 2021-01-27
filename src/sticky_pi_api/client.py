@@ -416,7 +416,7 @@ class RemoteAPIConnector(BaseAPISpec):
                 logging.error("Failed to request url: %s" % url)
                 raise RemoteAPIException(response.content)
             else:
-                time.sleep(self._sleep_time_between_attempts)
+                time.sleep(self._sleep_time_between_attempts * self._max_retry_attempts)
                 attempt += 1
                 if files is not None:
                     for k in files.keys():
@@ -428,7 +428,7 @@ class RemoteAPIConnector(BaseAPISpec):
                             except AttributeError:
                                 pass
                 logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt))
-                self._default_client_to_api(entry_point, info, what, files, attempt)
+                return self._default_client_to_api(entry_point, info, what, files, attempt)
 
     def get_token(self, client_info: Dict[str, Any] = None) -> str:
         return self._default_client_to_api('get_token', info=None)
