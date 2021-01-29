@@ -250,23 +250,20 @@ try:
 
 
     class URLCache(object):
+        _cache_block_size = 128 # bytes. matche uwsgi config
         def __init__(self, expiration, name='s3_url_cache'):
             self._name = name
             self._expiration = expiration
 
         def __getitem__(self, item):
-            logging.error('uwsgi.cache_exists(item, self._name)')
-            logging.error(uwsgi.cache_exists(item, self._name))
             out = uwsgi.cache_get(item, self._name)
             if out is not None:
                 return out.decode('ascii')
 
         def __setitem__(self, item, value):
-            expire = int(time.time() + self._expiration - 60)
-
-            # expire = self._expiration - 60
-            logging.error(('setting cache!', item,value,expire))
-
+            v = value.encode('ascii')
+            assert len(value) < self._cache_block_size, f"object too large to cache: {value}"
+            expire = int(time.time() + self._expiration * 0.95) # a margin to make cache expire before the link
             uwsgi.cache_update(item, value.encode('ascii'), expire, self._name)
 
 
@@ -288,12 +285,16 @@ class S3Storage(BaseStorage):
 
         self._cached_urls = URLCache(expiration=self._expiration)
         self._bucket_name = api_conf.S3_BUCKET_NAME
+        self._endpoint = credentials["endpoint_url"]
         self._s3_ressource = boto3.resource('s3', **credentials)
 
         # fixme ensure versioning is enabled. now, hangs
         # versioning = client.BucketVersioning(self._bucket_conf['bucket'])
         # print(versioning.status())
         # versioning.enable()
+
+    def _s3_url_prefix(self, key):
+        return f"{self._endpoint}/{self._bucket_name}/{key}"
 
     def store_image_files(self, image: Images) -> None:
         tmp = BytesIO()
@@ -381,16 +382,19 @@ class S3Storage(BaseStorage):
         return out
 
     def _presigned_url(self, key) -> str:
-        out = self._cached_urls[key]
-        if not out:
+        suffix = self._cached_urls[key]
+
+        if suffix is not None:
+            out = f"{self._s3_url_prefix(key)}?{suffix}"
+        else:
             out = self._s3_ressource.meta.client.generate_presigned_url('get_object',
                                                                         Params={'Bucket': self._bucket_name,
                                                                                 'Key': key},
                                                                         ExpiresIn=self._expiration)
-
-            #fixme here we can actually only store the variable part of the s3url...
-            self._cached_urls[key] = out  # , now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
-
+            prefix, suffix = out.split("?")
+            assert prefix == self._s3_url_prefix(key), "Wrong URL prefix, cache will fail"
+            self._cached_urls[key] = suffix  # , now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
+            logging.warning(f"setting cache for {key}")
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
