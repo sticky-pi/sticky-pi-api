@@ -395,6 +395,7 @@ class S3Storage(BaseStorage):
             assert prefix == self._s3_url_prefix(key), "Wrong URL prefix, cache will fail"
             self._cached_urls[key] = suffix  # , now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
             logging.warning(f"setting cache for {key}")
+            assert suffix == self._cached_urls[key], f'Could not read cache for {key}'
         return out
 
     def store_tiled_tuboid(self, data: Dict[str, str]) -> None:
