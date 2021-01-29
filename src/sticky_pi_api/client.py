@@ -140,7 +140,6 @@ class BaseClient(BaseAPISpec, ABC):
         if len(tiled_tuboids) == 0:
             logging.warning('No tuboids found for %s' % info)
             return []
-
         itc_labels = pd.DataFrame(self._get_itc_labels([{'tuboid_id': i} for i in tiled_tuboids.tuboid_id]))
 
         if len(itc_labels) == 0:
@@ -151,7 +150,18 @@ class BaseClient(BaseAPISpec, ABC):
             itc_labels.columns = itc_labels.columns.map(lambda x: str(x) + '_itc')
             out = pd.merge(tiled_tuboids, itc_labels, how='left', left_on=['id'],
                        right_on=['parent_tuboid_id_itc'])
+            # print('itc_labels')
+            # print(itc_labels)
+            # print('tiled_tuboids')
+            # for _, (i,j) in tiled_tuboids[['id', 'tuboid_id']].iterrows():
+            #     print(i,j)
+            #
+            # print('out')
+            # print(out)
 
+            # for i in out.algo_name_itc:
+            #     if pd.notnull(i):
+            #         print(('i',i))
         out = out.where(pd.notnull(out), None) #.sort_values(['device', 'datetime'])
         out = out.to_dict(orient='records')
         return out
@@ -476,9 +486,6 @@ class RemoteAPIConnector(BaseAPISpec):
     def _put_tiled_tuboids(self, files: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
         for dic in files:
-            # data = {'tuboid_id': dic.pop('tuboid_id')}
-            logging.info(("Metadata file sent:", dic['tuboid_id'], dic['metadata'], os.path.getsize(dic['metadata'])))
-
             with open(dic['metadata'], 'r') as m, open(dic['tuboid'], 'rb') as t, open(dic['context'], 'rb') as c:
                 payload = {'metadata': ('metadata.txt', m,  'application/text'),
                            'tuboid': ('tuboid.jpg', t,  'application/octet-stream'),

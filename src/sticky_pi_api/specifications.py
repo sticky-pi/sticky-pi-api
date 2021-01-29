@@ -1,4 +1,3 @@
-
 import datetime
 import copy
 import logging
@@ -32,8 +31,7 @@ from decorate_all_methods import decorate_all_methods
 from abc import ABC, abstractmethod
 
 
-
-#this decorator ensures json inputs are formated as python objects
+# this decorator ensures json inputs are formated as python objects
 @decorate_all_methods(json_inputs_to_python, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
 class BaseAPISpec(ABC):
     @abstractmethod
@@ -65,7 +63,7 @@ class BaseAPISpec(ABC):
         """
         pass
 
-    #fixme should be called series?
+    # fixme should be called series?
     @abstractmethod
     def delete_tiled_tuboids(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         """
@@ -150,9 +148,10 @@ class BaseAPISpec(ABC):
             Otherwise, it contains a json string with the actual annotation data.
         """
         pass
+
     @abstractmethod
     def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata',
-                            client_info: Dict[str, Any] = None) -> MetadataType:
+                                   client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Retrieves annotations for a given set of images.
 
@@ -382,12 +381,12 @@ class BaseAPI(BaseAPISpec, ABC):
                 tub = TiledTuboids(data, parent_tuboid_series=ts, api_user=api_user)
                 q = session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)
                 if not (q.count() < ts.n_tuboids):
-                    raise IntegrityError('Cannot add more tuboids to parent series %s. Already all of them are there' % ts, None, None)
+                    raise IntegrityError(
+                        'Cannot add more tuboids to parent series %s. Already all of them are there' % ts, None, None)
 
                 assert tub.start_datetime >= ts.start_datetime, 'tuboid starts before its parent series'
                 assert tub.end_datetime <= ts.end_datetime, 'tuboid ends after its parent series'
 
-                out.append(tub.to_dict())
                 session.add(tub)
 
                 # try to store images, only commit if storage worked.
@@ -395,6 +394,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 try:
                     self._storage.store_tiled_tuboid(data)
                     session.commit()
+                    out.append(tub.to_dict())
                 except Exception as e:
                     session.rollback()
                     logging.error("Storage Error. Failed to store tuboid %s" % tub)
@@ -557,7 +557,7 @@ class BaseAPI(BaseAPISpec, ABC):
                               len(info)))
 
                 conditions = [UIDAnnotations.parent_image.has(and_(Images.datetime == inf['datetime'],
-                                                              Images.device == inf['device']))
+                                                                   Images.device == inf['device']))
                               for inf in info_chunk]
 
                 q = session.query(UIDAnnotations).filter(or_(*conditions))
@@ -571,16 +571,17 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-    def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
+    def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata',
+                                   client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
         try:
             out = []
             info = copy.deepcopy(info)
             for i in info:
                 q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image.has(and_(
-                                                Images.datetime >= i['start_datetime'],
-                                                Images.datetime < i['end_datetime'],
-                                                Images.device.like(i['device']))))
+                    Images.datetime >= i['start_datetime'],
+                    Images.datetime < i['end_datetime'],
+                    Images.device.like(i['device']))))
 
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
@@ -603,35 +604,17 @@ class BaseAPI(BaseAPISpec, ABC):
 
             info = copy.deepcopy(info)
             for i in info:
-                # first we get the series that are completely included in the datetime-device range
-                # q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
-                #                                        # here we need to include both bounds in case a tuboid ends just in between
-                #                                        TuboidSeries.end_datetime <= i['end_datetime'],
-                #                                        TuboidSeries.device.like(i['device']))
-
-                # conditions = [UIDAnnotations.parent_image.has(and_(Images.datetime == inf['datetime'],
-                #                                               Images.device == inf['device']))
-                #               for inf in info_chunk]
-                #
-                # q = session.query(UIDAnnotations).filter(or_(*conditions))
-
-                # then, we use all these valid series to output tuboids
-                # parent_tuboid_ids = [TiledTuboids.parent_series_id == r.id for r in q.all()]
-                # conditions = or_(*parent_tuboid_ids)
-                # q = session.query(TiledTuboids).filter(conditions)
-                # q = session.query(TiledTuboids).filter()
-
-                q = session.query(TiledTuboids).join(TuboidSeries).filter(TuboidSeries.start_datetime >= i['start_datetime'],
-                                                       # here we need to include both bounds in case a tuboid ends just in between
-                                                       TuboidSeries.end_datetime <= i['end_datetime'],
-                                                       TuboidSeries.device.like(i['device']))
+                q = session.query(TiledTuboids).filter(TiledTuboids.parent_series.has(
+                    and_(TuboidSeries.start_datetime >= i['start_datetime'],
+                         # here we need to include both bounds in case a tuboid ends just in between
+                         TuboidSeries.end_datetime <= i['end_datetime'],
+                         TuboidSeries.device.like(i['device']))))
 
                 if q.count() == 0:
                     logging.warning('No data for series %s' % str(i))
 
                 for tub in q.all():
                     tub_dict = tub.to_dict()
-                    tub_dict.update(tub.parent_series.to_dict())
                     if what == 'data':
                         tub_dict.update(self._storage.get_urls_for_tiled_tuboids(tub_dict))
                     out.append(tub_dict)
@@ -653,7 +636,8 @@ class BaseAPI(BaseAPISpec, ABC):
 
                 for ts in q:
                     img_dict = ts.to_dict()
-                    all_tuboids = [t for t in session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)]
+                    all_tuboids = [t for t in
+                                   session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)]
                     session.delete(ts)
                     try:
                         for tub in all_tuboids:
@@ -700,7 +684,7 @@ class BaseAPI(BaseAPISpec, ABC):
                              (i * self._get_image_chunk_size,
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
-
+                # can be a single row
                 tuboid_ids = [TiledTuboids.tuboid_id == j['tuboid_id'] for j in info_chunk]
                 conditions = or_(*tuboid_ids)
                 q = session.query(TiledTuboids).filter(conditions)
@@ -778,7 +762,6 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-
     def _make_db_session(self):
         return sessionmaker(bind=self._db_engine)()
 
@@ -793,6 +776,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
+
 
 class LocalAPI(BaseAPI):
     _storage_class = DiskStorage

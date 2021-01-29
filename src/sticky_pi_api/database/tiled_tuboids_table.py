@@ -64,6 +64,14 @@ class TiledTuboids(BaseCustomisations):
 
         super().__init__(parent_series_id=parent_tuboid_series.id, **i_dict)
 
+    def to_dict(self):
+        # extra info from parent series
+        out = BaseCustomisations.to_dict(self)
+        out["algo_name_series"] = self.parent_series.algo_name
+        out["algo_version_series"] = self.parent_series.algo_version
+        out["n_tuboids_series"] = self.parent_series.n_tuboids
+        return out
+
     @staticmethod
     def _parse(file):
         out = {'n_shots': 0}
