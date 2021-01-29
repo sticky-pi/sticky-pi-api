@@ -7,6 +7,5 @@ master = true
 harakiri = 300
 #buffer-size = 32768
 
-cache2 = name=s3_url_cache,items=100000,blocksize=256
-
-; todo https://uwsgi-docs.readthedocs.io/en/latest/WebCaching.html
+cache2 = name=s3_url_cache,items=1000000,blocksize=256
+# todo should not need all of 256 bytes as we can only save the changing part of the url`
