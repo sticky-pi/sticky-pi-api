@@ -150,18 +150,6 @@ class BaseClient(BaseAPISpec, ABC):
             itc_labels.columns = itc_labels.columns.map(lambda x: str(x) + '_itc')
             out = pd.merge(tiled_tuboids, itc_labels, how='left', left_on=['id'],
                        right_on=['parent_tuboid_id_itc'])
-            # print('itc_labels')
-            # print(itc_labels)
-            # print('tiled_tuboids')
-            # for _, (i,j) in tiled_tuboids[['id', 'tuboid_id']].iterrows():
-            #     print(i,j)
-            #
-            # print('out')
-            # print(out)
-
-            # for i in out.algo_name_itc:
-            #     if pd.notnull(i):
-            #         print(('i',i))
         out = out.where(pd.notnull(out), None) #.sort_values(['device', 'datetime'])
         out = out.to_dict(orient='records')
         return out

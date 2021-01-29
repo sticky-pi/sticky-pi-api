@@ -12,7 +12,7 @@ bundle_dir = os.path.join(os.environ["BUNDLE_ROOT_DIR"], BUNDLE_NAME)
 if __name__ == '__main__':
 
     client = RemoteClient(os.path.join(os.environ["LOCAL_CLIENT_DIR"], 'client'),
-                       "api." + os.environ["RSHINY_UPSTREAM_ROOT_URL"],
+                       os.environ["RSHINY_UPSTREAM_ROOT_URL"],
                        os.environ["UID_USER"],
                        os.environ["UID_PASSWORD"], protocol=os.environ["RSHINY_UPSTREAM_PROTOCOL"], port=int(os.environ["RSHINY_UPSTREAM_PORT"]))
 
