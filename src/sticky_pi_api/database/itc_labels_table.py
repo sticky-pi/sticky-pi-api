@@ -22,7 +22,7 @@ class ITCLabels(BaseCustomisations):
     #                            description='The user_id of the user who uploaded the data')
     label = DescribedColumn(Integer, nullable=False)
 
-    pattern = DescribedColumn(String(64), nullable=False,
+    pattern = DescribedColumn(String(128), nullable=False,
                               description='A regex pattern describing the taxonomy')
 
     type = DescribedColumn(String(32), nullable=False,
