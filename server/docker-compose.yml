@@ -71,3 +71,18 @@ services:
       - spi_api
       - spi_webapp
 
+  spi_localstack:
+    container_name: spi_localstack
+    image: localstack/localstack
+    ports:
+      - '4566:4566'
+      - '8055:8080'
+    environment:
+      - SERVICES=s3:4566
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+    # env_file:
+    #   - .env
+    volumes:
+      - '${TMPDIR:-/tmp/localstack}:/tmp'
+      - '/var/run/docker.sock:/var/run/docker.sock'
