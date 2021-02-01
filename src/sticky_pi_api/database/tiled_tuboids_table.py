@@ -71,6 +71,7 @@ class TiledTuboids(BaseCustomisations):
         out["algo_version_series"] = self.parent_series.algo_version
         out["n_tuboids_series"] = self.parent_series.n_tuboids
         out["device_series"] = self.parent_series.device
+        out["start_datetime_series"] = self.parent_series.start_datetime
         return out
 
     @staticmethod

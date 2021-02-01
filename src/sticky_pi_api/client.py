@@ -148,8 +148,12 @@ class BaseClient(BaseAPISpec, ABC):
         else:
             # force suffixes for ITC
             itc_labels.columns = itc_labels.columns.map(lambda x: str(x) + '_itc')
-            out = pd.merge(tiled_tuboids, itc_labels, how='left', left_on=['id'],
-                       right_on=['parent_tuboid_id_itc'])
+            tiled_tuboids.set_index(['id'], inplace=True)
+            itc_labels.set_index(['parent_tuboid_id_itc'], inplace=True)
+
+            out = pd.merge(tiled_tuboids, itc_labels,
+                           how='left', left_index=True, right_index=True)
+
         out = out.where(pd.notnull(out), None) #.sort_values(['device', 'datetime'])
         out = out.to_dict(orient='records')
         return out
