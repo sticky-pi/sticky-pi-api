@@ -25,7 +25,7 @@ server {
     listen 80;
     server_name webapp.${ROOT_DOMAIN_NAME};
     location / {
-           proxy_pass http://spi_webapp;
+            proxy_pass http://spi_webapp;
             proxy_redirect http://spi_webapp/ $scheme://$host/;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection $connection_upgrade;
@@ -40,4 +40,11 @@ server {
     }
 }
 
-
+server {
+    listen 80;
+    server_name nginx.${ROOT_DOMAIN_NAME};
+    location / {
+            proxy_pass http://spi_localstack;
+            # TODO add other configurations here?
+    }
+}

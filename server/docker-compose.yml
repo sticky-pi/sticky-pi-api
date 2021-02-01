@@ -78,11 +78,12 @@ services:
       - '4566:4566'
       - '8055:8080'
     environment:
-      - SERVICES=s3:4566
+      - SERVICES=s3
       - DEBUG=1
       - DATA_DIR=/tmp/localstack/data
-    # env_file:
-    #   - .env
+    env_file:
+      # TODO add relevant configurations to .env file
+      - .env
     volumes:
       - '${TMPDIR:-/tmp/localstack}:/tmp'
       - '/var/run/docker.sock:/var/run/docker.sock'
