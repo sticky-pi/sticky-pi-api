@@ -72,6 +72,7 @@ class TiledTuboids(BaseCustomisations):
         out["n_tuboids_series"] = self.parent_series.n_tuboids
         out["device_series"] = self.parent_series.device
         out["start_datetime_series"] = self.parent_series.start_datetime
+        out["end_datetime_series"] = self.parent_series.end_datetime
         return out
 
     @staticmethod
@@ -97,3 +98,4 @@ class TiledTuboids(BaseCustomisations):
     def __repr__(self):
         return "<TiledTuboid(%s)>" % (
             self.tuboid_id)
+
