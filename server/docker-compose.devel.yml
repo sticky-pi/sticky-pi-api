@@ -34,4 +34,8 @@ services:
       args:
           TESTING: "TRUE"
           ROOT_DOMAIN_NAME: "localhost"
-
+  
+  spi_localstack:
+      env_file:
+        # TODO add relevant configurations to .devel.env
+        - .devel.env
