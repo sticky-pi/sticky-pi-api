@@ -15,6 +15,16 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:
                     datefmt='%Y-%m-%d %H:%M:%S', level=log_lev)
 conf = RemoteAPIConf()
 
+engine_url = "mysql+pymysql://%s:%s@%s/%s?charset=utf8mb4" % (conf.MYSQL_USER,
+                                                              conf.MYSQL_PASSWORD,
+                                                              conf.MYSQL_HOST,
+                                                              conf.MYSQL_DATABASE
+                                                              )
+engine = sqlalchemy.create_engine(engine_url)
+
+engine.execute('DELETE FROM  tiled_tuboids')
+engine.execute('DELETE FROM  tuboid_series')
+
 
 def add_column(engine, table_name):
     col = Column('cached_repr', BLOB(16000000), nullable=True)  # mediumtext
@@ -39,7 +49,8 @@ q=engine.execute("ALTER TABLE images ADD INDEX `image_id` (`device`,`datetime`)"
 # col = Column('can_write', Boolean, nullable=False, default=True)  # mediumtext
 # c_name = col.compile(dialect=engine.dialect)
 # c_type = col.type.compile(engine.dialect)
-# engine.execute('ALTER TABLE %s ADD COLUMN %s %s' % ('users', c_name, c_type))
+engine.execute('DELETE FROM  tiled_tuboids')
+engine.execute('DELETE FROM  tuboid_series')
 
 #
 for tb in ['images', 'itc_labels', 'tiled_tuboids', 'tuboid_series', 'uid_annotations', 'users']:
