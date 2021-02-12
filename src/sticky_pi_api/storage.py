@@ -261,9 +261,9 @@ try:
                 return out.decode('ascii')
 
         def __setitem__(self, item, value):
-            v = value.encode('ascii')
+
             assert len(value) < self._cache_block_size, f"object too large to cache: {value}"
-            expire = int(time.time() + self._expiration * 0.95) # a margin to make cache expire before the link
+            expire = int(self._expiration * 0.95)  # a margin to make cache expire before the link
             uwsgi.cache_update(item, value.encode('ascii'), expire, self._name)
 
 
