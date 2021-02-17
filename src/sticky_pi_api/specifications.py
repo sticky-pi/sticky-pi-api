@@ -316,6 +316,7 @@ class BaseAPI(BaseAPISpec, ABC):
         self._db_engine = self._create_db_engine()
 
         Base.metadata.create_all(self._db_engine, Base.metadata.tables.values(), checkfirst=True)
+        self._serializer = Serializer(self._configuration.SECRET_API_KEY)
 
     @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
@@ -740,9 +741,8 @@ class BaseAPI(BaseAPISpec, ABC):
                 logging.warning('No such user or token `%s`' % username_or_token)
                 return False
 
-            s = Serializer(self._configuration.SECRET_API_KEY)
             try:
-                data = s.loads(username_or_token)
+                data = self._serializer.loads(username_or_token)
                 user = session.query(Users).get(data['id'])
             except SignatureExpired:
                 user = None  # valid token, but expired

@@ -41,6 +41,14 @@ case "$1" in
           source ./.secret.env
           docker exec -it spi_db mysql --password=$MYSQL_PASSWORD -u $MYSQL_USER $MYSQL_DATABASE
           ;;
+      mysql-backup)
+          source ./.env
+          source ./.secret.env
+          OUTPUT_BACKUP_FILE=spi_db.dump.$(date +%F).sql.gz
+          echo "Making a databse backup: $OUTPUT_BACKUP_FILE. This could take a while..."
+          docker exec -it spi_db mysqldump --password=$MYSQL_PASSWORD -u $MYSQL_USER $MYSQL_DATABASE --single-transaction | gzip -c > $OUTPUT_BACKUP_FILE &&\
+          echo "Success! Now COPY this file to a safe location"
+          ;;
        *)
           echo "Wrong action: $1"
           exit 1
