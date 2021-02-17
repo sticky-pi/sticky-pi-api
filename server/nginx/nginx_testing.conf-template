@@ -39,12 +39,3 @@ server {
             gzip_min_length 1000;
     }
 }
-
-server {
-    listen 80;
-    server_name nginx.${ROOT_DOMAIN_NAME};
-    location / {
-            proxy_pass http://spi_localstack;
-            # TODO add other configurations here?
-    }
-}
