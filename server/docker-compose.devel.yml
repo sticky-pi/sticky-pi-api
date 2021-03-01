@@ -36,10 +36,7 @@ services:
           TESTING: "TRUE"
           ROOT_DOMAIN_NAME: "localhost"
   
-<<<<<<< Updated upstream
-=======
   spi_s3:
       env_file:
         # TODO add relevant configurations to .devel.env
         - .devel.env
->>>>>>> Stashed changes

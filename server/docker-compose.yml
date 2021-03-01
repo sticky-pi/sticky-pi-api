@@ -69,9 +69,6 @@ services:
       - .secret.env
     depends_on:
       - spi_api
-<<<<<<< Updated upstream
-      - spi_webapp
-=======
       - spi_webapp
       - spi_s3
 
@@ -92,4 +89,3 @@ services:
     volumes:
       - '${TMPDIR:-/tmp/localstack}:/tmp'
       - '/var/run/docker.sock:/var/run/docker.sock'
->>>>>>> Stashed changes

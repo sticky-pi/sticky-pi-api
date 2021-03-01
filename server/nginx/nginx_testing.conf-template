@@ -39,8 +39,6 @@ server {
             gzip_min_length 1000;
     }
 }
-<<<<<<< Updated upstream
-=======
 
 server {
     listen 80;
@@ -52,4 +50,3 @@ server {
             uwsgi_read_timeout 600;
     }
 }
->>>>>>> Stashed changes
