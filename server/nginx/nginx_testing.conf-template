@@ -39,3 +39,17 @@ server {
             gzip_min_length 1000;
     }
 }
+<<<<<<< Updated upstream
+=======
+
+server {
+    listen 80;
+    server_name s3.${ROOT_DOMAIN_NAME};
+    location / {
+            include uwsgi_params;
+            # what is API_PORT??
+            uwsgi_pass spi_s3:${API_PORT};
+            uwsgi_read_timeout 600;
+    }
+}
+>>>>>>> Stashed changes

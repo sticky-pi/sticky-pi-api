@@ -13,10 +13,14 @@ rsync -a ../src/ api/src
 rsync -a ../src/ ml/src_api
 
 # this line should also go when packages are installed from github
-rsync -a ../../sticky-pi-ml-git/src/ ml/src
+#rsync -a ../../sticky-pi-ml-git/src/ ml/src
 
 
 case "$1" in
+       s3test)
+            docker-compose down --remove-orphans -v
+            docker-compose -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_s3
+            ;;
        test)
             docker-compose  down --remove-orphans  -v
             docker-compose  -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_api_tests

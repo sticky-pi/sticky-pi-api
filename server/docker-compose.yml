@@ -69,4 +69,27 @@ services:
       - .secret.env
     depends_on:
       - spi_api
+<<<<<<< Updated upstream
       - spi_webapp
+=======
+      - spi_webapp
+      - spi_s3
+
+  spi_s3:
+    container_name: spi_s3
+    image: localstack/localstack
+    ports:
+      - '4566:4566'
+      - '8055:80'
+      #- '8055:8080'
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+    env_file:
+      # TODO add relevant configurations to .env file
+      - .env
+    volumes:
+      - '${TMPDIR:-/tmp/localstack}:/tmp'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+>>>>>>> Stashed changes
