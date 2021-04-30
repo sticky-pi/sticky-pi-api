@@ -19,7 +19,7 @@ rsync -a ../src/ ml/src_api
 case "$1" in
        s3test)
             docker-compose down --remove-orphans -v
-            docker-compose -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_s3
+            docker-compose -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_s3_tests
             ;;
        test)
             docker-compose  down --remove-orphans  -v
