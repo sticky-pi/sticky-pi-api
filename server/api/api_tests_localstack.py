@@ -9,8 +9,7 @@ import tempfile
 import requests
 from botocore.client import ClientError
 
-# TODO should be sleep 10 for using docker!
-time.sleep(1)
+time.sleep(10)
 
 # set basic logging
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
@@ -25,8 +24,10 @@ test_dir = os.path.dirname(__file__)
 class Test(TestCase):
     credentials = {"aws_access_key_id": "ABCDSICKY",
                        "aws_secret_access_key": "ABCDSTICKY",
-                       #"endpoint_url": f"http://{spi_s3_ip}:4566",
-                       "endpoint_url": "http://localhost:4566",
+                       # use this for testing with the spi_s3_tests Docker container
+                       "endpoint_url": f"http://{spi_s3_ip}:4566",
+                       # use this for testing on cmd line, once s3 container is up:
+                       #"endpoint_url": "http://localhost:4566",
                        "region_name": 'us-east-1',
                        "use_ssl": True
                        }
