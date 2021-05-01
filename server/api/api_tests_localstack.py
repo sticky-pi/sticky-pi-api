@@ -6,7 +6,6 @@ import time
 import glob
 import filecmp
 import tempfile
-import requests
 from botocore.client import ClientError
 
 time.sleep(10)
@@ -85,5 +84,8 @@ class Test(TestCase):
             s3_prefix = f"{self._endpoint}/{'test-bucket'}/{'test-key'}"
             assert prefix == s3_prefix
             # assert can upload using presigned URL TODO
+            # like store_image_files in sotrage.py for POST
         except ClientError:
             print(ClientError)
+
+    # TODO test_post_presigned_url(self)
