@@ -28,14 +28,14 @@ def create_initial_user(api, username, password):
                   'password': password,
                   'is_admin': True}
 
-    assert admin_user['username'], 'Cannot find admin username in env (API_ADMIN_NAME)'
+    assert admin_user['username'], 'Cannot find username in env'
     assert admin_user['password'] and len(admin_user['password']) > 10, \
-        'Default admin user password missing or too short (API_ADMIN_PASSWORD)'
+        f'User {username} password missing or too short'
     try:
         api.put_users([admin_user])
     except IntegrityError as e:
         # fixme, we could actually check that assertion
-        logging.debug('Admin user already exists?')
+        logging.debug(f'User {username} already exists?')
 
 
 # set logging according to productions/devel/testing
