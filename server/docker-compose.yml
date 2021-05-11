@@ -12,10 +12,9 @@ services:
   spi_api:
     container_name: spi_api
     restart: always
+    image: stickypi/spi_api:latest
     build:
       context: ./api
-      args:
-        API_PORT: ${API_PORT}
     depends_on:
       - spi_db
     expose:
@@ -27,6 +26,7 @@ services:
   spi_webapp:
     container_name: spi_webapp
     restart: always
+    image: stickypi/spi_webapp:latest
     build:
       context: ./webapp
     ports:
@@ -40,6 +40,7 @@ services:
   spi_uid:
     container_name: spi_uid
     restart: always
+    image: stickypi/spi_ml:latest
     build:
       context: ./ml
     command: 'python uid.py -v predict'
@@ -56,11 +57,9 @@ services:
   spi_nginx:
     container_name: spi_nginx
     restart: always
+    image: stickypi/spi_nginx:latest
     build:
       context: ./nginx
-      args:
-        API_PORT: ${API_PORT}
-        WEBAPP_PORT: ${WEBAPP_PORT}
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     ports:
       - "80:80"
@@ -74,14 +73,17 @@ services:
 
   spi_s3:
     container_name: spi_s3
-    image: localstack/localstack
+    image: stickypi/spi_s3:latest
+    build:
+      context: ./s3
     ports:
       - '4566:4566'
       #- '8055:80'
     environment:
       - SERVICES=s3
       - DEBUG=1
-      - DATA_DIR=/tmp/localstack/data
+
+
     env_file:
       # TODO add relevant configurations to .env file
       - .env

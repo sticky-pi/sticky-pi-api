@@ -35,10 +35,11 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+CMD ["sh", "/app/run.sh"]
 
-ARG API_PORT
-ENV API_PORT=$API_PORT
-
-# production
-RUN export API_PORT; envsubst '\$API_PORT' < uwsgi.ini-template > uwsgi.ini
-CMD ["uwsgi", "--ini", "uwsgi.ini"]
+#ARG API_PORT
+#ENV API_PORT=$API_PORT
+#
+## production
+#RUN export API_PORT; envsubst '\$API_PORT' < uwsgi.ini-template > uwsgi.ini
+#CMD ["uwsgi", "--ini", "uwsgi.ini"]

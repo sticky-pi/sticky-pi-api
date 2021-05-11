@@ -30,7 +30,7 @@ case "$1" in
             docker-compose  -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   -d
             ;;
        prod)
-           docker-compose  down --remove-orphans  -v
+            docker-compose  down --remove-orphans  -v
             docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml up --remove-orphans --build --force-recreate -d
             ;;
        prod-init)
@@ -49,7 +49,7 @@ case "$1" in
           source ./.env
           source ./.secret.env
           OUTPUT_BACKUP_FILE=spi_db.dump.$(date +%F).sql.gz
-          echo "Making a databse backup: $OUTPUT_BACKUP_FILE. This could take a while..."
+          echo "Making a database backup: $OUTPUT_BACKUP_FILE. This could take a while..."
           docker exec -it spi_db mysqldump --password=$MYSQL_PASSWORD -u $MYSQL_USER $MYSQL_DATABASE --single-transaction | gzip -c > $OUTPUT_BACKUP_FILE &&\
           echo "Success! Now COPY this file to a safe location"
           ;;

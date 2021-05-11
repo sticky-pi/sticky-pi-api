@@ -33,7 +33,8 @@ class Test(TestCase):
     s3Client = boto3.client('s3', **credentials)
     _endpoint = credentials["endpoint_url"]
     _test_dir = test_dir
-    _test_images = [i for i in sorted(glob.glob(os.path.join(_test_dir, "test_images/**/*.jpg")))]
+    _test_images = [i for i in sorted(glob.glob(os.path.join(_test_dir,
+                                                             "../../prototypes/test_images/**/*.jpg")))]
 
     def test_create_bucket(self):
         # create bucket
