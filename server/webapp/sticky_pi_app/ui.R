@@ -44,7 +44,7 @@ make_ui <- function(){
 date_selector <- function(state){
     dates <-  state$data_scope$selected_dates
     o <- dateRangeInput("data_scope_dates", "Date range", start = dates[1], end = dates[2], min = NULL,
-                       max = today(), format = "yyyy-mm-dd", startview = "month", weekstart = 0,
+                       max = today()+1, format = "yyyy-mm-dd", startview = "month", weekstart = 0,
                        language = "en", separator = " to ", width = NULL)
     message <- "Scoping all devices in:"
     if(state$data_scope$selected_experiment > 0){

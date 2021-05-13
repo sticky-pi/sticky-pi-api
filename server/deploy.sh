@@ -31,10 +31,12 @@ case "$1" in
             ;;
        prod)
             docker-compose  down --remove-orphans  -v
-            docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml up --remove-orphans --build --force-recreate -d
+            docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml pull
+            docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml up --remove-orphans  --force-recreate -d
             ;;
        prod-init)
            docker-compose  down --remove-orphans  -v
+           docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml pull
            export $(grep -v '^#' .env | xargs)
            export $(grep -v '^#' .secret.env | xargs)
            bash .init-letsencrypt.sh
