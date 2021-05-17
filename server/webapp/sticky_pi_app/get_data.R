@@ -1,7 +1,8 @@
 
 
-compute_light_intensity <- function(et, bv, iso){
-  log10(1+bv)/et
+compute_light_intensity <- function(et, ag, dg){
+  #fixme
+  1 / et
 }
 
 all_images_data <- function(state, input){
@@ -35,7 +36,7 @@ all_images_data <- function(state, input){
   dt[, hum:= na.approx(hum, x=datetime, rule=2)]
   dt[, lng := ifelse(lng < -1e+03, NA, lng)]
   dt[, lat := ifelse(lat < -1e+03, NA, lat)]
-  dt[, light_intensity := compute_light_intensity(no_flash_exposure_time, no_flash_bv, no_flash_iso)]
+  dt[, light_intensity := compute_light_intensity(no_flash_exposure_time, no_flash_analog_gain,  no_flash_digital_gain)]
 
   if(!'n_objects' %in% colnames(dt)){
     n_insects_string = rep("", nrow(dt))

@@ -38,19 +38,14 @@ class TestRemoteAPIEndToEnd(unittest.TestCase, LocalAndRemoteTests):
                        }
 
         s3 = boto3.resource('s3',**credentials)
-        # fixme. this deletes all existing objects inside the test s3. we hadcode the name to prevent deleting important files by mistake
-        # localslack should make this irrelevent (eventually)
+        # fixme. this deletes all existing objects inside the test s3. we hardcode the name to prevent deleting
+        #  important files by mistake localslack should make this irrelevent (eventually)
         bucket = s3.Bucket('sticky-pi-api-dev')
         bucket.objects.delete()
         # delete all_users
         super()._clean_persistent_resources(cli)
         
     def __init__(self, method):
-        # import time
-        # time.sleep(5)
-        # while True:
-        #     time.sleep(1)
-
         LocalAndRemoteTests.__init__(self)
         unittest.TestCase.__init__(self, method)
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -62,12 +57,3 @@ class TestRemoteAPIEndToEnd(unittest.TestCase, LocalAndRemoteTests):
         finally:
             shutil.rmtree(temp_dir)
 
-        #
-
-
-#
-# _credentials = {'username': 'admin',
-#                'password': os.getenv('API_ADMIN_PASSWORD'),
-#                'host': 'spi_api',
-#                'protocol': 'http',
-#                'port': os.getenv('API_PORT')}

@@ -1,4 +1,3 @@
-
 import os
 from sticky_pi_api.client import RemoteClient
 from sticky_pi_ml.universal_insect_detector.ml_bundle import ClientMLBundle

@@ -47,10 +47,14 @@ class Images(BaseCustomisations):
     temp = DescribedColumn(Float, nullable=True)
     hum = DescribedColumn(Float, nullable=True)
 
-    no_flash_shutter_speed = DescribedColumn(Float, nullable=False)
+
     no_flash_exposure_time = DescribedColumn(Float, nullable=False)
-    no_flash_bv = DescribedColumn(Float, nullable=False)
-    no_flash_iso = DescribedColumn(Float, nullable=False)
+    no_flash_analog_gain =  DescribedColumn(Float, nullable=False)
+    no_flash_digital_gain =  DescribedColumn(Float, nullable=False)
+
+    # no_flash_shutter_speed = DescribedColumn(Float, nullable=False)
+    # no_flash_bv = DescribedColumn(Float, nullable=False)
+    # no_flash_iso = DescribedColumn(Float, nullable=False)
 
     def __init__(self, file, api_user=None):
         parser = ImageParser(file)
