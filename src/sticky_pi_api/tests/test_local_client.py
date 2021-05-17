@@ -55,9 +55,9 @@ class LocalAndRemoteTests(object):
             db = self._make_client(temp_dir)
         finally:
             shutil.rmtree(temp_dir)
-
     #
-
+    # #
+    #
     def test_users(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -86,31 +86,31 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-    # #
-    def test_put_images(self):
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            db = self._make_client(temp_dir)
-            self._clean_persistent_resources(db)
-            uploaded = db.put_images(self._test_images[0:2])
+        # # #
+        def test_put_images(self):
+            temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+            try:
+                db = self._make_client(temp_dir)
+                self._clean_persistent_resources(db)
+                uploaded = db.put_images(self._test_images[0:2])
 
-            self.assertEqual(len(uploaded), 2)
-            uploaded = db.put_images(self._test_images)
-            self.assertEqual(len(uploaded), len(self._test_images) - 2)
+                self.assertEqual(len(uploaded), 2)
 
-            uploaded = db.put_images(self._test_images)
+                uploaded = db.put_images(self._test_images)
+                self.assertEqual(len(uploaded), len(self._test_images) - 2)
 
-            # should fail to put images that are already there:
-            with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(self._server_error) as context:
-                    db._put_new_images(self._test_images[0:1])
+                uploaded = db.put_images(self._test_images)
 
-        finally:
-            shutil.rmtree(temp_dir)
-    #
+                # should fail to put images that are already there:
+                with redirect_stderr(StringIO()) as stdout:
+                    with self.assertRaises(self._server_error) as context:
+                        db._put_new_images(self._test_images[0:1])
+
+            finally:
+                shutil.rmtree(temp_dir)
+        #
 
     def test_get_images(self):
-        import tempfile
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = self._make_client(temp_dir)
@@ -374,65 +374,65 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-
-    def test_itc_labels(self):
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-
-            series = [{'device': '%',
-                       'start_datetime': '2020-01-01_00-00-00',
-                       'end_datetime': '2020-12-31_00-00-00',
-                       'n_tuboids': 6,
-                       'n_images': 10,
-                       'algo_name': 'test',
-                       'algo_version':'11111111-19191919'}]
-
-            db = self._make_client(temp_dir)
-            self._clean_persistent_resources(db)
-            # emp[ty dt should be returned if no series exist
-            db.get_tiled_tuboid_series_itc_labels(series)
-            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-            # should be missing the itc fields
-            db.get_tiled_tuboid_series_itc_labels(series)
-            info = [{
-                'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
-                'algo_version': '1111-abce',
-                'algo_name': 'insect_tuboid_classifier',
-                'label': 1,
-                'pattern': 'Insecta.*',
-                'type':'Insecta',
-                'order': 'test',
-                'family':'test',
-                'genus': 'test'
-            }
-            ]
-            #
-            out = db.put_itc_labels(info)
-            self.assertEqual(len(out), 1)
-            # cannot add same label twice
-
-            with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(self._server_error) as context:
-                    info[0]['label'] = 2
-                    db.put_itc_labels(info)
-            #
-            info[0]['algo_name'] = 'another_algo'
-            out = db.put_itc_labels(info)
-            self.assertEqual(len(out), 1)
-            #
-            import pandas as pd
-            pd.set_option('display.max_rows', 500)
-            pd.set_option('display.max_columns', 500)
-            out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
-            # print(info[0]['tuboid_id'])
-            print(out)
-            # for i in range(len(out)):
-            #     print(out.tuboid_id[i])
-            # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
-
-        finally:
-            shutil.rmtree(temp_dir)
-
+    #
+    # def test_itc_labels(self):
+    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+    #     try:
+    #
+    #         series = [{'device': '%',
+    #                    'start_datetime': '2020-01-01_00-00-00',
+    #                    'end_datetime': '2020-12-31_00-00-00',
+    #                    'n_tuboids': 6,
+    #                    'n_images': 10,
+    #                    'algo_name': 'test',
+    #                    'algo_version':'11111111-19191919'}]
+    #
+    #         db = self._make_client(temp_dir)
+    #         self._clean_persistent_resources(db)
+    #         # emp[ty dt should be returned if no series exist
+    #         db.get_tiled_tuboid_series_itc_labels(series)
+    #         db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+    #         # should be missing the itc fields
+    #         db.get_tiled_tuboid_series_itc_labels(series)
+    #         info = [{
+    #             'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
+    #             'algo_version': '1111-abce',
+    #             'algo_name': 'insect_tuboid_classifier',
+    #             'label': 1,
+    #             'pattern': 'Insecta.*',
+    #             'type':'Insecta',
+    #             'order': 'test',
+    #             'family':'test',
+    #             'genus': 'test'
+    #         }
+    #         ]
+    #         #
+    #         out = db.put_itc_labels(info)
+    #         self.assertEqual(len(out), 1)
+    #         # cannot add same label twice
+    #
+    #         with redirect_stderr(StringIO()) as stdout:
+    #             with self.assertRaises(self._server_error) as context:
+    #                 info[0]['label'] = 2
+    #                 db.put_itc_labels(info)
+    #         #
+    #         info[0]['algo_name'] = 'another_algo'
+    #         out = db.put_itc_labels(info)
+    #         self.assertEqual(len(out), 1)
+    #         #
+    #         import pandas as pd
+    #         pd.set_option('display.max_rows', 500)
+    #         pd.set_option('display.max_columns', 500)
+    #         out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
+    #         # print(info[0]['tuboid_id'])
+    #         print(out)
+    #         # for i in range(len(out)):
+    #         #     print(out.tuboid_id[i])
+    #         # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+    #
+    #     finally:
+    #         shutil.rmtree(temp_dir)
+    #
 
 class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
     _server_error = IntegrityError
