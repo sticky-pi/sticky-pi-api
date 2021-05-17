@@ -175,7 +175,7 @@ class BaseClient(BaseAPISpec, ABC):
                                                                                          len(files)))
 
             to_upload += self._diff_images_to_upload(group)
-
+            
         self._cache.sync()
 
         if len(to_upload) == 0:
