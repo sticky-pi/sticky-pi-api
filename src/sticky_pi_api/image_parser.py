@@ -101,12 +101,21 @@ class ImageParser(dict):
                 if custom_img_metadata['lat'] == 0 and custom_img_metadata['lng'] == 0 and custom_img_metadata['alt'] == 0:
                     custom_img_metadata['lat'] = custom_img_metadata['lng'] = custom_img_metadata['alt'] = None
 
-                # these variables are expressed as a fractional tuple. We cast them to floats
-                for var in ["no_flash_" + v for v in ("shutter_speed", "exposure_time", "bv")]:
-                    custom_img_metadata[var] = custom_img_metadata[var][0] / \
-                                                        custom_img_metadata[var][1]
 
-                del custom_img_metadata['datetime']
+                # in the legacy images (2020), we have different metavariables to assess brightness
+                # here, we adapt the old to the new data format
+                # these variables are expressed as a fractional tuple. We cast them to floats
+                if "no_flash_bv" in custom_img_metadata.keys():
+                    for var in ["no_flash_" + v for v in ("shutter_speed", "exposure_time", "bv")]:
+                        custom_img_metadata[var] = custom_img_metadata[var][0] / \
+                                                            custom_img_metadata[var][1]
+                    custom_img_metadata["no_flash_analog_gain"] = custom_img_metadata["no_flash_iso"]
+                    custom_img_metadata["no_flash_digital_gain"] = custom_img_metadata["no_flash_bv"]
+                    del custom_img_metadata["no_flash_iso"]
+                    del custom_img_metadata["no_flash_bv"]
+                    del custom_img_metadata["no_flash_shutter_speed"]
+                    del custom_img_metadata['datetime']
+
 
                 self.update(custom_img_metadata)
 

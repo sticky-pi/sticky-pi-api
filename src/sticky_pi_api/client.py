@@ -83,7 +83,6 @@ class BaseClient(BaseAPISpec, ABC):
         :param n_threads: The number of parallel threads to use to compute statistics on the image (md5 and such)
         """
 
-        self._local_dir = local_dir
         self._n_threads = n_threads
         self._local_dir = local_dir
         os.makedirs(self._local_dir, exist_ok=True)
