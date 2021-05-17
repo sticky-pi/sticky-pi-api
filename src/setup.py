@@ -21,9 +21,10 @@ setup(
                       'typeguard',
                       'passlib',
                       'itsdangerous',
-                      'decorate_all_methods'],
+                      'decorate_all_methods',
+                      'boto3'],
     extras_require={
-        'remote_api': ['pymysql', 'boto3', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
+        'remote_api': ['pymysql', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
         'test': ['nose', 'pytest', 'pytest-cov', 'codecov', 'coverage'],
         'docs': ['mock', 'sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },
