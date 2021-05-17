@@ -53,6 +53,9 @@ class Cache(dict):
         key = inspect.getsource(function)
         return self[key][hash]
 
+    def sync(self):
+        return self._sync()
+        
     def _sync(self):
         with shelve.open(self._path, writeback=True) as d:
             for k, v in self.items():
@@ -65,11 +68,8 @@ class Cache(dict):
             logging.error('trying to detect cache, but file does not exist')
 
 
-
-# all the client methods may take python argument, the argument are implicitly transformed
+# all the client methods may take python arguments, the argument are implicitly transformed
 # to json-compatible values using this decorator
-
-
 @decorate_all_methods(python_inputs_to_json, exclude=['__init__', '_diff_images_to_upload'])
 class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
@@ -175,6 +175,8 @@ class BaseClient(BaseAPISpec, ABC):
                                                                                          len(files)))
 
             to_upload += self._diff_images_to_upload(group)
+
+        self._cache.sync()
 
         if len(to_upload) == 0:
             logging.warning('No image to upload!')
