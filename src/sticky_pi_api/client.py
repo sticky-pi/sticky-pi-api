@@ -75,16 +75,18 @@ class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
     _cache_dirname = "cache"
 
-    def __init__(self, local_dir: str, n_threads: int = 8):
+    def __init__(self, local_dir: str, n_threads: int = 8, skip_on_error: bool=False):
         """
         Abstract class that defines the methods of the client (common between remote and client).
 
         :param local_dir: The path to a client directory that acts as a client storage
         :param n_threads: The number of parallel threads to use to compute statistics on the image (md5 and such)
+        :param skip_on_error: Whether to skip on upload error
         """
 
         self._n_threads = n_threads
         self._local_dir = local_dir
+        self._skip_on_error = skip_on_error
         os.makedirs(self._local_dir, exist_ok=True)
         cache_file = os.path.join(local_dir, self._cache_dirname, 'cache.pkl')
         self._cache = Cache(cache_file)
@@ -227,7 +229,7 @@ class BaseClient(BaseAPISpec, ABC):
     def _diff_images_to_upload(self, files):
         """
         Handles the negotiation process during upload. First trying to get the images to be uploaded,
-        First gets the images to be sent. Those that already exists and have the same checksum can be skipped,
+        Those that already exists and have the same checksum can be skipped,
         to only upload new images
 
         :param files: A list of file paths
@@ -237,8 +239,19 @@ class BaseClient(BaseAPISpec, ABC):
         """
 
 
-        def local_img_stats(file: str, file_stats: float):
-            i = ImageParser(file)
+        def local_img_stats(file: str, file_stats: float, skip_on_error: bool):
+            try:
+                i = ImageParser(file)
+            except Exception as e:
+                if skip_on_error:
+                    logging.error(e)
+                    return {(file, file_stats):
+                                {'device': None,
+                                 'datetime': None,
+                                 'md5': None,
+                                 'url': None}}
+                else:
+                    raise e
             out_ = {(file, file_stats):
                             {'device': i['device'],
                             'datetime': i['datetime'],
@@ -259,9 +272,9 @@ class BaseClient(BaseAPISpec, ABC):
                 to_compute.append(key)
 
         if self._n_threads > 1:
-            computed = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(*tc) for tc in to_compute)
+            computed = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(*tc, skip_on_error = self._skip_on_error) for tc in to_compute)
         else:
-            computed = [local_img_stats(*tc) for tc in to_compute]
+            computed = [local_img_stats(*tc, skip_on_error = self._skip_on_error) for tc in to_compute]
 
         logging.info('Caching %i image stats (%i already pre-computed)' % (len(computed), len(cached_results)))
 
@@ -271,6 +284,9 @@ class BaseClient(BaseAPISpec, ABC):
 
         # we request these images from the database
         info = [list(imd.values())[0] for imd in computed]
+        # this is when self._skip_on_error is true, a None url means we skip
+        info = [inf for inf in info if inf["url"] is not None]
+
         matches = self.get_images(info, what='metadata')
 
         # now we diff: we ignore images that exist on DB AND have the same md5
@@ -282,7 +298,7 @@ class BaseClient(BaseAPISpec, ABC):
         joined = pd.merge(info, matches, how='left', on = ['device', 'datetime'], suffixes=('', '_match'))
         joined['same_md5'] = joined.apply(lambda row: row.md5_match == row.md5, axis=1)
         joined['already_on_db'] = joined.apply(lambda row: not pd.isna(row.md5_match), axis=1)
-        # images that re not yet on the db:
+        # images that are not yet on the db:
         out = joined[joined.already_on_db == False].url.tolist()
 
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
