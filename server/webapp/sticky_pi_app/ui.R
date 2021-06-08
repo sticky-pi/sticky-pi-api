@@ -12,7 +12,7 @@ side_panel <- function(state){renderUI({
     if (state$user$is_logged_in == TRUE ){
         # scope <- h2(sprintf("Scope:\n%i images\n%i devices", user$scope$n_images, user$scope$n_devices))
         # scope <- h2(sprintf("\n%i images in scope", length(state$data_scope$selected_image_ids)))
-        data <- get_comp_prop(state, "images_in_scope") # fixme, canno call by deparsing...?
+        data <- get_comp_prop(state, "images_in_scope") # fixme, canno tcall by deparsing...?
         scope <- h3(id='scope_title', sprintf(" %i", nrow(data)), br()," images in scope")
       # scope <- h2("images in scope")
       sidebarMenu(
@@ -29,15 +29,20 @@ side_panel <- function(state){renderUI({
   })}
 
 make_ui <- function(){
-    header <- dashboardHeader( title = "Sticky pi board", uiOutput("header"))
+    header <- dashboardHeader( title = tags$a(href='https://doc.sticky-pi.com', target="blank_",
+                                       tags$img(src='sticky_logo.png', width="100%", height="auto")),
+                               uiOutput("header")
+    )
     sidebar <- dashboardSidebar(uiOutput("sidebarpanel"))
 
     body <- dashboardBody(shinyjs::useShinyjs(),
                           shinyjs::extendShinyjs('script.js', functions='click_thumbnail_button'),
+                          tags$head(tags$link(rel = "shortcut icon", href = "favicon.ico")),
                           tags$head(
-          tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
-        ),uiOutput("body"))
-    dashboardPage(header, sidebar, body, skin = "blue")
+                            tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
+                            ),
+                          uiOutput("body"))
+    dashboardPage(header, sidebar, body, skin = "blue", title="Sticky Pi Web App")
 }
 
 
@@ -118,7 +123,16 @@ renderUI({
         tabItem(tabName ="images",
                 fluidRow(
                   # box(width = 12,uiOutput('time_plot')),
-                  box(width = 12, style='min-height:800px; overflow-y: scroll; position: relative',plotlyOutput('time_plot')),
+
+                  box(width = 12, style='min-height:800px; overflow-y: scroll; position: relative',
+                        selectInput("time_plot_colour_axis", "Variable displayed as colour",
+                              list(`light intensity` = "light_intensity",
+                                   `humidity` = "hum",
+                                   `temperature` = "temp",
+                                   `insect number` = "n_objects"
+                                   )),
+                      plotlyOutput('time_plot')
+                  ),
                   htmlOutput('time_plot_tooltip_widget')
                 ),
                 # htmlOutput('thumbnail_mini')

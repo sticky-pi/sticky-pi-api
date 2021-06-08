@@ -2,7 +2,8 @@
 
 compute_light_intensity <- function(et, ag, dg){
   #fixme
-  1 / et
+  1e6 / et
+
 }
 
 all_images_data <- function(state, input){
@@ -31,6 +32,7 @@ all_images_data <- function(state, input){
   dt[, temp := ifelse(temp > -300, temp, NA_real_)]
   dt[, hum := ifelse(hum > 0, hum, NA_real_)]
   dt[,is_dht_available := !is.na(temp)]
+
   
   dt[, temp:= na.approx(temp, x=datetime, rule=2)]
   dt[, hum:= na.approx(hum, x=datetime, rule=2)]
