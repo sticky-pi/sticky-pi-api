@@ -285,6 +285,9 @@ class BaseClient(BaseAPISpec, ABC):
         # we request these images from the database
         info = [list(imd.values())[0] for imd in computed]
         # this is when self._skip_on_error is true, a None url means we skip
+        if not info:
+            return []
+
         info = [inf for inf in info if inf["url"] is not None]
 
         matches = self.get_images(info, what='metadata')
