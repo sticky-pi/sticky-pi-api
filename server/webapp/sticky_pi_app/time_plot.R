@@ -4,47 +4,9 @@ render_time_plot <- function(state, input){
 
     if(nrow(dt) <1)
       return()
-    print(input)
     pl <- ggplot(dt , aes(x=datetime, y=device, text= .tooltip, group=device, key=id)) +
       geom_point(aes_string(colour=input$time_plot_colour_axis),  size=3, shape=15) +
       scale_colour_distiller(palette = "Spectral")
-
-    # rng_temp = range(dt[, temp])
-    # rng_hum = range(dt[, hum])
-    #
-    # b <- diff(rng_temp)/diff(rng_hum)
-    # a <- (rng_temp -  rng_hum * b)[1]
-    #
-    #
-    # bottom = min(dt[,temp] - 2)
-    # top = max(dt[,temp] + 2)
-    #
-    # pl <- ggplot(dt , aes(datetime, key=id, text= .tooltip, group=device)) +
-    #   geom_point(aes(y=temp), colour='red',  size=.5) +
-    #   geom_line(aes(y=temp,x = datetime, group=device, key=id), colour='red', inherit.aes = F) +
-    #   geom_line(aes(y=hum * b + a, x = datetime, group=device, key=id), colour='blue', inherit.aes = F) +
-    #   geom_point(aes(y=hum * b + a, x = datetime, group=device, key=id), colour='blue', size=.5,inherit.aes = F)
-    #
-    #  if(state$data_scope$selected_detector != "None"){
-    #   rng_obj = range(na.omit(dt[, n_objects]))
-    #   b_obj <- diff(rng_temp)/diff(rng_obj)
-    #   a_obj <- (rng_temp -  rng_obj * b_obj)[1]
-    #    pl <- pl +
-    #      geom_line(aes(y=n_objects * b_obj + a_obj, x = datetime, group=device, key=id), colour='black', inherit.aes = F) +
-    #      geom_point(aes(y=n_objects * b_obj + a_obj, x = datetime, group=device, key=id), colour='black', size=.5,inherit.aes = F)
-    #  }
-    #
-    #  pl <- pl +
-    #   geom_point( aes(x=datetime, colour=light_intensity), dt, y=bottom, shape=15, inherit.aes = F) +
-    #   facet_grid( device ~ .) +
-    #   scale_y_continuous(limits = c(bottom, top), sec.axis = sec_axis(~(. - a)/b, name = "Relative humidity [%]")) +
-    #   scale_x_datetime(name ="" )  +
-    #   theme_classic() +
-    #   guides(color = FALSE) +
-    #   scale_colour_distiller(palette = "Spectral")
-    #
-    # pl
-
     height = 30 * nrow(dt[, .N, by=device]) + 60
     p <- plotly::toWebGL(plotly::ggplotly(pl, tooltip=NA, dynamicTicks = TRUE)) %>%
       rangeslider(thickness= 50/ height, bgcolor='#bbb') %>%
