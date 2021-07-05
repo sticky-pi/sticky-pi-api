@@ -37,21 +37,28 @@ class Cache(dict):
                 for k, v in d.items():
                     self[k] = v
 
-    def add(self, function, results):
+    def add(self, function_src, results):
         if len(results) == 0:
             return
-        key = inspect.getsource(function)
-        if key not in self.keys():
-            self[key] = {}
+        if function_src not in self.keys():
+            self[function_src] = {}
         for r in results:
-            self[key].update(r)
+            k, vals = next(iter(r.items()))
+            r = tuple(vals[k] for k in ["device", "datetime", "md5"])
+            self[function_src].update({k:r})
             if self._n_writes % self._sync_each_n == self._sync_each_n - 1:
                 self._sync()
             self._n_writes += 1
 
-    def get_cached(self, function, hash):
-        key = inspect.getsource(function)
-        return self[key][hash]
+    def get_hashes(self, function_src):
+        if function_src not in self:
+            return {}
+        return set(self[function_src].keys())
+
+    def get_cached(self, function_src, hash):
+        device, datetime, md5 = self[function_src][hash]
+        out = {"device": device, "datetime": datetime, "md5":md5, 'url':hash[0]}
+        return out
 
     def sync(self):
         return self._sync()
@@ -263,12 +270,15 @@ class BaseClient(BaseAPISpec, ABC):
         cached_results = []
         to_compute = []
 
+        # we use a set, should be faster
+        local_img_stats_src = inspect.getsource(local_img_stats)
+        hashes = self._cache.get_hashes(local_img_stats_src)
         for f in files:
             key = f, os.path.getmtime(f)
-            try:
-                res = {key: self._cache.get_cached(local_img_stats, key)}
+            if key in hashes:
+                res = {key: self._cache.get_cached(local_img_stats_src, key)}
                 cached_results.append(res)
-            except KeyError as e:
+            else:
                 to_compute.append(key)
 
         if self._n_threads > 1:
@@ -278,7 +288,7 @@ class BaseClient(BaseAPISpec, ABC):
 
         logging.info('Caching %i image stats (%i already pre-computed)' % (len(computed), len(cached_results)))
 
-        self._cache.add(local_img_stats, computed)
+        self._cache.add(local_img_stats_src, computed)
 
         computed += cached_results
 
