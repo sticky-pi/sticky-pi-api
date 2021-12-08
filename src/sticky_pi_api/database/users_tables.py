@@ -18,6 +18,7 @@ class Users(BaseCustomisations):
     is_admin = DescribedColumn(Boolean, default=False)
     can_write = DescribedColumn(Boolean, default=True)
 
+
     def __init__(self, password, api_user=None, **kwargs):
         my_dict = kwargs
         my_dict['password_hash'] = pwd_context.encrypt(password)

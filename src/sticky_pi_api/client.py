@@ -57,7 +57,11 @@ class Cache(dict):
 
     def get_cached(self, function_src, hash):
         device, datetime, md5 = self[function_src][hash]
-        out = {"device": device, "datetime": datetime, "md5":md5, 'url':hash[0]}
+        if md5 is None:
+            url =  None
+        else:
+            url = hash[0]
+        out = {"device": device, "datetime": datetime, "md5":md5, 'url':url}
         return out
 
     def sync(self):

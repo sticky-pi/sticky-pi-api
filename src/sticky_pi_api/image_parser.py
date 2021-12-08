@@ -5,7 +5,7 @@ import PIL.ExifTags
 from imread import imread_from_blob
 from ast import literal_eval
 import datetime
-from sticky_pi_api.utils import md5, URLOrFileOpen
+from sticky_pi_api.utils import md5, URLOrFileOpen, STRING_DATETIME_FILENAME_FORMAT
 
 
 class ImageParser(dict):
@@ -57,7 +57,7 @@ class ImageParser(dict):
 
         datetime_string = fields[1]
         try:
-            date_time = datetime.datetime.strptime(datetime_string, '%Y-%m-%d_%H-%M-%S')
+            date_time = datetime.datetime.strptime(datetime_string, STRING_DATETIME_FILENAME_FORMAT)
             # date_time = self._timezone.localize(date_time)
         except ValueError:
             raise Exception("Could not retrieve datetime from filename")

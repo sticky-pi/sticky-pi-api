@@ -57,7 +57,8 @@ class TiledTuboids(BaseCustomisations):
         i_dict = {}
         for k, v in info.items():
             try:
-                i_dict[k] = string_to_datetime(v)
+                # the format of date is the same as in filename (_ and -)
+                i_dict[k] = string_to_datetime(v, is_filename=True)
             except (TypeError, ValueError) as e:
                 i_dict[k] = v
         i_dict['api_user'] = api_user
@@ -90,8 +91,10 @@ class TiledTuboids(BaseCustomisations):
             if first_shot_datetime is None:
                 first_shot_datetime = annotation_datetime
             out['n_shots'] += 1
+
         out['start_datetime'] = first_shot_datetime
         out['end_datetime'] = annotation_datetime
+
         assert out['n_shots'] > 0, 'Empty tuboid sent (0 shots)'
         return out
 

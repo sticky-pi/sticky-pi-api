@@ -6,7 +6,6 @@ setup(
     version=__version__,
     long_description=__doc__,
     packages=find_packages(),
-    # scripts=['bin/sync_local_images.py'],
     include_package_data=True,
     zip_safe=False,
     install_requires=['pandas',
@@ -22,9 +21,10 @@ setup(
                       'passlib',
                       'itsdangerous',
                       'decorate_all_methods',
-                      'boto3'],
+                      'boto3',
+                      'orjson'],
     extras_require={
-        'remote_api': ['pymysql', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
+        'remote_api': ['pymysql', 'mysqlclient', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
         'test': ['nose', 'pytest', 'pytest-cov', 'codecov', 'coverage'],
         'docs': ['mock', 'sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },

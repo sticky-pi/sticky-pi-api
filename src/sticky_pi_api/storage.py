@@ -127,7 +127,7 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
+    def get_url_for_image(self, image: Union[Images, Dict], what: str = 'metadata') -> str:
         """
         Retrieves the URL to the file corresponding to an image in the database.
 
@@ -217,11 +217,11 @@ class DiskStorage(BaseStorage):
             os.remove(to_del)
         os.rmdir(target_dir)
 
-    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
+    def get_url_for_image(self, image: Union[Images, Dict], what: str = 'metadata') -> str:
         if what == 'metadata':
             return ""
 
-        url = os.path.join(self._local_dir, self._raw_images_dirname, image.device, image.filename)
+        url = os.path.join(self._local_dir, self._raw_images_dirname, image["device"], image["filename"])
         if what == "thumbnail":
             url += ".thumbnail"
         elif what == "thumbnail-mini":
@@ -247,7 +247,6 @@ class DiskStorage(BaseStorage):
 
 try:
     import uwsgi
-
 
     class URLCache(object):
         _cache_block_size = 128 # bytes. matche uwsgi config
@@ -324,10 +323,10 @@ class S3Storage(BaseStorage):
 
     def _image_key(self, image, suffix):
         return os.path.join(self._raw_images_dirname,
-                            image.device,
-                            image.filename + suffix)
+                            image["device"],
+                            image["filename"] + suffix)
 
-    def get_url_for_image(self, image: Images, what: str = 'metadata') -> str:
+    def get_url_for_image(self, image: Union[Images, Dict], what: str = 'metadata') -> str:
         if what == 'metadata':
             return ""
         suffix = self._suffix_map[what]
@@ -394,7 +393,7 @@ class S3Storage(BaseStorage):
             prefix, suffix = out.split("?")
             assert prefix == self._s3_url_prefix(key), "Wrong URL prefix, cache will fail"
             self._cached_urls[key] = suffix  # , now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
-            logging.warning(f"setting cache for {key}")
+            # logging.warning(f"setting cache for {key}")
             assert suffix == self._cached_urls[key], f'Could not read cache for {key}'
         return out
 

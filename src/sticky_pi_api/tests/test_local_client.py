@@ -28,7 +28,7 @@ class LocalAndRemoteTests(object):
              fill_colour="#ff0000")],
         "metadata": dict(algo_name="sticky-pi-universal-insect-detector",
                          algo_version="1598113346-ad2cd78dfaca12821046dfb8994724d5", device="5c173ff2",
-                         datetime="2020-06-20_21-33-24", md5="9e6e908d9c29d332b511f8d5121857f8")}
+                         datetime="2020-06-20T21:33:24Z", md5="65e69135d29871e8ee0ac453583effaf")}
     _test_dir = test_dir
 
     def __init__(self):
@@ -40,14 +40,14 @@ class LocalAndRemoteTests(object):
 
     def _clean_persistent_resources(self, cli):
         todel = [{'device': '%',
-                                     'start_datetime': '2020-01-01_00-00-00',
-                                     'end_datetime': '2020-12-31_00-00-00'}]
+                                     'start_datetime': '2020-01-01T00:00:00Z',
+                                     'end_datetime': '2020-12-31T00:00:00Z'}]
         out = cli.get_image_series(todel)
         cli.delete_images(out)
         cli.delete_tiled_tuboids(todel)
 
 
-# ###########################################################################################################
+###########################################################################################################
 
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -55,9 +55,7 @@ class LocalAndRemoteTests(object):
             db = self._make_client(temp_dir)
         finally:
             shutil.rmtree(temp_dir)
-    #
-    # #
-    #
+
     def test_users(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -86,29 +84,30 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-        # # #
-        def test_put_images(self):
-            temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-            try:
-                db = self._make_client(temp_dir)
-                self._clean_persistent_resources(db)
-                uploaded = db.put_images(self._test_images[0:2])
+        # #
 
-                self.assertEqual(len(uploaded), 2)
+    def test_put_images(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            uploaded = db.put_images(self._test_images[0:2])
 
-                uploaded = db.put_images(self._test_images)
-                self.assertEqual(len(uploaded), len(self._test_images) - 2)
+            self.assertEqual(len(uploaded), 2)
 
-                uploaded = db.put_images(self._test_images)
+            uploaded = db.put_images(self._test_images)
+            self.assertEqual(len(uploaded), len(self._test_images) - 2)
 
-                # should fail to put images that are already there:
-                with redirect_stderr(StringIO()) as stdout:
-                    with self.assertRaises(self._server_error) as context:
-                        db._put_new_images(self._test_images[0:1])
+            uploaded = db.put_images(self._test_images)
 
-            finally:
-                shutil.rmtree(temp_dir)
-        #
+            # should fail to put images that are already there:
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    db._put_new_images(self._test_images[0:1])
+
+        finally:
+            shutil.rmtree(temp_dir)
+
 
     def test_get_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -118,19 +117,19 @@ class LocalAndRemoteTests(object):
             db.put_images(self._test_images)
 
             #the input dates of the client can be dates or string
-            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}])
+            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05T10:07:16Z"}])
             self.assertEqual(len(out), 1)
             # the output of the client should be a date, always
-            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05_10-07-16"))
+            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05T10:07:16Z"))
 
             # Client should should parse datetime to string internally
-            out = db.get_images([{'device': "1b74105a", 'datetime': string_to_datetime("2020-07-05_10-07-16")}])
-            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05_10-07-16"))
+            out = db.get_images([{'device': "1b74105a", 'datetime': string_to_datetime("2020-07-05T10:07:16Z")}])
+            self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05T10:07:16Z"))
 
-            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}], what='image')
+            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05T10:07:16Z"}], what='image')
             self.assertEqual(len(out), 1)
             # second image should ba cached
-            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05_10-07-16"}], what='image')
+            out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05T10:07:16Z"}], what='image')
             self.assertEqual(len(out), 1)
             # we try to parse the image from its url
             from sticky_pi_api.image_parser import ImageParser
@@ -148,22 +147,22 @@ class LocalAndRemoteTests(object):
             self._clean_persistent_resources(db)
             db.put_images(self._test_images)
             out = db.get_image_series([{'device': "0a5bb6f4",
-                                        'start_datetime': "2020-06-20_00-00-00",
-                                        'end_datetime': "2020-06-22_00-00-00"}], what='image')
-
+                                        'start_datetime': "2020-06-20T00:00:00Z",
+                                        'end_datetime': "2020-06-22T00:00:00Z"}], what='image')
+            logging.warning(out)
             self.assertEqual(len(out), 5)
             out2 = db.get_image_series([{'device': "0a5bb6f4",
-                                        'start_datetime': "2020-06-20_00-00-00",
-                                        'end_datetime': "2020-06-22_00-00-00"}], what='image')
+                                        'start_datetime': "2020-06-20T00:00:00Z",
+                                        'end_datetime': "2020-06-22T00:00:00Z"}], what='image')
 
             self.assertEqual(len(out2), 5)
             for o, o2 in zip(out, out2):
                 self.assertDictEqual(o, o2)
-
-
+#
+#
         finally:
             shutil.rmtree(temp_dir)
-    # #
+
     def test_put_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -199,7 +198,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-
+    #
     def test_get_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -208,12 +207,12 @@ class LocalAndRemoteTests(object):
             self._clean_persistent_resources(db)
 
             # get annotation of non-existing parent image return an empty list
-            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
+            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20T21:33:24Z'}])
             self.assertEqual(out, [])
 
             db.put_images([self._test_image_for_annotation])
             # parent image exists, but no annotation for it. empty list expected
-            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}])
+            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20T21:33:24Z'}])
             self.assertEqual(out, [])
             db.put_uid_annotations([self._test_annotation])
 
@@ -221,16 +220,16 @@ class LocalAndRemoteTests(object):
             db.put_images(self._test_images[0:2])
 
             # now we should have only one annotation out
-            out = db.get_uid_annotations([{'device':'5c173ff2', 'datetime':'2020-06-20_21-33-24'}])
+            out = db.get_uid_annotations([{'device':'5c173ff2', 'datetime':'2020-06-20T21:33:24Z'}])
             self.assertEqual(len(out), 1)
 
-            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20_21-33-24'}], what='data')
+            out = db.get_uid_annotations([{'device': '5c173ff2', 'datetime': '2020-06-20T21:33:24Z'}], what='data')
             print(out)
             self.assertDictEqual(json.loads(out[0]['json']), self._test_annotation)
 
         finally:
             shutil.rmtree(temp_dir)
-    # #
+    #
     def test_get_uid_annotations_series(self):
         import copy
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -257,10 +256,18 @@ class LocalAndRemoteTests(object):
             db.put_uid_annotations(annot_to_up)
 
             out = db.get_uid_annotations_series([{'device': '0a5bb6f4',
-                                                        'start_datetime': '2020-01-01_00-00-00',
-                                                        'end_datetime': '2020-12-31_00-00-00'}])
+                                                        'start_datetime': '2020-01-01T00:00:00Z',
+                                                        'end_datetime': '2020-12-31T00:00:00Z'}])
             # should return just the annotations for the matched query , not one per image (one image has no annot)
             self.assertEqual(len(out), len(to_upload[:-1]))
+
+
+            out = db.get_uid_annotations_series([{'device': '0a5bb6f4',
+                                                        'start_datetime': '2020-01-01T00:00:00Z:',
+                                                        'end_datetime': '2020-12-31T00:00:00Z'}], what="metadata")
+            # should return just the annotations for the matched query , not one per image (one image has no annot)
+            self.assertEqual(len(out), len(to_upload[:-1]))
+
 
         finally:
             shutil.rmtree(temp_dir)
@@ -291,8 +298,8 @@ class LocalAndRemoteTests(object):
             db.put_uid_annotations(annot_to_up)
 
             out = db.get_images_with_uid_annotations_series([{'device': '0a5bb6f4',
-                                                            'start_datetime': '2020-01-01_00-00-00',
-                                                            'end_datetime': '2020-12-31_00-00-00'}])
+                                                            'start_datetime': '2020-01-01T00:00:00Z',
+                                                            'end_datetime': '2020-12-31T00:00:00Z'}])
 
             # should return just the annotations for the matched query , not one per image (one image has no annot)
             self.assertEqual(len(out), len(to_upload))
@@ -341,8 +348,8 @@ class LocalAndRemoteTests(object):
             self._clean_persistent_resources(db)
 
             series = [{'device': '08038ade',
-                       'start_datetime': '2020-07-08_20-00-00',
-                       'end_datetime': '2020-07-09_15-00-00',
+                       'start_datetime': '2020-07-08T20:00:00Z',
+                       'end_datetime': '2020-07-09T15:00:00Z',
                        'n_tuboids': 6,
                        'n_images': 10,
                        'algo_name': 'test',
@@ -359,8 +366,8 @@ class LocalAndRemoteTests(object):
             #
             self._clean_persistent_resources(db)
             series = [{'device': '08038ade',
-                       'start_datetime': '2020-07-08_20-00-00',
-                       'end_datetime': '2020-07-09_15-00-00',
+                       'start_datetime': '2020-07-08T20:00:00Z',
+                       'end_datetime': '2020-07-09T15:00:00Z',
                        'n_tuboids': 6,
                        'n_images': 10,
                        'algo_name': 'test',
@@ -374,65 +381,67 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-    #
-    # def test_itc_labels(self):
-    #     temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-    #     try:
-    #
-    #         series = [{'device': '%',
-    #                    'start_datetime': '2020-01-01_00-00-00',
-    #                    'end_datetime': '2020-12-31_00-00-00',
-    #                    'n_tuboids': 6,
-    #                    'n_images': 10,
-    #                    'algo_name': 'test',
-    #                    'algo_version':'11111111-19191919'}]
-    #
-    #         db = self._make_client(temp_dir)
-    #         self._clean_persistent_resources(db)
-    #         # emp[ty dt should be returned if no series exist
-    #         db.get_tiled_tuboid_series_itc_labels(series)
-    #         db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-    #         # should be missing the itc fields
-    #         db.get_tiled_tuboid_series_itc_labels(series)
-    #         info = [{
-    #             'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
-    #             'algo_version': '1111-abce',
-    #             'algo_name': 'insect_tuboid_classifier',
-    #             'label': 1,
-    #             'pattern': 'Insecta.*',
-    #             'type':'Insecta',
-    #             'order': 'test',
-    #             'family':'test',
-    #             'genus': 'test'
-    #         }
-    #         ]
-    #         #
-    #         out = db.put_itc_labels(info)
-    #         self.assertEqual(len(out), 1)
-    #         # cannot add same label twice
-    #
-    #         with redirect_stderr(StringIO()) as stdout:
-    #             with self.assertRaises(self._server_error) as context:
-    #                 info[0]['label'] = 2
-    #                 db.put_itc_labels(info)
-    #         #
-    #         info[0]['algo_name'] = 'another_algo'
-    #         out = db.put_itc_labels(info)
-    #         self.assertEqual(len(out), 1)
-    #         #
-    #         import pandas as pd
-    #         pd.set_option('display.max_rows', 500)
-    #         pd.set_option('display.max_columns', 500)
-    #         out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
-    #         # print(info[0]['tuboid_id'])
-    #         print(out)
-    #         # for i in range(len(out)):
-    #         #     print(out.tuboid_id[i])
-    #         # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
-    #
-    #     finally:
-    #         shutil.rmtree(temp_dir)
-    #
+
+
+
+    def test_itc_labels(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            series = [{'device': '%',
+                       'start_datetime': '2020-01-01T00:00:00Z',
+                       'end_datetime': '2020-12-31T00:00:00Z',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            # emp[ty dt should be returned if no series exist
+            db.get_tiled_tuboid_series_itc_labels(series)
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            # should be missing the itc fields
+            db.get_tiled_tuboid_series_itc_labels(series)
+            info = [{
+                'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
+                'algo_version': '1111-abce',
+                'algo_name': 'insect_tuboid_classifier',
+                'label': 1,
+                'pattern': 'Insecta.*',
+                'type':'Insecta',
+                'order': 'test',
+                'family':'test',
+                'genus': 'test'
+            }
+            ]
+            #
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            # cannot add same label twice
+
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    info[0]['label'] = 2
+                    db.put_itc_labels(info)
+            #
+            info[0]['algo_name'] = 'another_algo'
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            #
+            import pandas as pd
+            pd.set_option('display.max_rows', 500)
+            pd.set_option('display.max_columns', 500)
+            out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
+            # print(info[0]['tuboid_id'])
+            print(out)
+            # for i in range(len(out)):
+            #     print(out.tuboid_id[i])
+            # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+
+        finally:
+            shutil.rmtree(temp_dir)
+
 
 class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
     _server_error = IntegrityError
