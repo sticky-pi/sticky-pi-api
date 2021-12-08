@@ -30,6 +30,12 @@ RUN wget --no-verbose https://download3.rstudio.org/ubuntu-14.04/x86_64/VERSION 
 RUN R -e "install.packages(c('shinydashboard', 'DT', 'shinyjs', 'sodium', 'RMariaDB', 'data.table', 'httr', 'lubridate', 'plotly', 'ggplot2', 'htmlwidgets', 'zoo', 'fasttime', 'gridExtra', 'jsonlite', 'shinyBS'), repos='http://cran.rstudio.com/')"
 
 
+RUN apt-get update && apt-get install -y \
+    libxml2-dev 
+
+RUN R -e "install.packages(c('xml2'), repos='http://cran.rstudio.com/')"
+
+
 # Copy configuration files into the Docker image
 COPY shiny-server.conf  /etc/shiny-server/shiny-server.conf
 # Copy further configuration files into the Docker image

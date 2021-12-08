@@ -21,9 +21,14 @@ case "$1" in
             docker-compose down --remove-orphans -v
             docker-compose -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_s3_tests
             ;;
+
        test)
             docker-compose  down --remove-orphans  -v
             docker-compose  -f docker-compose.yml  -f docker-compose.devel.yml up --remove-orphans --build --force-recreate   spi_api_tests
+            ;;
+       push)
+            docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml build
+            docker-compose  -f docker-compose.yml  -f docker-compose.prod.yml push
             ;;
        devel)
             docker-compose  down --remove-orphans  -v

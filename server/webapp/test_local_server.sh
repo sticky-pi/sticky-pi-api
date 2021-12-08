@@ -1,5 +1,5 @@
 export STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN=FALSE
-export STICKY_PI_TESTING_USER=admin
+export STICKY_PI_TESTING_USER=test
 
 export API_ROOT_URL=api.sticky-pi.com
 export API_PROTOCOL=https
