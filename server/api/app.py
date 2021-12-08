@@ -1,4 +1,4 @@
-from flask import Flask, abort, request, jsonify, g, url_for, Response
+from flask import Flask, abort, jsonify, request,  g, url_for, Response
 from sqlalchemy.exc import OperationalError, IntegrityError
 from flask_httpauth import HTTPBasicAuth
 from flask.json import JSONEncoder
@@ -10,10 +10,23 @@ import logging
 import json
 import os
 import io
+import orjson
 
+
+from sticky_pi_api.utils import profiled
 from sticky_pi_api.configuration import RemoteAPIConf
 from sticky_pi_api.specifications import RemoteAPI
 from sticky_pi_api.utils import datetime_to_string
+
+def json_default(o):
+    if isinstance(o, Decimal):
+        return float(o)
+    raise TypeError
+
+
+
+def jsonify(obj):
+    return orjson.dumps(obj, option=orjson.OPT_UTC_Z, default= json_default)
 
 
 # just wait for database to be ready
@@ -79,26 +92,38 @@ def get_user_roles(user):
     return 'admin' if is_admin else 'read_write_user'
 
 
-class CustomJSONEncoder(JSONEncoder):
-    def default(self, o):
-        try:
-            if isinstance(o, datetime.datetime):
-                return datetime_to_string(o)
-            elif isinstance(o, Decimal):
-                return float(o)
-            iterable = iter(o)
-        except TypeError:
-            pass
-        else:
-            return list(iterable)
-        return JSONEncoder.default(self, o)
+
+# class CustomJSONEncoder(JSONEncoder):
+#     def default(self, o):
+#         try:
+#             if isinstance(o, datetime.datetime):
+#                 return datetime_to_string(o)
+#             elif isinstance(o, Decimal):
+#                 return float(o)
+#             iterable = iter(o)
+#         except TypeError:
+#             pass
+#         else:
+#             return list(iterable)
+#         return JSONEncoder.default(self, o)
 
 
 app = Flask(__name__)
-app.json_encoder = CustomJSONEncoder
+# app.json_encoder = CustomJSONEncoder
+# app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
-template_function = \
+template_function_profiled = """
+@app.route('/%s%s', methods = ['POST'])
+@auth.login_required(%s)
+def %s(**kwargs):
+    with profiled():
+        data = request.get_json()
+        client_info = {'username':auth.current_user()}
+        out = api.%s(data, client_info=client_info, **kwargs)
+        return jsonify(out)
 """
+
+template_function = """
 @app.route('/%s%s', methods = ['POST'])
 @auth.login_required(%s)
 def %s(**kwargs):
@@ -107,6 +132,9 @@ def %s(**kwargs):
     out = api.%s(data, client_info=client_info, **kwargs)
     return jsonify(out)
 """
+
+if conf.API_PROFILE.lower() in ['true', '1']:
+    template_function = template_function_profiled
 
 
 def make_endpoint(method, role = 'admin', what=False):

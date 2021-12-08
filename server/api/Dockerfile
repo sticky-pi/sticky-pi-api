@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.8-alpine
 
 WORKDIR /code
 
@@ -13,11 +13,28 @@ RUN set -e; \
 		gettext libintl;
 
 
-# fixme remove (debug)
-# these ca explicit dependencies of `sticky_pi_api[remote_api]`
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 RUN pip install  ipython
+
+
+# fixme remove (debug)
+# these ca explicit dependencies of `sticky_pi_api[remote_api]`
+RUN pip install pandas requests python-dotenv pillow psutil tqdm joblib sqlalchemy imread typeguard passlib itsdangerous decorate_all_methods boto3 pymysql  PyMySQL  Flask-HTTPAuth  retry nose  pytest  pytest-cov  codecov  coverage
+
+RUN apk update \
+    && apk add --virtual build-deps gcc python3-dev musl-dev \
+    && apk add --no-cache mariadb-dev
+RUN pip install mysqlclient
+
+RUN apk del build-deps
+
+RUN apk add --no-cache gcc g++ musl-dev rust cargo
+
+RUN echo "https://dl-3.alpinelinux.org/alpine/v3.12/main" >> /etc/apk/repositories
+RUN echo "https://dl-3.alpinelinux.org/alpine/v3.12/community" >> /etc/apk/repositories
+RUN apk add --no-cache python3 py3-pip gcompat libgcc
+RUN pip install orjson
 
 
 #fixme  for now,  use local package instead of dl from github everytime
