@@ -41,9 +41,14 @@ class LocalAndRemoteTests(object):
     def _clean_persistent_resources(self, cli):
         todel = [{'device': '%',
                                      'start_datetime': '2020-01-01T00:00:00Z',
-                                     'end_datetime': '2020-12-31T00:00:00Z'}]
+                                     'end_datetime': '2025-12-31T00:00:00Z'}]
         out = cli.get_image_series(todel)
+        logging.warning("n_before_delete")
+        logging.warning(len(out))
         cli.delete_images(out)
+        out2 = cli.get_image_series(todel)
+        logging.warning("n_after delete")
+        logging.warning(len(out2))
         cli.delete_tiled_tuboids(todel)
 
 
@@ -84,7 +89,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-        # #
+        #
 
     def test_put_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -94,10 +99,10 @@ class LocalAndRemoteTests(object):
             uploaded = db.put_images(self._test_images[0:2])
 
             self.assertEqual(len(uploaded), 2)
-
+            #
             uploaded = db.put_images(self._test_images)
             self.assertEqual(len(uploaded), len(self._test_images) - 2)
-
+            #
             uploaded = db.put_images(self._test_images)
 
             # should fail to put images that are already there:
@@ -107,17 +112,23 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-
-
+# #
     def test_get_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = self._make_client(temp_dir)
             self._clean_persistent_resources(db)
+            logging.warning("self._test_images")
+            logging.warning(self._test_images)
+            logging.warning(len(self._test_images))
             db.put_images(self._test_images)
-
+            #fixme! some listed files in test_images are actually 2021 / 1bbxxxxx !!
             #the input dates of the client can be dates or string
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05T10:07:16Z"}])
+            logging.warning("out")
+            logging.warning(len(out))
+            logging.warning(out)
+
             self.assertEqual(len(out), 1)
             # the output of the client should be a date, always
             self.assertEqual(out[0]['datetime'], string_to_datetime("2020-07-05T10:07:16Z"))
@@ -198,7 +209,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-    #
+
     def test_get_image_uid_annotations(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -229,7 +240,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-    #
+#     #
     def test_get_uid_annotations_series(self):
         import copy
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')

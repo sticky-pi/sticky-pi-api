@@ -317,12 +317,15 @@ class BaseAPI(BaseAPISpec, ABC):
         self._configuration = api_conf
         self._storage = self._storage_class(api_conf=api_conf, *args, **kwargs)
         self._db_engine = self._create_db_engine()
-
         Base.metadata.create_all(self._db_engine, Base.metadata.tables.values(), checkfirst=True)
+        self._engine_specific_hooks()
         self._serializer = Serializer(self._configuration.SECRET_API_KEY)
 
     @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
+        pass
+    @abstractmethod
+    def _engine_specific_hooks(self):
         pass
 
     def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None):
@@ -437,20 +440,6 @@ class BaseAPI(BaseAPISpec, ABC):
     def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
         pass
 
-    def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
-        ins = [str(tuple(m)) for m in tuple_list]
-        condition = f"({', '.join(field_names)}) in ({','.join(ins)})"
-        return condition
-
-    def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
-        ors = []
-        for t in tuple_list:
-            ands = " AND ".join([f"{f} = '{v}'" for f, v in zip(field_names, t)])
-            ands = f"({ands})"
-            ors.append(ands)
-        condition = " OR ".join(ors)
-        return condition
-
 
 
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
@@ -523,6 +512,7 @@ class BaseAPI(BaseAPISpec, ABC):
                         logging.error(e)
                         raise e
                     out.append(img_dict)
+
             return out
         finally:
             session.close()
@@ -605,6 +595,8 @@ class BaseAPI(BaseAPISpec, ABC):
                                    client_info: Dict[str, Any] = None):
 
         colnames = self._columns_name_types(UIDAnnotations)
+
+        # does not query json data if only metadata are queried
         if what == 'metadata':
             colnames = [c for c in colnames if c[0] != "json"]
 
@@ -617,6 +609,7 @@ class BaseAPI(BaseAPISpec, ABC):
                           f"images.device like \"{i['device']}\""]
             full_query = f"SELECT {sql_select} from {UIDAnnotations.table_name()} WHERE EXISTS (Select 1 FROM {Images.table_name()} WHERE {' AND '.join(conditions)})"
             row_dict = None
+            logging.warning(full_query)
             with self._db_engine.connect() as connection:
                 full_results = connection.execute(full_query.replace("%", "%%"))
                 for row in full_results:
@@ -624,7 +617,32 @@ class BaseAPI(BaseAPISpec, ABC):
                     out.append(row_dict)
             if row_dict is None:
                 logging.warning('No data for series %s' % str(i))
+
         return self._manual_output_handler(out)
+
+    # def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata',
+    #                                client_info: Dict[str, Any] = None):
+    #     session = sessionmaker(bind=self._db_engine)()
+    #     try:
+    #         out = []
+    #         info = copy.deepcopy(info)
+    #         for i in info:
+    #             q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image.has(and_(
+    #                 Images.datetime >= i['start_datetime'],
+    #                 Images.datetime < i['end_datetime'],
+    #                 Images.device.like(i['device']))))
+    #             logging.warning(q)
+    #             if q.count() == 0:
+    #                 logging.warning('No data for series %s' % str(i))
+    #
+    #             for annots in q:
+    #                 annot_dict = annots.to_dict()
+    #                 if what == 'metadata':
+    #                     del annot_dict['json']
+    #                 out.append(annot_dict)
+    #         return out
+    #     finally:
+    #         session.close()
 
     def get_tiled_tuboid_series(self, info: InfoType, what: str = 'metadata',
                                 client_info: Dict[str, Any] = None) -> MetadataType:
@@ -818,6 +836,9 @@ class LocalAPI(BaseAPI):
     _storage_class = DiskStorage
     _database_filename = 'database.db'
 
+    def _db_optimisations(self):
+
+        "alter table uid_annotations change json json TEXT(4294000000) compressed;"
     def _create_db_engine(self):
         local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
@@ -856,6 +877,17 @@ class LocalAPI(BaseAPI):
         out = json.loads(json_a, object_hook=json_out_parser)
         return out
 
+    def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
+        ors = []
+        for t in tuple_list:
+            ands = " AND ".join([f"{f} = '{v}'" for f, v in zip(field_names, t)])
+            ands = f"({ands})"
+            ors.append(ands)
+        condition = " OR ".join(ors)
+        return condition
+
+    def _engine_specific_hooks(self):
+        pass
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
     _get_image_chunk_size = 1024  # the maximal number of images to request from the database in one go
@@ -872,6 +904,11 @@ class RemoteAPI(BaseAPI):
 
     def put_images(self, files: List[str], client_info: Dict[str, Any] = None):
         return self._put_new_images(files, client_info=client_info)
+
+    def _engine_specific_hooks(self):
+        command = f"alter table {UIDAnnotations.table_name()} change json json TEXT(4294000000) compressed;"
+        with self._db_engine.connect() as connection:
+            connection.execute(command)
 
     def _columns_name_types(self, table: BaseCustomisations):
         with self._db_engine.connect() as connection:
@@ -903,3 +940,8 @@ class RemoteAPI(BaseAPI):
                                                                       )
         return sqlalchemy.create_engine(engine_url, pool_recycle=3600, echo=True)
         # return sqlalchemy.create_engine(engine_url, pool_recycle=3600)
+
+    def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
+        ins = [str(tuple(m)) for m in tuple_list]
+        condition = f"({', '.join(field_names)}) in ({','.join(ins)})"
+        return condition

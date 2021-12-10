@@ -21,10 +21,9 @@ setup(
                       'passlib',
                       'itsdangerous',
                       'decorate_all_methods',
-                      'boto3',
-                      'orjson'],
+                      'boto3'],
     extras_require={
-        'remote_api': ['pymysql', 'mysqlclient', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
+        'remote_api': ['orjson', 'pymysql', 'mysqlclient', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
         'test': ['nose', 'pytest', 'pytest-cov', 'codecov', 'coverage'],
         'docs': ['mock', 'sphinx-autodoc-typehints', 'sphinx', 'sphinx_rtd_theme', 'recommonmark', 'mock']
     },

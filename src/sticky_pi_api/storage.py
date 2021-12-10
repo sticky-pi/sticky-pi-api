@@ -244,7 +244,6 @@ class DiskStorage(BaseStorage):
             o['url'] = o['path']
         return out
 
-
 try:
     import uwsgi
 
@@ -276,11 +275,22 @@ class S3Storage(BaseStorage):
 
     def __init__(self, api_conf: RemoteAPIConf, *args, **kwargs):
         super().__init__(api_conf, *args, **kwargs)
+
         credentials = {"aws_access_key_id": api_conf.S3_ACCESS_KEY,
                        "aws_secret_access_key": api_conf.S3_PRIVATE_KEY,
-                       "endpoint_url": "https://%s" % api_conf.S3_HOST,
-                       "use_ssl": True
                        }
+        # if "." in api_conf.S3_HOST:
+        #     local_s3_resource = False
+        # else:
+        #     local_s3_resource = True
+        #
+        # if local_s3_resource:
+        credentials.update({"endpoint_url": "https://%s" % api_conf.S3_HOST, "use_ssl": True})
+        # else:
+        #     import socket
+        #     credentials.update({"endpoint_url": "http://%s" % socket.gethostbyname(api_conf.S3_HOST),
+        #                         "use_ssl": False})
+
 
         self._cached_urls = URLCache(expiration=self._expiration)
         self._bucket_name = api_conf.S3_BUCKET_NAME
