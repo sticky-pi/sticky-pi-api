@@ -38,14 +38,14 @@ $(document).on("keyup", function(e) {
 login_fun <- function(state, input){
   is_logged_in <- state$user$is_logged_in
   no_password_test  <- state$config$STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN
-  
+
         if (is_logged_in == FALSE) {
           # this is when running without a container for instance. no db, so no password
           if(no_password_test){
             state$user$is_logged_in <- TRUE
             state$user$username <- "MOCK USER"
             }
-            
+
           # if STICKY_PI_TESTING_USER is defined at runtime of container, it logs in directly
             else if(state$config$STICKY_PI_TESTING_RSHINY_AUTOLOGIN){
                 token <- api_verify_passwd(state, state$config$STICKY_PI_TESTING_USER, state$config$STICKY_PI_TESTING_PASSWORD)
@@ -53,7 +53,7 @@ login_fun <- function(state, input){
                   state$user$auth_token <- token
                   state$user$is_logged_in <- TRUE
                   state$user$username <- state$config$STICKY_PI_TESTING_USER
-                  
+
                 }
               }
 
@@ -62,12 +62,12 @@ login_fun <- function(state, input){
                 Username <- isolate(input$userName)
                 Password <- isolate(input$passwd)
                 token <- api_verify_passwd(state,Username, Password)
-                
+
                 if(token != ""){
                   state$user$auth_token <- token
                   state$user$is_logged_in <- TRUE
                   state$user$username <- Username
-                  
+
                 }
             else{
               shinyjs::toggle(id = "nomatch", anim = TRUE, time = 1, animType = "fade")

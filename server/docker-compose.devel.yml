@@ -4,6 +4,9 @@ services:
   spi_db:
     env_file:
       - .devel.env
+#    volumes:
+#      - /tmp/test:/opt/test
+
   spi_api:
     env_file:
       - .devel.env

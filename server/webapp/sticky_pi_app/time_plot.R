@@ -26,7 +26,7 @@ make_modal_text <- function(state, data_row){
   
   datetime = format(data_row[,datetime], "%Y-%m-%d %H:%M:%S (%Z)", tz = state$user$selected_timezone)
   lat_lng = paste0(' ', data_row[,lat], ', ',data_row[,lng])
-  datetime_for_id = format(data_row[,datetime], "%Y-%m-%d_%H-%M-%S", tz = 'GMT')
+  datetime_for_id = format(data_row[,datetime], DATETIME_FORMAT, tz = 'GMT')
   im_id = paste0(data_row[,device], '.', datetime_for_id)
   n_insects = "Select a detector"
   if('n_objects' %in% colnames(data_row)){

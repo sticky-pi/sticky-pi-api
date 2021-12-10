@@ -21,6 +21,7 @@ server {
     }
 
 }
+
 server {
     listen 80;
     server_name webapp.${ROOT_DOMAIN_NAME};

@@ -1,5 +1,8 @@
 CONFIG_ENV_FILE <- '/home/shiny/env.R'
 
+
+DATETIME_FORMAT <- '%Y-%m-%dT%H:%M:%SZ'
+
 # The default config . typically for testing offline with rstudio (no api)
 # these are overwritten with environement variables in API testing and production
 config_vars <- list(

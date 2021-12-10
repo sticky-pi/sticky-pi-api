@@ -7,6 +7,7 @@ import glob
 import filecmp
 import tempfile
 from botocore.client import ClientError
+import socket
 
 time.sleep(10)
 
@@ -18,7 +19,8 @@ logging.getLogger().setLevel(logging.INFO)
 test_dir = os.path.dirname(__file__)
 
 
-#spi_s3_ip = socket.gethostbyname("spi_s3")
+
+spi_s3_ip = socket.gethostbyname("spi_s3")
 
 class Test(TestCase):
     credentials = {"aws_access_key_id": "ABCDSICKY",

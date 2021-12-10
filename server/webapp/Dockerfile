@@ -1,4 +1,4 @@
-FROM rocker/r-ver:3.6.3
+FROM rocker/shiny:4.0.0
 
 RUN apt-get update && apt-get install -y \
     sudo \
@@ -13,27 +13,23 @@ RUN apt-get update && apt-get install -y \
     libsodium-dev \
     libmariadbclient-dev\
     libssl-dev \
-    libicu-dev
+    libicu-dev \
+    libxml2-dev
 
 # Download and install shiny server
-RUN wget --no-verbose https://download3.rstudio.org/ubuntu-14.04/x86_64/VERSION -O "version.txt" && \
-    VERSION=$(cat version.txt)  && \
-    wget --no-verbose "https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
-    gdebi -n ss-latest.deb && \
-    rm -f version.txt ss-latest.deb && \
-    . /etc/environment && \
-    R -e "install.packages(c('shiny', 'rmarkdown'), repos='$MRAN')" && \
-    cp -R /usr/local/lib/R/site-library/shiny/examples/* /srv/shiny-server/ && \
-    chown shiny:shiny /var/lib/shiny-server
+# RUN wget --no-verbose https://download3.rstudio.org/ubuntu-14.04/x86_64/VERSION -O "version.txt" && \
+#     VERSION=$(cat version.txt)  && \
+#     wget --no-verbose "https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
+#     gdebi -n ss-latest.deb && \
+#     rm -f version.txt ss-latest.deb && \
+#     . /etc/environment && \
+#     R -e "install.packages(c('shiny', 'rmarkdown'), repos='$MRAN')" && \
+#     cp -R /usr/local/lib/R/site-library/shiny/examples/* /srv/shiny-server/ && \
+#     chown shiny:shiny /var/lib/shiny-server
 
 # Install R deps
-RUN R -e "install.packages(c('shinydashboard', 'DT', 'shinyjs', 'sodium', 'RMariaDB', 'data.table', 'httr', 'lubridate', 'plotly', 'ggplot2', 'htmlwidgets', 'zoo', 'fasttime', 'gridExtra', 'jsonlite', 'shinyBS'), repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages(c('shinydashboard', 'DT', 'shinyjs', 'sodium', 'RMariaDB', 'data.table', 'httr', 'lubridate', 'plotly', 'ggplot2', 'htmlwidgets', 'zoo', 'fasttime', 'gridExtra', 'jsonlite', 'shinyBS', 'xml2'), repos='http://cran.rstudio.com/')"
 
-
-RUN apt-get update && apt-get install -y \
-    libxml2-dev 
-
-RUN R -e "install.packages(c('xml2'), repos='http://cran.rstudio.com/')"
 
 
 # Copy configuration files into the Docker image

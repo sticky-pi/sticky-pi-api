@@ -1,7 +1,7 @@
-from flask import Flask, abort, jsonify, request,  g, url_for, Response
+from flask import Flask, abort, request,  g, url_for, Response
 from sqlalchemy.exc import OperationalError, IntegrityError
 from flask_httpauth import HTTPBasicAuth
-from flask.json import JSONEncoder
+# from flask.json import JSONEncoder
 from flask import request
 from retry import retry
 from decimal import Decimal
@@ -26,7 +26,13 @@ def json_default(o):
 
 
 def jsonify(obj):
-    return orjson.dumps(obj, option=orjson.OPT_UTC_Z, default= json_default)
+    return app.response_class(
+        orjson.dumps(obj, option=orjson.OPT_NAIVE_UTC | orjson.OPT_UTC_Z | orjson.OPT_OMIT_MICROSECONDS,
+                     default= json_default) +
+        b"\n",
+        mimetype=app.config["JSONIFY_MIMETYPE"],
+    )
+
 
 
 # just wait for database to be ready
@@ -191,6 +197,9 @@ def _put_new_images():
     out = []
     for k, f in files.items():
         out += api.put_images([f], client_info = {'username': auth.current_user()})
+    logging.warning("put_new_image!")
+    logging.warning(out)
+    logging.warning(orjson.dumps(out, option=orjson.OPT_UTC_Z, default= json_default))
     return jsonify(out)
 
 @app.route('/_put_tiled_tuboids', methods=['POST'])

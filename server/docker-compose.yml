@@ -8,7 +8,7 @@ services:
     env_file:
       - .env
       - .secret.env
-
+    command: mysqld --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL_SIZE} --skip-name-resolve
   spi_api:
     container_name: spi_api
     restart: always
@@ -77,7 +77,7 @@ services:
     build:
       context: ./s3
     ports:
-      - '4566:4566'
+      - ${S3_PORT}:4566
       #- '8055:80'
     environment:
       - SERVICES=s3
@@ -85,7 +85,6 @@ services:
 
 
     env_file:
-      # TODO add relevant configurations to .env file
       - .env
     volumes:
       - '${TMPDIR:-/tmp/localstack}:/tmp'

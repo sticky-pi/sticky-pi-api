@@ -1,3 +1,4 @@
+
 make_url <- function(state, entry_point, what=NULL){
   loc = paste(c(entry_point, what), collapse='/')
   url  =sprintf('%s://%s:%s/%s', state$config$RSHINY_UPSTREAM_PROTOCOL,
@@ -27,7 +28,7 @@ api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annot
   dt <- get_comp_prop(state, all_images_data)
 
   query = dt[id %in% ids, .(device, datetime)]
-  query[, datetime:=strftime(as.POSIXct(datetime), '%Y-%m-%d_%H-%M-%S', tz='GMT')]
+  query[, datetime:=strftime(as.POSIXct(datetime), DATETIME_FORMAT, tz='GMT')]
   post <- jsonlite::toJSON(query)
 
   url = make_url(state, 'get_images', what_images)
@@ -76,7 +77,7 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
 
   url = make_url(state, 'get_image_series', what_images)
 
-  dates <- strftime(as.POSIXct(dates), '%Y-%m-%d_%H-%M-%S', tz='GMT')
+  dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
 
   post <- jsonlite::toJSON(list(list(device="%",
                                      start_datetime=dates[1],
