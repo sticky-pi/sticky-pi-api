@@ -1,9 +1,9 @@
 import time
 import datetime
 from sqlalchemy import Integer, Boolean, String, DateTime, UniqueConstraint
+from itsdangerous import URLSafeTimedSerializer as Serializer
 from passlib.apps import custom_app_context as pwd_context
-from itsdangerous import (TimedJSONWebSignatureSerializer
-                          as Serializer, BadSignature, SignatureExpired)
+
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
 

@@ -6,8 +6,8 @@ import json
 import sqlalchemy
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
-from itsdangerous import (TimedJSONWebSignatureSerializer
-                          as Serializer, BadSignature, SignatureExpired)
+from itsdangerous import URLSafeTimedSerializer as Serializer
+from itsdangerous import  BadSignature, SignatureExpired
 # from multiprocessing.pool import Pool
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
