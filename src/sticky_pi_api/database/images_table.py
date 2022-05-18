@@ -1,6 +1,8 @@
 import datetime
 from sqlalchemy.orm import relationship
-from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String, Index
+
+from sqlalchemy import Integer, DateTime, UniqueConstraint, SmallInteger, Float, DECIMAL, String, Index, Boolean
+
 from sticky_pi_api.image_parser import ImageParser
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
@@ -38,23 +40,18 @@ class Images(BaseCustomisations):
                              description="Height of the image, in pixels")
 
     # Nullable, if GPS fails
-    alt = DescribedColumn(SmallInteger, nullable=True,
-                          description="Altitude")
     lat = DescribedColumn(DECIMAL(9, 6), nullable=True)
     lng = DescribedColumn(DECIMAL(9, 6), nullable=True)
+    alt = DescribedColumn(SmallInteger, nullable=True,
+                          description="Altitude")
 
     # Nullable, if sensors fail
     temp = DescribedColumn(Float, nullable=True)
     hum = DescribedColumn(Float, nullable=True)
 
-
-    no_flash_exposure_time = DescribedColumn(Float, nullable=False)
-    no_flash_analog_gain =  DescribedColumn(Float, nullable=False)
-    no_flash_digital_gain =  DescribedColumn(Float, nullable=False)
-
-    # no_flash_shutter_speed = DescribedColumn(Float, nullable=False)
-    # no_flash_bv = DescribedColumn(Float, nullable=False)
-    # no_flash_iso = DescribedColumn(Float, nullable=False)
+    lum = DescribedColumn(Float, nullable=True, description="Light intensity")
+    bat = DescribedColumn(SmallInteger, nullable=True, description="How much battery is left [0, 100]")
+    but = DescribedColumn(Boolean, nullable=True, description="Whether device was manually turned on (button)")
 
     def __init__(self, file, api_user=None):
         parser = ImageParser(file)
