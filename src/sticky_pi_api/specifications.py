@@ -790,7 +790,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 return False
 
             try:
-                data = self._serializer.loads(username_or_token)
+                data = self._serializer.loads(username_or_token, max_age=Users.token_expiration)
                 user = session.query(Users).get(data['id'])
             except SignatureExpired:
                 user = None  # valid token, but expired

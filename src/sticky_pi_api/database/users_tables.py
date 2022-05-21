@@ -1,8 +1,12 @@
+import logging
 import time
 import datetime
 from sqlalchemy import Integer, Boolean, String, DateTime, UniqueConstraint
 from itsdangerous import URLSafeTimedSerializer as Serializer
+from itsdangerous import SignatureExpired
 from passlib.apps import custom_app_context as pwd_context
+#
+# from itsdangerous import TimestampSigner
 
 from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColumn
 
@@ -10,6 +14,8 @@ from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColu
 class Users(BaseCustomisations):
     __tablename__ = 'users'
     __table_args__ = (UniqueConstraint('username'), UniqueConstraint('email'))
+
+    token_expiration = 3600 * 24
 
     id = DescribedColumn(Integer, primary_key=True)
     username = DescribedColumn(String(32), index=True, nullable=False)
@@ -29,11 +35,15 @@ class Users(BaseCustomisations):
         out = pwd_context.verify(password, self.password_hash)
         return out
 
-    def generate_auth_token(self, api_secret_key, expiration=3600 * 24):
+
+    def generate_auth_token(self, api_secret_key):
         now = int(time.time())
-        exp_timestamp = now + expiration
-        s = Serializer(api_secret_key, expires_in=expiration)
+        exp_timestamp = now + self.token_expiration
+        s = Serializer(api_secret_key)
         token = s.dumps({'id': self.id})
-        return {'token': token.decode('ascii'), 'expiration': exp_timestamp}
+        return {'token': token, 'expiration': exp_timestamp}
+
+
+
 
 
