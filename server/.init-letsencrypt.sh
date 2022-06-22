@@ -9,12 +9,9 @@ if ! [ -x "$(command -v docker-compose)" ]; then
   exit 1
 fi
 
-
-
 if [ -z ${ROOT_DOMAIN_NAME} ]; then echo "ROOT_DOMAIN_NAME undefined" ; exit 1; fi
 if [ -z ${ADMIN_EMAIL} ]; then echo "ADMIN_EMAIL undefined" ; exit 1; fi
 if [ -z ${LOCAL_VOLUME_ROOT} ]; then echo "LOCAL_VOLUME_ROOT undefined" ; exit 1; fi
-
 
 domains=(${ROOT_DOMAIN_NAME} api.${ROOT_DOMAIN_NAME} webapp.${ROOT_DOMAIN_NAME} www.${ROOT_DOMAIN_NAME})
 echo ${domains[*]}
@@ -29,7 +26,6 @@ if [ -d "$data_path" ]; then
     exit
   fi
 fi
-
 
 if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
   echo "### Downloading recommended TLS parameters ..."
@@ -61,7 +57,6 @@ docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entr
   rm -Rf /etc/letsencrypt/archive/$domains && \
   rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
 echo
-
 
 
 #Join $domains to -d args

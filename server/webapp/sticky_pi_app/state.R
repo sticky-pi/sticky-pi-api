@@ -16,7 +16,7 @@ make_state <- function(input, config){
               selected_timezone="UTC"),
     updaters = rv(api_fetch_time=Sys.time() # so we can force update on api requests
     ),
-    "_computed_props_"=reactiveValues(),
+    "_computed_props_" = reactiveValues(),
     "_input_" = input
   )
   

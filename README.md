@@ -19,7 +19,7 @@ Complete documentation of the [client](https://sticky-pi.github.io/client) and
 the [api](https://sticky-pi.github.io/api) is available on our website.
 
 
-* `server` a docker-based server, deployed using `docker-compose`. Complete documentation [here](https://sticky-pi.github.io/server). Contains the following services:
+* `server` a docker-based server, deployed using `docker-compose`. Complete documentation [here](https://sticky-pi.github.io/web-server). Contains the following services:
   * `db` the database (MySQL)
   * `api` a flask server that instantiates our API and routes entry points
   * `rshiny` a webtool to visualise the data

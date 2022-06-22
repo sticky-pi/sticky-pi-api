@@ -37,22 +37,36 @@ class Cache(dict):
                 for k, v in d.items():
                     self[k] = v
 
-    def add(self, function, results):
+    def add(self, function_src, results):
         if len(results) == 0:
             return
-        key = inspect.getsource(function)
-        if key not in self.keys():
-            self[key] = {}
+        if function_src not in self.keys():
+            self[function_src] = {}
         for r in results:
-            self[key].update(r)
+            k, vals = next(iter(r.items()))
+            r = tuple(vals[k] for k in ["device", "datetime", "md5"])
+            self[function_src].update({k:r})
             if self._n_writes % self._sync_each_n == self._sync_each_n - 1:
                 self._sync()
             self._n_writes += 1
 
-    def get_cached(self, function, hash):
-        key = inspect.getsource(function)
-        return self[key][hash]
+    def get_hashes(self, function_src):
+        if function_src not in self:
+            return {}
+        return set(self[function_src].keys())
 
+    def get_cached(self, function_src, hash):
+        device, datetime, md5 = self[function_src][hash]
+        if md5 is None:
+            url =  None
+        else:
+            url = hash[0]
+        out = {"device": device, "datetime": datetime, "md5":md5, 'url':url}
+        return out
+
+    def sync(self):
+        return self._sync()
+        
     def _sync(self):
         with shelve.open(self._path, writeback=True) as d:
             for k, v in self.items():
@@ -65,27 +79,25 @@ class Cache(dict):
             logging.error('trying to detect cache, but file does not exist')
 
 
-
-# all the client methods may take python argument, the argument are implicitly transformed
+# all the client methods may take python arguments, the argument are implicitly transformed
 # to json-compatible values using this decorator
-
-
 @decorate_all_methods(python_inputs_to_json, exclude=['__init__', '_diff_images_to_upload'])
 class BaseClient(BaseAPISpec, ABC):
     _put_chunk_size = 16  # number of images to handle at the same time during upload
     _cache_dirname = "cache"
 
-    def __init__(self, local_dir: str, n_threads: int = 8):
+    def __init__(self, local_dir: str, n_threads: int = 8, skip_on_error: bool=False):
         """
         Abstract class that defines the methods of the client (common between remote and client).
 
         :param local_dir: The path to a client directory that acts as a client storage
         :param n_threads: The number of parallel threads to use to compute statistics on the image (md5 and such)
+        :param skip_on_error: Whether to skip on upload error
         """
 
-        self._local_dir = local_dir
         self._n_threads = n_threads
         self._local_dir = local_dir
+        self._skip_on_error = skip_on_error
         os.makedirs(self._local_dir, exist_ok=True)
         cache_file = os.path.join(local_dir, self._cache_dirname, 'cache.pkl')
         self._cache = Cache(cache_file)
@@ -176,6 +188,8 @@ class BaseClient(BaseAPISpec, ABC):
                                                                                          len(files)))
 
             to_upload += self._diff_images_to_upload(group)
+            
+        self._cache.sync()
 
         if len(to_upload) == 0:
             logging.warning('No image to upload!')
@@ -226,7 +240,7 @@ class BaseClient(BaseAPISpec, ABC):
     def _diff_images_to_upload(self, files):
         """
         Handles the negotiation process during upload. First trying to get the images to be uploaded,
-        First gets the images to be sent. Those that already exists and have the same checksum can be skipped,
+        Those that already exists and have the same checksum can be skipped,
         to only upload new images
 
         :param files: A list of file paths
@@ -236,8 +250,19 @@ class BaseClient(BaseAPISpec, ABC):
         """
 
 
-        def local_img_stats(file: str, file_stats: float):
-            i = ImageParser(file)
+        def local_img_stats(file: str, file_stats: float, skip_on_error: bool):
+            try:
+                i = ImageParser(file)
+            except Exception as e:
+                if skip_on_error:
+                    logging.error(e)
+                    return {(file, file_stats):
+                                {'device': None,
+                                 'datetime': None,
+                                 'md5': None,
+                                 'url': None}}
+                else:
+                    raise e
             out_ = {(file, file_stats):
                             {'device': i['device'],
                             'datetime': i['datetime'],
@@ -249,27 +274,36 @@ class BaseClient(BaseAPISpec, ABC):
         cached_results = []
         to_compute = []
 
+        # we use a set, should be faster
+        local_img_stats_src = inspect.getsource(local_img_stats)
+        hashes = self._cache.get_hashes(local_img_stats_src)
         for f in files:
             key = f, os.path.getmtime(f)
-            try:
-                res = {key: self._cache.get_cached(local_img_stats, key)}
+            if key in hashes:
+                res = {key: self._cache.get_cached(local_img_stats_src, key)}
                 cached_results.append(res)
-            except KeyError as e:
+            else:
                 to_compute.append(key)
 
         if self._n_threads > 1:
-            computed = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(*tc) for tc in to_compute)
+            computed = Parallel(n_jobs=self._n_threads)(delayed(local_img_stats)(*tc, skip_on_error = self._skip_on_error) for tc in to_compute)
         else:
-            computed = [local_img_stats(*tc) for tc in to_compute]
+            computed = [local_img_stats(*tc, skip_on_error = self._skip_on_error) for tc in to_compute]
 
         logging.info('Caching %i image stats (%i already pre-computed)' % (len(computed), len(cached_results)))
 
-        self._cache.add(local_img_stats, computed)
+        self._cache.add(local_img_stats_src, computed)
 
         computed += cached_results
 
         # we request these images from the database
         info = [list(imd.values())[0] for imd in computed]
+        # this is when self._skip_on_error is true, a None url means we skip
+        if not info:
+            return []
+
+        info = [inf for inf in info if inf["url"] is not None]
+
         matches = self.get_images(info, what='metadata')
 
         # now we diff: we ignore images that exist on DB AND have the same md5
@@ -281,7 +315,7 @@ class BaseClient(BaseAPISpec, ABC):
         joined = pd.merge(info, matches, how='left', on = ['device', 'datetime'], suffixes=('', '_match'))
         joined['same_md5'] = joined.apply(lambda row: row.md5_match == row.md5, axis=1)
         joined['already_on_db'] = joined.apply(lambda row: not pd.isna(row.md5_match), axis=1)
-        # images that re not yet on the db:
+        # images that are not yet on the db:
         out = joined[joined.already_on_db == False].url.tolist()
 
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
@@ -504,8 +538,8 @@ class RemoteAPIConnector(BaseAPISpec):
 
 @decorate_all_methods(python_inputs_to_json, exclude=['__init__'])
 class RemoteClient(RemoteAPIConnector, BaseClient):
-    def __init__(self, local_dir: str, host, username, password, protocol: str = 'https', port: int = 443,  n_threads: int = 8):
-        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads)
+    def __init__(self, local_dir: str, host, username, password, protocol: str = 'https', port: int = 443,  n_threads: int = 8, skip_on_error=False):
+        BaseClient.__init__(self, local_dir=local_dir, n_threads=n_threads,  skip_on_error=skip_on_error)
         RemoteAPIConnector.__init__(self, host, username, password, protocol, port)
 
     def _put_ml_bundle_file(self, path: str, url: Union[str, Dict]):

@@ -1,9 +1,5 @@
 
 
-compute_light_intensity <- function(et, bv, iso){
-  log10(1+bv)/et
-}
-
 all_images_data <- function(state, input){
   dt <- get_comp_prop(state, images_in_scope)
 
@@ -27,15 +23,20 @@ all_images_data <- function(state, input){
   dt[, previous_ID := previous_id(id), by=device]
   dt[, next_ID := next_id(id), by=device]
 
-  dt[, temp := ifelse(temp > -300, temp, NA_real_)]
-  dt[, hum := ifelse(hum > 0, hum, NA_real_)]
+  dt[, temp := ifelse(between(temp, -50, 150), temp, NA_real_)]
+  dt[, hum := ifelse(between(hum, 0, 100), hum, NA_real_)]
+
+    dt[, temp := ifelse(temp ==0.0 & hum == 0.0 ,  NA_real_, temp)]
+    dt[, hum := ifelse(temp ==0.0 & hum == 0.0 ,  NA_real_, hum)]
+
   dt[,is_dht_available := !is.na(temp)]
+
   
   dt[, temp:= na.approx(temp, x=datetime, rule=2)]
   dt[, hum:= na.approx(hum, x=datetime, rule=2)]
   dt[, lng := ifelse(lng < -1e+03, NA, lng)]
   dt[, lat := ifelse(lat < -1e+03, NA, lat)]
-  dt[, light_intensity := compute_light_intensity(no_flash_exposure_time, no_flash_bv, no_flash_iso)]
+  dt[, light_intensity := lum]
 
   if(!'n_objects' %in% colnames(dt)){
     n_insects_string = rep("", nrow(dt))

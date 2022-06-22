@@ -4,16 +4,14 @@ FROM python:3.8-slim-buster
 RUN apt-get update -y
 
 # gcc compiler and opencv prerequisites
-RUN apt-get -y install nano git build-essential libglib2.0-0 libsm6 libxext6 libxrender-dev sudo cmake ninja-build
+RUN apt-get -y install nano git build-essential libglib2.0-0 libsm6 libxext6 libxrender-dev sudo cmake ninja-build \
+                       libgl1-mesa-dev libcairo-dev
 
-RUN apt-get -y install libgl1-mesa-dev libcairo-dev
 # fixme to develop (src must be a local copy of sticky_pi_ml/src)
 
-RUN pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip install cython torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
-RUN pip install cython
 RUN pip install -U 'git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI'
-
 RUN pip install -U 'git+https://github.com/facebookresearch/fvcore'
 
 # Detectron2 - CPU copy

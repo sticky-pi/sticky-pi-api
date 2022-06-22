@@ -4,6 +4,9 @@ services:
   spi_db:
     env_file:
       - .devel.env
+#    volumes:
+#      - /tmp/test:/opt/test
+
   spi_api:
     env_file:
       - .devel.env
@@ -11,18 +14,18 @@ services:
   spi_api_tests:
     build: ./api
     container_name: spi_api_tests
+    image: stickypi/spi_api:latest
     command: 'python -m unittest api_tests.py'
     restart: "no"
     depends_on:
       - spi_api
       - spi_db
       - spi_nginx
+      - spi_s3
     env_file:
       - .env
       - .secret.env
       - .devel.env
-
-
   spi_webapp:
       env_file:
         - .devel.env
@@ -35,7 +38,20 @@ services:
           TESTING: "TRUE"
           ROOT_DOMAIN_NAME: "localhost"
   
-  spi_localstack:
+  spi_s3:
+#      container_name: spi_s3
       env_file:
-        # TODO add relevant configurations to .devel.env
         - .devel.env
+  
+  # used to test the mock s3 'spi_s3'
+  spi_s3_tests:
+    build: ./api
+    container_name: spi_s3_tests
+    command: 'python -m unittest api_tests_localstack.py'
+    restart: "no"
+    depends_on:
+      - spi_s3
+      #- spi_nginx
+    env_file:
+      - .devel.env
+      - .env

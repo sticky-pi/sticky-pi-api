@@ -61,5 +61,6 @@ class RemoteAPIConf(BaseAPIConf):
         'MYSQL_HOST': RequiredConfVar(),
         'MYSQL_USER': RequiredConfVar(),
         'MYSQL_PASSWORD': RequiredConfVar(),
-        'MYSQL_DATABASE': RequiredConfVar()
+        'MYSQL_DATABASE': RequiredConfVar(),
+        'API_PROFILE': RequiredConfVar()
     }

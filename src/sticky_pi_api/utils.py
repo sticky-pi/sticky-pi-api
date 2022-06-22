@@ -10,9 +10,35 @@ from decimal import Decimal
 import re
 import datetime
 import functools
+import cProfile
+import io
+import pstats
+import contextlib
 
-STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
-DATESTRING_REGEX=re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
+
+STRING_DATETIME_FILENAME_FORMAT = '%Y-%m-%d_%H-%M-%S'
+STRING_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+DATESTRING_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+#fixme legacy compatibility so we don't break the data harvester, That uses the old convention
+LEGACY_STRING_DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
+LEGACY_DATESTRING_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
+
+
+@contextlib.contextmanager
+def profiled():
+    pr = cProfile.Profile()
+    pr.enable()
+    yield
+    pr.disable()
+    s = io.StringIO()
+    ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+    ps.print_stats(100)
+    # uncomment this to see who's calling what
+    # ps.print_callers()
+    print(s.getvalue())
+
 
 class URLOrFileOpen(object):
     def __init__(self, file_or_url, mode):
@@ -66,8 +92,12 @@ def json_io_converter(o):
 
 def json_out_parser(o):
     for k, v in o.items():
-        if isinstance(v, str) and DATESTRING_REGEX.search(v):
-            o[k] = string_to_datetime(o[k])
+        if isinstance(v, str):
+            if DATESTRING_REGEX.search(v):
+                o[k] = string_to_datetime(o[k])
+            #fixme this could be removed eventually
+            elif LEGACY_DATESTRING_REGEX.search(v):
+                o[k] = string_to_datetime(o[k], format=LEGACY_STRING_DATETIME_FORMAT)
     return o
 
 
@@ -154,8 +184,15 @@ def multipart_etag(file, chunk_size):
     file.seek(0)
     return new_etag
 
-def string_to_datetime(string):
-    return datetime.datetime.strptime(string, STRING_DATETIME_FORMAT)
+def string_to_datetime(string, is_filename=False, format = None):
+
+    if format is not None:
+        return datetime.datetime.strptime(string, format)
+
+    if is_filename:
+        return datetime.datetime.strptime(string, STRING_DATETIME_FILENAME_FORMAT)
+    else:
+        return datetime.datetime.strptime(string, STRING_DATETIME_FORMAT)
 
 
 def datetime_to_string(dt):

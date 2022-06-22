@@ -1,7 +1,7 @@
-from flask import Flask, abort, request, jsonify, g, url_for, Response
+from flask import Flask, abort, request,  g, url_for, Response
 from sqlalchemy.exc import OperationalError, IntegrityError
 from flask_httpauth import HTTPBasicAuth
-from flask.json import JSONEncoder
+# from flask.json import JSONEncoder
 from flask import request
 from retry import retry
 from decimal import Decimal
@@ -10,10 +10,29 @@ import logging
 import json
 import os
 import io
+import orjson
 
+
+from sticky_pi_api.utils import profiled
 from sticky_pi_api.configuration import RemoteAPIConf
 from sticky_pi_api.specifications import RemoteAPI
 from sticky_pi_api.utils import datetime_to_string
+
+def json_default(o):
+    if isinstance(o, Decimal):
+        return float(o)
+    raise TypeError
+
+
+
+def jsonify(obj):
+    return app.response_class(
+        orjson.dumps(obj, option=orjson.OPT_NAIVE_UTC | orjson.OPT_UTC_Z | orjson.OPT_OMIT_MICROSECONDS,
+                     default= json_default) +
+        b"\n",
+        mimetype=app.config["JSONIFY_MIMETYPE"],
+    )
+
 
 
 # just wait for database to be ready
@@ -28,14 +47,14 @@ def create_initial_user(api, username, password):
                   'password': password,
                   'is_admin': True}
 
-    assert admin_user['username'], 'Cannot find admin username in env (API_ADMIN_NAME)'
+    assert admin_user['username'], 'Cannot find username in env'
     assert admin_user['password'] and len(admin_user['password']) > 10, \
-        'Default admin user password missing or too short (API_ADMIN_PASSWORD)'
+        f'User {username} password missing or too short'
     try:
         api.put_users([admin_user])
     except IntegrityError as e:
         # fixme, we could actually check that assertion
-        logging.debug('Admin user already exists?')
+        logging.debug(f'User {username} already exists?')
 
 
 # set logging according to productions/devel/testing
@@ -79,26 +98,38 @@ def get_user_roles(user):
     return 'admin' if is_admin else 'read_write_user'
 
 
-class CustomJSONEncoder(JSONEncoder):
-    def default(self, o):
-        try:
-            if isinstance(o, datetime.datetime):
-                return datetime_to_string(o)
-            elif isinstance(o, Decimal):
-                return float(o)
-            iterable = iter(o)
-        except TypeError:
-            pass
-        else:
-            return list(iterable)
-        return JSONEncoder.default(self, o)
+
+# class CustomJSONEncoder(JSONEncoder):
+#     def default(self, o):
+#         try:
+#             if isinstance(o, datetime.datetime):
+#                 return datetime_to_string(o)
+#             elif isinstance(o, Decimal):
+#                 return float(o)
+#             iterable = iter(o)
+#         except TypeError:
+#             pass
+#         else:
+#             return list(iterable)
+#         return JSONEncoder.default(self, o)
 
 
 app = Flask(__name__)
-app.json_encoder = CustomJSONEncoder
+# app.json_encoder = CustomJSONEncoder
+# app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 
-template_function = \
+template_function_profiled = """
+@app.route('/%s%s', methods = ['POST'])
+@auth.login_required(%s)
+def %s(**kwargs):
+    with profiled():
+        data = request.get_json()
+        client_info = {'username':auth.current_user()}
+        out = api.%s(data, client_info=client_info, **kwargs)
+        return jsonify(out)
 """
+
+template_function = """
 @app.route('/%s%s', methods = ['POST'])
 @auth.login_required(%s)
 def %s(**kwargs):
@@ -107,6 +138,9 @@ def %s(**kwargs):
     out = api.%s(data, client_info=client_info, **kwargs)
     return jsonify(out)
 """
+
+if conf.API_PROFILE.lower() in ['true', '1']:
+    template_function = template_function_profiled
 
 
 def make_endpoint(method, role = 'admin', what=False):
@@ -163,6 +197,9 @@ def _put_new_images():
     out = []
     for k, f in files.items():
         out += api.put_images([f], client_info = {'username': auth.current_user()})
+    logging.warning("put_new_image!")
+    logging.warning(out)
+    logging.warning(orjson.dumps(out, option=orjson.OPT_UTC_Z, default= json_default))
     return jsonify(out)
 
 @app.route('/_put_tiled_tuboids', methods=['POST'])
