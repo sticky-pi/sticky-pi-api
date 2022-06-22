@@ -11,7 +11,7 @@ render_time_plot <- function(state, input){
     p <- plotly::toWebGL(plotly::ggplotly(pl, tooltip=NA, dynamicTicks = TRUE)) %>%
       rangeslider(thickness= 50/ height, bgcolor='#bbb') %>%
       layout(hovermode = "closest",
-             height = height,
+#              height = height,
              margin = list(l=100),
              hoverlabel=list(bgcolor="#777"))
 

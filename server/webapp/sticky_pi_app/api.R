@@ -21,7 +21,7 @@ api_verify_passwd <- function(state, u, p){
 }
 
 
-api_fetch_download_s3<- function(state, ids, what_images="thumbnail", what_annotations="data"){
+api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_annotations="data"){
 
   state$updaters$api_fetch_time
   token <- state$user$auth_token
@@ -83,7 +83,7 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
                                      start_datetime=dates[1],
                                      end_datetime=dates[2] )),
                            auto_unbox = TRUE)
-
+  print(post)
   o = POST(url, body=post,  authenticate(token, "", type = "basic"), content_type("application/json"))
 
   ct <- content(o, as='text', encoding="UTF-8")
