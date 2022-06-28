@@ -36,8 +36,3 @@ class UIDAnnotations(BaseCustomisations):
         super().__init__(**i_dict)
 
 
-
-
-    # def __repr__(self):
-    #     return "<Annotations(device='%s', datetime='%s', md5='%s', n_objects=%i)>" % (
-    #                                 self.device, self.datetime, self.md5, self.n_objects)

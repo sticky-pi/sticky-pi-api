@@ -13,7 +13,9 @@ from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColu
 
 class Users(BaseCustomisations):
     __tablename__ = 'users'
-    __table_args__ = (UniqueConstraint('username'), UniqueConstraint('email'))
+    # two users may have the same email? Also, email can be null
+    __table_args__ = (UniqueConstraint('username'), )
+    # __table_args__ = (UniqueConstraint('username') , UniqueConstraint('email'))
 
     token_expiration = 3600 * 24
 

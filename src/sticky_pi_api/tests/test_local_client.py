@@ -4,6 +4,7 @@ import json
 import unittest
 from sticky_pi_api.client import LocalClient
 from sticky_pi_api.utils import string_to_datetime
+from sticky_pi_api.utils import md5
 from sqlalchemy.exc import IntegrityError
 from contextlib import redirect_stderr
 from io import StringIO
@@ -90,7 +91,7 @@ class LocalAndRemoteTests(object):
         finally:
             shutil.rmtree(temp_dir)
         #
-
+#
     def test_put_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -99,35 +100,33 @@ class LocalAndRemoteTests(object):
             uploaded = db.put_images(self._test_images[0:2])
 
             self.assertEqual(len(uploaded), 2)
-            #
             uploaded = db.put_images(self._test_images)
+
+
             self.assertEqual(len(uploaded), len(self._test_images) - 2)
-            #
+
+
             uploaded = db.put_images(self._test_images)
 
             # should fail to put images that are already there:
             with redirect_stderr(StringIO()) as stdout:
                 with self.assertRaises(self._server_error) as context:
-                    db._put_new_images(self._test_images[0:1])
+                    payload = {f: md5(f) for f in self._test_images[0:1]}
+                    db._put_new_images(payload)
 
         finally:
             shutil.rmtree(temp_dir)
-# #
+
     def test_get_images(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
             db = self._make_client(temp_dir)
             self._clean_persistent_resources(db)
-            logging.warning("self._test_images")
-            logging.warning(self._test_images)
-            logging.warning(len(self._test_images))
             db.put_images(self._test_images)
             #fixme! some listed files in test_images are actually 2021 / 1bbxxxxx !!
             #the input dates of the client can be dates or string
             out = db.get_images([{'device': "1b74105a", 'datetime': "2020-07-05T10:07:16Z"}])
-            logging.warning("out")
-            logging.warning(len(out))
-            logging.warning(out)
+
 
             self.assertEqual(len(out), 1)
             # the output of the client should be a date, always
@@ -150,6 +149,27 @@ class LocalAndRemoteTests(object):
         finally:
             import shutil
             shutil.rmtree(temp_dir)
+
+
+    def test_get_images_to_annotate(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            db.put_images(self._test_images)
+
+            out = db.get_images_to_annotate([{'device': "%", 'start_datetime': "2019-01-01", 'end_datetime': "2029-01-01"}])
+
+            self.assertEqual(len(out), len(self._test_images))
+            out = db.get_images_to_annotate(
+                [{'device': "%", 'start_datetime': "2019-01-01", 'end_datetime': "2029-01-01"}])
+            self.assertEqual(len(out), 0)
+
+
+        finally:
+            import shutil
+            shutil.rmtree(temp_dir)
+
 
     def test_get_image_series(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -452,7 +472,7 @@ class LocalAndRemoteTests(object):
 
         finally:
             shutil.rmtree(temp_dir)
-
+#
 
 class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
     _server_error = IntegrityError

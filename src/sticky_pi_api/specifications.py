@@ -7,7 +7,7 @@ import sqlalchemy
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import sessionmaker
 from itsdangerous import URLSafeTimedSerializer as Serializer
-from itsdangerous import  BadSignature, SignatureExpired
+from itsdangerous import BadSignature, SignatureExpired
 # from multiprocessing.pool import Pool
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -28,6 +28,7 @@ from sticky_pi_api.database.users_tables import Users
 from sticky_pi_api.database.tuboid_series_table import TuboidSeries
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.database.itc_labels_table import ITCLabels
+from sticky_pi_api.database.uid_intents_table import UIDIntents
 
 from sticky_pi_api.utils import chunker, json_inputs_to_python, json_out_parser
 from decorate_all_methods import decorate_all_methods
@@ -81,14 +82,14 @@ class BaseAPISpec(ABC):
         pass
 
     @abstractmethod
-    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
+    def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None) -> MetadataType:
         """
         Uploads a set of client image files to the API.
         The user would use ``BaseClient.put_images(files)``,
         which first discovers which files are to be uploaded for incremental upload.
 
         :param client_info: optional information about the client/user contains key ``'username'``
-        :param files: A list of path to client files
+        :param files: A dictionary of path to client files as keys, and their MD5sum as values
 
         :return: The metadata of the files that were actually uploaded
         """
@@ -104,6 +105,24 @@ class BaseAPISpec(ABC):
         :param info: A list of dicts. each dicts has, at least, the keys:
             ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
             For instance,one can match all devices with ``device="%"``.
+        :param what: The nature of the objects to retrieve.
+            One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail-mini'``}
+        :return: A list of dictionaries with one element for each queried value. Each dictionary contains
+            the fields present in the underlying database plus a ``'url'`` fields to retrieve the actual object requested
+            (i.e. the ``what``) argument. In the case of ``what='metadata'``, ``url=''`` (i.e. no url is generated).
+        """
+
+        pass
+
+    @abstractmethod
+    def get_images_to_annotate(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        """
+        Retrieves images to annotate by the UID. Will reserve these images for 60min.
+
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :param info: A list of dicts. each dicts has, at least, the keys:
+            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
+            For instance,one can match all devices with ``device="%"``. This can be used to subset the images to annotate
         :param what: The nature of the objects to retrieve.
             One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail-mini'``}
         :return: A list of dictionaries with one element for each queried value. Each dictionary contains
@@ -307,6 +326,7 @@ class BaseAPISpec(ABC):
         pass
 
 
+
 @decorate_all_methods(json_inputs_to_python, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
 class BaseAPI(BaseAPISpec, ABC):
     _storage_class = BaseStorage
@@ -324,23 +344,29 @@ class BaseAPI(BaseAPISpec, ABC):
     @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
         pass
+
     @abstractmethod
     def _engine_specific_hooks(self):
         pass
 
-    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None):
+    def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None):
         session = sessionmaker(bind=self._db_engine)()
+        origin = time.time()
+
         try:
             # store the uploaded images
             out = []
             # for each image
-            for f in files:
+            for f, md5 in files.items():
                 # We parse the image file to make to its own DB object
-
                 api_user = client_info['username'] if client_info is not None else None
                 im = Images(f, api_user=api_user)
                 out.append(im.to_dict())
                 session.add(im)
+                if md5:
+                    assert im.md5 == md5, f"MD5 of uploaded image {im.filename} does not match the reference: {md5}"
+                else:
+                    logging.warning(f"No md5 provided for {im.filename}")
 
                 # try to store images, only commit if storage worked.
                 # rollback otherwise
@@ -353,6 +379,7 @@ class BaseAPI(BaseAPISpec, ABC):
                     logging.error(e)
                     raise e
             return out
+
         finally:
             session.close()
 
@@ -428,24 +455,22 @@ class BaseAPI(BaseAPISpec, ABC):
         for bundle_name, info in new_info.items():
             out += self._storage.get_ml_bundle_upload_links(bundle_name, info)
         return out
+
     @abstractmethod
     def _columns_name_types(self, table: BaseCustomisations):
         pass
 
     @abstractmethod
-    def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename:bool = True):
+    def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename: bool = True):
         pass
 
     @abstractmethod
     def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
         pass
 
-
-
     def get_images(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
         colnames = self._columns_name_types(Images)
         sql_select = self._sql_select_fields(colnames, make_filename=True)
-
         out = []
         # for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
         matches = [tuple((str(inf['datetime']), inf['device'])) for inf in info]
@@ -460,7 +485,9 @@ class BaseAPI(BaseAPISpec, ABC):
                 out.append(img_dict)
         return self._manual_output_handler(out)
 
-    def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
+
+    def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None,
+                          filter_by_intent=False):
         # session = sessionmaker(bind=self._db_engine)() # try:
         out = []
         colnames = self._columns_name_types(Images)
@@ -481,8 +508,59 @@ class BaseAPI(BaseAPISpec, ABC):
             if img_dict is None:
                 logging.warning('No data for series %s' % str(i))
         return self._manual_output_handler(out)
-        # finally:
-        #     session.close()
+
+    def get_images_to_annotate(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
+
+        out = []
+        min_timestamp = UIDIntents.min_intent_timestamp()
+        max_requested_images = UIDIntents.max_requested_images()
+        ## 1 delete intents before this
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+                q = session.query(Images).filter(UIDIntents.datetime_created < min_timestamp)
+                for img in q:
+                    img_dict = img.to_dict()
+                    session.delete(img)
+
+                session.commit()
+        finally:
+            session.close()
+
+
+        colnames = self._columns_name_types(Images)
+
+        sql_select = self._sql_select_fields(colnames, make_filename=True)
+        for i in info:
+            conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
+                          f"datetime < \"{str(i['end_datetime'])}\"",
+                          f"device like \"{i['device']}\""]
+            full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)} AND id NOT IN (SELECT parent_image_id FROM {UIDIntents.table_name()}) LIMIT {UIDIntents.max_requested_images()}"
+
+            img_dict = None
+            with self._db_engine.connect() as connection:
+                full_results = connection.execute(full_query.replace("%", "%%"))
+                for row in full_results:
+                    img_dict = dict(row)
+                    img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
+                    del img_dict["filename"]
+                    out.append(img_dict)
+            if img_dict is None:
+                logging.warning('No data for series %s' % str(i))
+
+        out = out[0:max_requested_images]
+
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            for o in out:
+                api_user = client_info['username'] if client_info is not None else None
+                intent = UIDIntents({"parent_image_id": o["id"]}, api_user=api_user)
+                session.add(intent)
+            session.commit()
+        finally:
+            session.close()
+
+        return self._manual_output_handler(out)
+
 
     def delete_images(self, info: MetadataType, client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
@@ -607,9 +685,8 @@ class BaseAPI(BaseAPISpec, ABC):
                           f"images.datetime >= \"{str(i['start_datetime'])}\"",
                           f"images.datetime < \"{str(i['end_datetime'])}\"",
                           f"images.device like \"{i['device']}\""]
-            full_query = f"SELECT {sql_select} from {UIDAnnotations.table_name()} WHERE EXISTS (Select 1 FROM {Images.table_name()} WHERE {' AND '.join(conditions)})"
+            full_query = f"SELECT {sql_select} from {UIDAnnotations.table_name()} WHERE EXISTS (Select 1 FROM {Images.table_name()} WHERE {' AND '.join(conditions)}) "
             row_dict = None
-            logging.warning(full_query)
             with self._db_engine.connect() as connection:
                 full_results = connection.execute(full_query.replace("%", "%%"))
                 for row in full_results:
@@ -813,12 +890,13 @@ class BaseAPI(BaseAPISpec, ABC):
     def _make_db_session(self):
         return sessionmaker(bind=self._db_engine)()
 
-    #this is when serialisation is maually done for optimisation. In this case, the Local API will want to
+    # this is when serialisation is maually done for optimisation. In this case, the Local API will want to
     # reserialise into python compatible data (e.g. at this stage, dates are string already).
     # for the remote API, this method will just return its argument
     @abstractmethod
     def _manual_output_handler(self, out: Any):
         pass
+
 
 # from https://docs.sqlalchemy.org/en/13/dialects/sqlite.html#foreign-key-support
 # this allow cascade delete on sqlite3
@@ -839,6 +917,7 @@ class LocalAPI(BaseAPI):
     def _db_optimisations(self):
 
         "alter table uid_annotations change json json TEXT(4294000000) compressed;"
+
     def _create_db_engine(self):
         local_dir = self._configuration.LOCAL_DIR
         engine_url = "sqlite:///%s" % os.path.join(local_dir, self._database_filename)
@@ -860,7 +939,7 @@ class LocalAPI(BaseAPI):
 
             # return [(c_name, c_type) for c_name, c_type in result]
 
-    def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename:bool = False):
+    def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename: bool = False):
         cols = []
         for c_name, c_type in col_name_types:
             if c_type == "datetime":
@@ -868,7 +947,8 @@ class LocalAPI(BaseAPI):
             else:
                 cols.append(c_name)
         if make_filename:
-            cols.append('device || "." || REPLACE(SUBSTR(REPLACE(datetime, " ", "_"), 1, 19), ":", "-") || ".jpg"AS filename')
+            cols.append(
+                'device || "." || REPLACE(SUBSTR(REPLACE(datetime, " ", "_"), 1, 19), ":", "-") || ".jpg"AS filename')
         out = ', '.join(cols)
         return out
 
@@ -888,6 +968,8 @@ class LocalAPI(BaseAPI):
 
     def _engine_specific_hooks(self):
         pass
+
+
 class RemoteAPI(BaseAPI):
     _storage_class = S3Storage
     _get_image_chunk_size = 1024  # the maximal number of images to request from the database in one go
@@ -902,7 +984,7 @@ class RemoteAPI(BaseAPI):
         token = user.generate_auth_token(self._configuration.SECRET_API_KEY)
         return token
 
-    def put_images(self, files: List[str], client_info: Dict[str, Any] = None):
+    def put_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None):
         return self._put_new_images(files, client_info=client_info)
 
     def _engine_specific_hooks(self):
@@ -917,8 +999,7 @@ class RemoteAPI(BaseAPI):
             result = connection.execute(q)
             return [(c_name, c_type) for c_name, c_type in result]
 
-
-    def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename:bool = False):
+    def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename: bool = False):
         cols = []
         for c_name, c_type in col_name_types:
             if c_type == "datetime":
@@ -931,15 +1012,15 @@ class RemoteAPI(BaseAPI):
             cols.append('concat(device, ".", DATE_FORMAT(datetime, "%Y-%m-%d_%H-%i-%S"), ".jpg") AS filename')
         return ', '.join(cols)
 
-
     def _create_db_engine(self):
         engine_url = "mysql+mysqldb://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
                                                                       self._configuration.MYSQL_PASSWORD,
                                                                       self._configuration.MYSQL_HOST,
                                                                       self._configuration.MYSQL_DATABASE
                                                                       )
-        return sqlalchemy.create_engine(engine_url, pool_recycle=3600, echo=True)
-        # return sqlalchemy.create_engine(engine_url, pool_recycle=3600)
+        # fixme echo = False for production
+        # return sqlalchemy.create_engine(engine_url, pool_recycle=3600, echo=True)
+        return sqlalchemy.create_engine(engine_url, pool_recycle=3600)
 
     def _sql_in_tuples(self, field_names: Tuple, tuple_list: List[Tuple]):
         ins = [str(tuple(m)) for m in tuple_list]

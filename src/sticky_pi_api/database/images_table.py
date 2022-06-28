@@ -17,6 +17,12 @@ class Images(BaseCustomisations):
                                    passive_deletes=True
                                    )
 
+    uid_intents = relationship("UIDIntents",
+                                   back_populates="parent_image",
+                                   cascade="all, delete",
+                                   passive_deletes=True
+                                   )
+
     # tasks = relationship("Task", back_populates="project", passive_deletes=True)
 
     id = DescribedColumn(Integer, primary_key=True,

@@ -21,7 +21,7 @@ from sticky_pi_api.storage import BaseStorage
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType, AnnotType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
-
+from sticky_pi_api.utils import md5
 
 class Cache(dict):
     _sync_each_n = 1024
@@ -179,15 +179,18 @@ class BaseClient(BaseAPISpec, ABC):
         """
         # instead of dealing with images one by one, we send them by chunks
         # first find which files need to be uploaded
-        to_upload = []
+        to_upload = {}
         chunk_size = self._put_chunk_size * self._n_threads
+
+        files = {f: md5(f) for f in files}
+
 
         for i, group in enumerate(chunker(files, chunk_size)):
             logging.info("Putting images - step 1/2 ... Computing statistics on files %i-%i / %i" % (i * chunk_size,
                                                                                          i * chunk_size + len(group),
                                                                                          len(files)))
 
-            to_upload += self._diff_images_to_upload(group)
+            to_upload.update(self._diff_images_to_upload(group))
             
         self._cache.sync()
 
@@ -243,10 +246,10 @@ class BaseClient(BaseAPISpec, ABC):
         Those that already exists and have the same checksum can be skipped,
         to only upload new images
 
-        :param files: A list of file paths
-        :type files: List()
+        :param files: A dict of file paths mappting md5s
+        :type files: Dict()
         :return: A list representing the subset of files to be uploaded
-        :rtype: List()
+        :rtype: Dict()
         """
 
 
@@ -277,7 +280,7 @@ class BaseClient(BaseAPISpec, ABC):
         # we use a set, should be faster
         local_img_stats_src = inspect.getsource(local_img_stats)
         hashes = self._cache.get_hashes(local_img_stats_src)
-        for f in files:
+        for f, v in files.items():
             key = f, os.path.getmtime(f)
             if key in hashes:
                 res = {key: self._cache.get_cached(local_img_stats_src, key)}
@@ -318,6 +321,7 @@ class BaseClient(BaseAPISpec, ABC):
         # images that are not yet on the db:
         out = joined[joined.already_on_db == False].url.tolist()
 
+        out = {o: files[o] for o in out}
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
         return out
 
@@ -430,7 +434,7 @@ class RemoteAPIConnector(BaseAPISpec):
         self._port = int(port)
         self._token = {'token': None, 'expiration': 0}
 
-    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, attempt=0):
+    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, data=None, attempt=0):
 
         if entry_point != 'get_token':
             if self._token['expiration'] < int(time.time()) + 60:  # we add 60s just to be sure
@@ -443,7 +447,7 @@ class RemoteAPIConnector(BaseAPISpec):
         if what is not None:
             url += "/" + what
         logging.debug('Requesting %s' % url)
-        response = requests.post(url, json=info, files=files, auth=auth)
+        response = requests.post(url, json=info, files=files, auth=auth, data=data)
         if response.status_code == 200:
             return response.json(object_hook=json_out_parser)
         else:
@@ -469,12 +473,13 @@ class RemoteAPIConnector(BaseAPISpec):
     def get_token(self, client_info: Dict[str, Any] = None) -> str:
         return self._default_client_to_api('get_token', info=None)
 
-    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
+    def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
-        for file in files:
+        for file, md5_sum in files.items():
             with open(file, 'rb') as f:
                 payload = {os.path.basename(file): f}
-                out += self._default_client_to_api('_put_new_images', files=payload)
+                data_payload={os.path.basename(file)+ ".md5": md5_sum}
+                out += self._default_client_to_api('_put_new_images', files=payload, data=data_payload)
         return out
 
     # custom handling of file objects to upload
