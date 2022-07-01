@@ -16,7 +16,7 @@ from sqlalchemy.dialects import mysql
 import sqlite3
 import time
 
-from sticky_pi_api.utils import json_io_converter
+from sticky_pi_api.utils import json_io_converter, md5
 from sticky_pi_api.database.utils import Base
 from sticky_pi_api.storage import DiskStorage, BaseStorage, S3Storage
 from sticky_pi_api.configuration import BaseAPIConf
@@ -301,6 +301,8 @@ class BaseAPISpec(ABC):
         """
         pass
 
+
+
     @abstractmethod
     def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
@@ -325,6 +327,63 @@ class BaseAPISpec(ABC):
         """
         pass
 
+    # @abstractmethod
+    # def get_projects(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    #     """
+    #     Get a list of API monitoring projects. Either all projects (Default), or filter users by field if ``info`` is specified.
+    #     In the latter case, the union of all matched users is returned.
+    #
+    #     :param info: A dictionary acting as a filter, using an SQL like-type match.
+    #         For instance ``{'name': '%'}`` return all projects.
+    #     :param client_info: optional information about the client/user contains key ``'username'``
+    #     :return: A list of projects as represented in the underlying database, as one dictionary
+    #     """
+    #     pass
+    #
+    # @abstractmethod
+    # def put_projects(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    #     """
+    #     Add a list of projects defined by a dict of proprieties.
+    #
+    #     :param info: A list of dictionary each dictionary has the fields  {``'name'``, ``'description'``}
+    #     :param client_info: optional information about the client/user contains key ``'username'``
+    #     :return: A list of dictionaries describing the projects that were created
+    #     """
+    #     pass
+    #
+    # @abstractmethod
+    # def put_project_series_metadata(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    #     """
+    #     Add columns to project series
+    #
+    #     :param info: A list of dictionary each dictionary has the fields   {``'project_id'``,``'name'``, ``'type'``},
+    #                  where type is and SQLTYPE
+    #     :param client_info: optional information about the client/user contains key ``'username'``
+    #     :return: A list of dictionaries describing the projects that were created
+    #     """
+    #     pass
+    #
+    # @abstractmethod
+    # def get_project_series(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    #     """
+    #     Get a list of series for specific monitoring projects.
+    #
+    #     :param info: A dictionary with a single key: {``'project_id'``}, the unique identifier of the project
+    #     :param client_info: optional information about the client/user contains key ``'username'``
+    #     :return: A list of projects as represented in the underlying database, as one dictionary
+    #     """
+    #     pass
+    #
+    # @abstractmethod
+    # def put_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    #     """
+    #     Add a list of projects defined by a dict of proprieties.
+    #
+    #     :param info: A list of dictionary each dictionary has the fields  {``'name'``, ``'description'``}
+    #     :param client_info: optional information about the client/user contains key ``'username'``
+    #     :return: A list of dictionaries describing the users that were created
+    #     """
+    #     pass
 
 
 @decorate_all_methods(json_inputs_to_python, exclude=['__init__', '_put_new_images', '_put_tiled_tuboids'])
@@ -353,9 +412,9 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         origin = time.time()
 
+        out = []
         try:
             # store the uploaded images
-            out = []
             # for each image
             for f, md5 in files.items():
                 # We parse the image file to make to its own DB object
@@ -376,12 +435,11 @@ class BaseAPI(BaseAPISpec, ABC):
                 except Exception as e:
                     session.rollback()
                     logging.error("Storage Error. Failed to store image %s" % im)
-                    logging.error(e)
+                    # logging.error(e)
                     raise e
-            return out
-
         finally:
             session.close()
+        return out
 
     def _put_tiled_tuboids(self, files: List[Dict[str, Union[str, Dict]]],
                            client_info: Dict[str, Any] = None):  # fixme return type

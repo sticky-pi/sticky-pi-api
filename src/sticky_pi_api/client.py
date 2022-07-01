@@ -22,6 +22,8 @@ from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType, Annot
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
 from sticky_pi_api.utils import md5
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+
 
 class Cache(dict):
     _sync_each_n = 1024
@@ -385,7 +387,7 @@ class BaseClient(BaseAPISpec, ABC):
         pass
 
     @abstractmethod
-    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
+    def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None) -> MetadataType:
         pass
 
 
@@ -434,7 +436,7 @@ class RemoteAPIConnector(BaseAPISpec):
         self._port = int(port)
         self._token = {'token': None, 'expiration': 0}
 
-    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, data=None, attempt=0):
+    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, data=None, headers=None, attempt=0):
 
         if entry_point != 'get_token':
             if self._token['expiration'] < int(time.time()) + 60:  # we add 60s just to be sure
@@ -447,11 +449,14 @@ class RemoteAPIConnector(BaseAPISpec):
         if what is not None:
             url += "/" + what
         logging.debug('Requesting %s' % url)
-        response = requests.post(url, json=info, files=files, auth=auth, data=data)
+
+        # response = requests.post(url, json=info, files=files, auth=auth, data=data, headers=headers)
+        # #
+        # response = requests.post(url, json=info, files=files, auth=auth, data=data)
+        response = requests.post(url, json=info, files=files, auth=auth, data=data, headers=headers)
         if response.status_code == 200:
             return response.json(object_hook=json_out_parser)
         else:
-
             if attempt >= self._max_retry_attempts:
                 logging.error("Failed to request url: %s" % url)
                 raise RemoteAPIException(response.content)
@@ -467,8 +472,10 @@ class RemoteAPIConnector(BaseAPISpec):
                                 files[k][1].seek(0)
                             except AttributeError:
                                 pass
-                logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt))
-                return self._default_client_to_api(entry_point, info, what, files, attempt)
+                logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt + 1))
+                # response.close()
+                # requests.session().close()
+                return self._default_client_to_api(entry_point, info, what, files, data, headers = headers, attempt=attempt)
 
     def get_token(self, client_info: Dict[str, Any] = None) -> str:
         return self._default_client_to_api('get_token', info=None)
@@ -476,10 +483,25 @@ class RemoteAPIConnector(BaseAPISpec):
     def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
         for file, md5_sum in files.items():
-            with open(file, 'rb') as f:
-                payload = {os.path.basename(file): f}
-                data_payload={os.path.basename(file)+ ".md5": md5_sum}
-                out += self._default_client_to_api('_put_new_images', files=payload, data=data_payload)
+            for i in range(self._max_retry_attempts):
+                with open(file, 'rb') as f:
+                    mp_encoder = MultipartEncoder(
+                        fields={
+                            os.path.basename(file): (os.path.basename(file), f, 'application/jpeg'),
+                            os.path.basename(file) + ".md5": md5_sum
+                        })
+
+                    header = {'Content-Type': mp_encoder.content_type, 'Connection': 'close'}# fixme not needed close
+                    try:
+                        out += self._default_client_to_api('_put_new_images', files=None, data=mp_encoder,
+                                                           headers=header, attempt=self._max_retry_attempts)
+                        break
+                    except RemoteAPIException:
+                        time.sleep(i)
+
+            if i == self._max_retry_attempts -1:
+                raise RemoteAPIException("Max attempts tried")
+
         return out
 
     # custom handling of file objects to upload
@@ -494,6 +516,10 @@ class RemoteAPIConnector(BaseAPISpec):
 
     def get_image_series(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_image_series', info, what=what)
+
+    def get_images_to_annotate(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('get_images_to_annotate', info, what=what)
+
 
     def delete_images(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('delete_images', info)

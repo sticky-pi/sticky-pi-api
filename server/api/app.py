@@ -1,4 +1,5 @@
-from flask import Flask, abort, request,  g, url_for, Response
+import flask
+from flask import Flask, abort, request, g, url_for, Response, Request
 from sqlalchemy.exc import OperationalError, IntegrityError
 from flask_httpauth import HTTPBasicAuth
 # from flask.json import JSONEncoder
@@ -12,11 +13,11 @@ import os
 import io
 import orjson
 
-
 from sticky_pi_api.utils import profiled
 from sticky_pi_api.configuration import RemoteAPIConf
 from sticky_pi_api.specifications import RemoteAPI
 from sticky_pi_api.utils import datetime_to_string
+
 
 def json_default(o):
     if isinstance(o, Decimal):
@@ -24,15 +25,13 @@ def json_default(o):
     raise TypeError
 
 
-
 def jsonify(obj):
     return app.response_class(
         orjson.dumps(obj, option=orjson.OPT_NAIVE_UTC | orjson.OPT_UTC_Z | orjson.OPT_OMIT_MICROSECONDS,
-                     default= json_default) +
+                     default=json_default) +
         b"\n",
         mimetype=app.config["JSONIFY_MIMETYPE"],
     )
-
 
 
 # just wait for database to be ready
@@ -72,7 +71,6 @@ else:
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S', level=log_lev)
 
-
 conf = RemoteAPIConf()
 auth = HTTPBasicAuth()
 api = get_api(conf)
@@ -88,6 +86,7 @@ create_initial_user(api, os.getenv('UID_USER'), os.getenv('UID_PASSWORD'))
 def verify_password(username_or_token, password):
     return api.verify_password(username_or_token, password)
 
+
 @auth.get_user_roles
 def get_user_roles(user):
     users = api.get_users([{'username': user}])
@@ -97,21 +96,6 @@ def get_user_roles(user):
     is_admin = users[0]['is_admin']
     return 'admin' if is_admin else 'read_write_user'
 
-
-
-# class CustomJSONEncoder(JSONEncoder):
-#     def default(self, o):
-#         try:
-#             if isinstance(o, datetime.datetime):
-#                 return datetime_to_string(o)
-#             elif isinstance(o, Decimal):
-#                 return float(o)
-#             iterable = iter(o)
-#         except TypeError:
-#             pass
-#         else:
-#             return list(iterable)
-#         return JSONEncoder.default(self, o)
 
 
 app = Flask(__name__)
@@ -143,7 +127,7 @@ if conf.API_PROFILE.lower() in ['true', '1']:
     template_function = template_function_profiled
 
 
-def make_endpoint(method, role = 'admin', what=False):
+def make_endpoint(method, role='admin', what=False):
     if not role:
         role = ""
     elif isinstance(role, str):
@@ -167,7 +151,7 @@ def get_token():
 make_endpoint(api.get_users, role='admin')
 make_endpoint(api.put_users, role='admin')
 
-#todo
+# todo
 # make_endpoint(api.delete_users, role="admin")
 
 make_endpoint(api.get_images, role="", what=True)
@@ -189,6 +173,20 @@ make_endpoint(api.put_itc_labels, role=['admin', 'read_write_user'])
 make_endpoint(api._get_itc_labels, role="")
 
 
+#
+# Content-Type: multipart/form-data; boundary=9b2df423359acd7e747678031df5e345
+# Content-Length: 1070631
+# Host: spi_nginx
+# User-Agent: python-requests/2.27.1
+# Accept-Encoding: gzip, deflate
+# Accept: */*
+# Connection: keep-alive
+# Authorization: Basic ZXlKcFpDSTZNWDAuWW9oYUJRLk43eG9hUE1MV2xrTV8zZ0dGZUZHWHFXc0NERTo=
+#
+#
+# ImmutableMultiDict([])
+# ImmutableMultiDict([('512858f4.2022-05-17_18-46-57.jpg', <FileStorage: '512858f4.2022-05-17_18-46-57.jpg' (None)>)])
+
 @app.route('/_put_new_images', methods=['POST'])
 @auth.login_required(role=["admin", "read_write_user"])
 def _put_new_images():
@@ -196,11 +194,18 @@ def _put_new_images():
     assert len(files) > 0
     out = []
     for k, f in files.items():
-        out += api.put_images([f], client_info = {'username': auth.current_user()})
-    logging.warning("put_new_image!")
-    logging.warning(out)
-    logging.warning(orjson.dumps(out, option=orjson.OPT_UTC_Z, default= json_default))
+        md5 = None
+        if request.form:
+            d = request.form.to_dict()
+            if f"{k}.md5" in d:
+                md5 = d[f"{k}.md5"]
+
+        out += api.put_images({f: md5}, client_info={'username': auth.current_user()})
     return jsonify(out)
+
+
+
+
 
 @app.route('/_put_tiled_tuboids', methods=['POST'])
 @auth.login_required(role=["admin", "read_write_user"])
@@ -214,4 +219,3 @@ def _put_tiled_tuboids():
         data[k] = f
     out = [api._put_tiled_tuboids([data], client_info={'username': auth.current_user()})]
     return jsonify(out)
-

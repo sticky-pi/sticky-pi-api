@@ -21,6 +21,7 @@ setup(
                       'passlib',
                       'itsdangerous',
                       'decorate_all_methods',
+                      "requests_toolbelt",
                       'boto3'],
     extras_require={
         'remote_api': ['orjson', 'pymysql', 'mysqlclient', 'PyMySQL', 'Flask-HTTPAuth', 'retry'],
