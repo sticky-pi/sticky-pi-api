@@ -30,6 +30,7 @@ RUN pip install pandas requests python-dotenv pillow psutil tqdm joblib \
             sqlalchemy imread typeguard passlib itsdangerous decorate_all_methods \
             boto3 pymysql  PyMySQL  Flask-HTTPAuth  retry nose  pytest  pytest-cov  codecov  coverage \
             mysqlclient orjson
+run pip install requests_toolbelt
 
 # RUN apk update \
 #     && apk add --virtual build-deps gcc python3-dev musl-dev \
