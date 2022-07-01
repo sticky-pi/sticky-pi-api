@@ -40,7 +40,7 @@ class ITCLabels(BaseCustomisations):
     species = DescribedColumn(String(32), nullable=True,
                               description='Taxonomy, species name')
 
-    def __init__(self, info, api_user=None):
+    def __init__(self, info, api_user_id=None):
         column_names = ITCLabels.column_names()
         # we just keep the fields that are present in the db, we None the others
         i_dict = {}
@@ -49,6 +49,6 @@ class ITCLabels(BaseCustomisations):
                 i_dict[k] = info[k]
             else:
                 i_dict[k] = None
-        i_dict['api_user'] = api_user
+        i_dict['api_user_id'] = api_user_id
         super().__init__( **i_dict)
 

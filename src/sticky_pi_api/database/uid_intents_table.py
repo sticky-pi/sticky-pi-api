@@ -27,8 +27,8 @@ class UIDIntents(BaseCustomisations):
         now = datetime.datetime.now()
         return now - datetime.timedelta(seconds=cls._max_age)
 
-    def __init__(self, info, api_user=None):
-        info['api_user'] = api_user
+    def __init__(self, info, api_user_id=None):
+        info['api_user_id'] = api_user_id
 
         super().__init__(**info)
 

@@ -29,6 +29,8 @@ from sticky_pi_api.database.tuboid_series_table import TuboidSeries
 from sticky_pi_api.database.tiled_tuboids_table import TiledTuboids
 from sticky_pi_api.database.itc_labels_table import ITCLabels
 from sticky_pi_api.database.uid_intents_table import UIDIntents
+from sticky_pi_api.database.projects_table import  Projects
+from sticky_pi_api.database.project_permissions_table import  ProjectPermissions
 
 from sticky_pi_api.utils import chunker, json_inputs_to_python, json_out_parser
 from decorate_all_methods import decorate_all_methods
@@ -331,7 +333,8 @@ class BaseAPISpec(ABC):
     # def get_projects(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     #     """
     #     Get a list of API monitoring projects. Either all projects (Default), or filter users by field if ``info`` is specified.
-    #     In the latter case, the union of all matched users is returned.
+    #     In the latter case, the union of all matched users is returned. Only projects for which the user has read permission are
+    #     be returned. Admins users automatically have admin access to all projects.
     #
     #     :param info: A dictionary acting as a filter, using an SQL like-type match.
     #         For instance ``{'name': '%'}`` return all projects.
@@ -418,8 +421,8 @@ class BaseAPI(BaseAPISpec, ABC):
             # for each image
             for f, md5 in files.items():
                 # We parse the image file to make to its own DB object
-                api_user = client_info['username'] if client_info is not None else None
-                im = Images(f, api_user=api_user)
+                api_user_id = client_info['user_id'] if client_info is not None else None
+                im = Images(f, api_user_id=api_user_id)
                 out.append(im.to_dict())
                 session.add(im)
                 if md5:
@@ -451,7 +454,7 @@ class BaseAPI(BaseAPISpec, ABC):
             while len(files) > 0:
                 data = files.pop()
                 # We parse the tuboid data as an entry
-                api_user = client_info['username'] if client_info is not None else None
+                api_user_id = client_info['user_id'] if client_info is not None else None
                 ts = TuboidSeries(data['series_info'])
                 q = session.query(TuboidSeries).filter(TuboidSeries.start_datetime == ts.start_datetime,
                                                        TuboidSeries.end_datetime == ts.end_datetime,
@@ -470,7 +473,7 @@ class BaseAPI(BaseAPISpec, ABC):
                     ts = q.first()
                     logging.info('Using tuboid series %s' % ts)
 
-                tub = TiledTuboids(data, parent_tuboid_series=ts, api_user=api_user)
+                tub = TiledTuboids(data, parent_tuboid_series=ts, api_user_id=api_user_id)
                 q = session.query(TiledTuboids).filter(TiledTuboids.parent_series_id == ts.id)
                 if not (q.count() < ts.n_tuboids):
                     raise IntegrityError(
@@ -610,8 +613,8 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         try:
             for o in out:
-                api_user = client_info['username'] if client_info is not None else None
-                intent = UIDIntents({"parent_image_id": o["id"]}, api_user=api_user)
+                api_user_id = client_info['user_id'] if client_info is not None else None
+                intent = UIDIntents({"parent_image_id": o["id"]}, api_user_id=api_user_id)
                 session.add(intent)
             session.commit()
         finally:
@@ -849,8 +852,8 @@ class BaseAPI(BaseAPISpec, ABC):
                 q = session.query(TiledTuboids).filter(TiledTuboids.tuboid_id == data['tuboid_id'])
                 assert q.count() == 1, "No match for %s" % data
                 data['parent_tuboid_id'] = q.first().id
-                api_user = client_info['username'] if client_info is not None else None
-                label = ITCLabels(data, api_user=api_user)
+                api_user_id = client_info['user_id'] if client_info is not None else None
+                label = ITCLabels(data, api_user_id=api_user_id)
                 out.append(label.to_dict())
                 session.add(label)
                 session.commit()
@@ -888,8 +891,8 @@ class BaseAPI(BaseAPISpec, ABC):
         try:
             out = []
             for data in info:
-                api_user = client_info['username'] if client_info is not None else None
-                user = Users(**data, api_user=api_user)
+                api_user_id = client_info['user_id'] if client_info is not None else None
+                user = Users(**data, api_user_id=api_user_id)
                 out.append(user.to_dict())
                 session.add(user)
                 session.commit()
@@ -898,6 +901,26 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
+
+
+
+    def get_projects(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        out = []
+        if info is None:
+            info = [{'username': "%"}]
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            for inf in info:
+                conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                q = session.query(Projects).filter(or_(*conditions))
+
+                for project in q.all():
+                    project_dict = project.to_dict()
+                    out.append(project_dict)
+            return out
+        finally:
+            session.close()
+
 
     def get_users(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         out = []

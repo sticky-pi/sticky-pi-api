@@ -38,7 +38,7 @@ class TiledTuboids(BaseCustomisations):
     n_shots = DescribedColumn(Integer, nullable=False,
                               description="the number of shots taken")
 
-    def __init__(self, data, parent_tuboid_series, api_user=None):
+    def __init__(self, data, parent_tuboid_series, api_user_id=None):
 
         info = {'id_in_series':int(data['tuboid_id'].split('.')[-1])}
         info['tuboid_id'] = data['tuboid_id']
@@ -61,7 +61,7 @@ class TiledTuboids(BaseCustomisations):
                 i_dict[k] = string_to_datetime(v, is_filename=True)
             except (TypeError, ValueError) as e:
                 i_dict[k] = v
-        i_dict['api_user'] = api_user
+        i_dict['api_user_id'] = api_user_id
 
         super().__init__(parent_series_id=parent_tuboid_series.id, **i_dict)
 
