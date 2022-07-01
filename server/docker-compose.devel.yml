@@ -26,6 +26,7 @@ services:
       - .env
       - .secret.env
       - .devel.env
+
   spi_webapp:
       env_file:
         - .devel.env
@@ -44,14 +45,15 @@ services:
         - .devel.env
   
   # used to test the mock s3 'spi_s3'
-  spi_s3_tests:
-    build: ./api
-    container_name: spi_s3_tests
-    command: 'python -m unittest api_tests_localstack.py'
-    restart: "no"
-    depends_on:
-      - spi_s3
-      #- spi_nginx
-    env_file:
-      - .devel.env
-      - .env
+
+#  spi_s3_tests:
+#    build: ./api
+#    container_name: spi_s3_tests
+#    command: 'python -m unittest api_tests_localstack.py'
+#    restart: "no"
+#    depends_on:
+#      - spi_s3
+#      #- spi_nginx
+#    env_file:
+#      - .devel.env
+#      - .env
