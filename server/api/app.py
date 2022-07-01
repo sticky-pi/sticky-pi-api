@@ -1,22 +1,19 @@
-import flask
-from flask import Flask, abort, request, g, url_for, Response, Request
+from flask import Flask, request, g
 from sqlalchemy.exc import OperationalError, IntegrityError
 from flask_httpauth import HTTPBasicAuth
 # from flask.json import JSONEncoder
-from flask import request
 from retry import retry
 from decimal import Decimal
-import datetime
 import logging
 import json
 import os
-import io
 import orjson
 
+# do not delete this import, it is used within a templated function
 from sticky_pi_api.utils import profiled
+
 from sticky_pi_api.configuration import RemoteAPIConf
 from sticky_pi_api.specifications import RemoteAPI
-from sticky_pi_api.utils import datetime_to_string
 
 
 def json_default(o):
@@ -98,6 +95,12 @@ def get_user_roles(user):
 
 
 
+def get_user_id(user):
+    users = api.get_users([{'username': user}])
+    assert len(users) == 1
+    return users[0]["id"]
+
+
 app = Flask(__name__)
 # app.json_encoder = CustomJSONEncoder
 # app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
@@ -108,7 +111,9 @@ template_function_profiled = """
 def %s(**kwargs):
     with profiled():
         data = request.get_json()
-        client_info = {'username':auth.current_user()}
+        
+        username = auth.current_user()
+        client_info = {'username':username, 'user_id':get_user_id(username)
         out = api.%s(data, client_info=client_info, **kwargs)
         return jsonify(out)
 """
@@ -118,7 +123,8 @@ template_function = """
 @auth.login_required(%s)
 def %s(**kwargs):
     data = request.get_json()
-    client_info = {'username':auth.current_user()}
+    username = auth.current_user()
+    client_info = {'username':username, 'user_id':get_user_id(username)}
     out = api.%s(data, client_info=client_info, **kwargs)
     return jsonify(out)
 """
@@ -143,7 +149,8 @@ def make_endpoint(method, role='admin', what=False):
 @app.route('/get_token', methods=['POST'])
 @auth.login_required()
 def get_token():
-    client_info = {'username': auth.current_user()}
+    username = auth.current_user()
+    client_info = {'username':username, 'user_id':get_user_id(username)}
     out = api.get_token(client_info=client_info)
     return jsonify(out)
 
@@ -156,6 +163,7 @@ make_endpoint(api.put_users, role='admin')
 
 make_endpoint(api.get_images, role="", what=True)
 make_endpoint(api.get_image_series, role="", what=True)
+make_endpoint(api.get_images_to_annotate, role=["admin", "read_write_user"], what=True)
 make_endpoint(api.delete_images, role="admin")
 make_endpoint(api.delete_tiled_tuboids, role="admin")
 make_endpoint(api.put_uid_annotations, role=['admin', 'read_write_user'])
@@ -200,7 +208,9 @@ def _put_new_images():
             if f"{k}.md5" in d:
                 md5 = d[f"{k}.md5"]
 
-        out += api.put_images({f: md5}, client_info={'username': auth.current_user()})
+        username = auth.current_user()
+        client_info = {'username': username, 'user_id': get_user_id(username)}
+        out += api.put_images({f: md5}, client_info=client_info)
     return jsonify(out)
 
 
@@ -217,5 +227,8 @@ def _put_tiled_tuboids():
         if k == 'tuboid_id' or k == 'series_info':
             f = json.load(f)
         data[k] = f
-    out = [api._put_tiled_tuboids([data], client_info={'username': auth.current_user()})]
+
+    username = auth.current_user()
+    client_info = {'username': username, 'user_id': get_user_id(username)}
+    out = [api._put_tiled_tuboids([data], client_info=client_info)]
     return jsonify(out)
