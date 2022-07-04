@@ -316,6 +316,18 @@ class BaseAPISpec(ABC):
         :return: A list of dictionaries describing the users that were created
         """
         pass
+    @abstractmethod
+    def delete_users(self, info: List[Dict[str, str]] , client_info: Dict[str, Any]=None) -> List[Dict[str, Any]]:
+        """
+        Delete list of API users. Either all users (Default), or filter users by field if ``info`` is specified.
+        In the latter case, the union of all matched users is returned.
+
+        :param info: A dictionary acting as a filter, using an SQL like-type match.
+            For instance ``{'username': '%'}`` return all users.
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: A list of users that were deleted, as represented in the underlying database, minus the cryptographic information
+        """
+        pass
 
     @abstractmethod
     def get_token(self, client_info: Dict[str, Any] = None) -> Dict[str, Union[str, int]]:
@@ -355,6 +367,21 @@ class BaseAPISpec(ABC):
         pass
 
     @abstractmethod
+    def delete_projects(self, info: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """
+        Get a list of API monitoring projects. Either all projects (Default), or filter users by field if ``info`` is
+        specified. In the latter case, the union of all matched users is returned. Only projects for which the user
+        has read permission are returned. Admins users automatically have admin access to all projects.
+
+        :param info: A dictionary acting as a filter, using an SQL like-type match.
+            For instance ``{'name': '%'}`` return all projects.
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: A list of projects as represented in the underlying database, as one dictionary
+        """
+        pass
+
+
+    @abstractmethod
     def get_project_permissions(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[
         Dict[str, Any]]:
         """
@@ -392,7 +419,7 @@ class BaseAPISpec(ABC):
     #     pass
     #
     @abstractmethod
-    def get_project_series(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def get_project_series(self, info: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Get a list of series for specific monitoring projects.
 
@@ -957,12 +984,10 @@ class BaseAPI(BaseAPISpec, ABC):
             session.close()
 
 
-    def delete_projects(self, info: List[Dict[str, str]] = None,
+    def delete_projects(self, info: List[Dict[str, str]],
                      client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         out = []
         session = sessionmaker(bind=self._db_engine)()
-        if info is None:
-            info = [{'name': "%"}]
 
         try:
             for inf in info:
@@ -1080,7 +1105,7 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-    def get_project_series(self, info: List[Dict[str, str]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def get_project_series(self, info: List[Dict[str, str]] , client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         out = []
         session = sessionmaker(bind=self._db_engine)()
         assert info is not None
@@ -1129,10 +1154,11 @@ class BaseAPI(BaseAPISpec, ABC):
                         continue
                     colnames.append(k)
                     if isinstance(v, datetime.datetime):
-                        v = datetime_to_string(v)
+                        # v = datetime_to_string(v)
+                        v = datetime.datetime.strftime(v, '%Y-%m-%d %H:%M:%S')
                     values.append(v)
 
-                command = f" INSERT INTO {table_name} {tuple(colnames)} VALUES {tuple(values)}"
+                command = f" INSERT INTO {table_name} ({', '.join(colnames)}) VALUES {tuple(values)}"
                 session.execute(command)
                 session.commit()
                 conditions = " AND ". join([f"{c} = '{v}'"for c, v in  zip(colnames, values)])
@@ -1169,7 +1195,24 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
+    def delete_users(self, info: List[Dict[str, str]] , client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        out = []
 
+        assert  info is not None
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            for inf in info:
+                conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]
+                q = session.query(Users).filter(*conditions)
+                for user in q.all():
+                    user.password_hash = "***********"
+                    user_dict = user.to_dict()
+                    out.append(user_dict)
+                    session.delete(user)
+                    session.commit()
+            return out
+        finally:
+            session.close()
     def verify_password(self, username_or_token: str, password: str):
         session = sessionmaker(bind=self._db_engine)()
         try:

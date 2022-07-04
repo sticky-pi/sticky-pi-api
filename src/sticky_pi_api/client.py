@@ -442,6 +442,9 @@ class RemoteAPIConnector(BaseAPISpec):
             if self._token['expiration'] < int(time.time()) + 60:  # we add 60s just to be sure
                 self._token = self.get_token()
             auth = self._token['token'], ''
+            if info is None:
+                info = [{}]
+
         else:
             auth = self._username, self._password
 
@@ -510,6 +513,8 @@ class RemoteAPIConnector(BaseAPISpec):
 
     def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         return self._default_client_to_api('put_users', info)
+    def delete_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('delete_users', info)
 
     def get_images(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_images', info, what=what)
@@ -520,6 +525,28 @@ class RemoteAPIConnector(BaseAPISpec):
     def get_images_to_annotate(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_images_to_annotate', info, what=what)
 
+    def get_project_permissions(self, info: List[Dict[str, Any]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_project_permissions', info)
+
+    def get_project_series(self, info: List[Dict[str, Any]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_project_series', info)
+
+    def get_projects(self, info: List[Dict[str, Any]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_projects', info)
+
+
+    def delete_projects(self, info: List[Dict[str, str]] , client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('delete_projects', info)
+
+
+    def put_project_permissions(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_project_permissions', info)
+
+    def put_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_project_series', info)
+
+    def put_projects(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_projects', info)
 
     def delete_images(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('delete_images', info)
