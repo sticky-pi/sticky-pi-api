@@ -125,7 +125,8 @@ class BaseAPISpec(ABC):
 
         :param client_info: optional information about the client/user contains key ``'username'``
         :param info: A list of dicts. each dicts has, at least, the keys:
-            ``'device'``, ``'start_datetime'`` and ``'end_datetime'``. ``device`` is interpreted to the MySQL like operator.
+            ``'algo_name'``, ``'algo_version'``,``'device'``, ``'start_datetime'`` and ``'end_datetime'``.
+            ``device`` is interpreted to the MySQL like operator.
             For instance,one can match all devices with ``device="%"``. This can be used to subset the images to annotate
         :param what: The nature of the objects to retrieve.
             One of {``'metadata'``, ``'image'``, ``'thumbnail'``, ``'thumbnail-mini'``}
@@ -652,10 +653,15 @@ class BaseAPI(BaseAPISpec, ABC):
 
         sql_select = self._sql_select_fields(colnames, make_filename=True)
         for i in info:
+            algo_name, algo_version = i["algo_version"] , i["algo_name"]
             conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
                           f"datetime < \"{str(i['end_datetime'])}\"",
                           f"device like \"{i['device']}\""]
-            full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)} AND id NOT IN (SELECT parent_image_id FROM {UIDIntents.table_name()}) LIMIT {UIDIntents.max_requested_images()}"
+            full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)} " \
+                         f"AND id NOT IN (SELECT parent_image_id FROM {UIDIntents.table_name()}) " \
+                         f"AND id NOT IN  (SELECT parent_image_id FROM {UIDAnnotations.table_name()} WHERE algo_name != '{algo_name}' OR algo_version < '{algo_version}') LIMIT {UIDIntents.max_requested_images()}"
+
+            #fime also get those that either do not have uid or have older version /different name!
 
             img_dict = None
             with self._db_engine.connect() as connection:

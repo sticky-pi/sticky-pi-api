@@ -54,10 +54,10 @@ class LocalAndRemoteTests(object):
         out = cli.get_users(info=[{}])
         users_todel = [{"id": p["id"]} for p in out if p["username"] not in self._protected_users]
         cli.delete_users(users_todel)
-
-    #
-    # ##########################################################################################################
-    #
+#
+#     #
+#     # ##########################################################################################################
+#     #
     def test_init(self):
         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
         try:
@@ -296,13 +296,24 @@ class LocalAndRemoteTests(object):
             db.put_images(self._test_images)
 
             out = db.get_images_to_annotate(
-                [{'device': "%", 'start_datetime': "2019-01-01", 'end_datetime': "2029-01-01"}])
+                [{'algo_name': 'test_uid', 'algo_version':'1.2.3', 'device': "%", 'start_datetime': "2019-01-01", 'end_datetime': "2029-01-01"}])
 
             self.assertEqual(len(out), len(self._test_images))
             out = db.get_images_to_annotate(
-                [{'device': "%", 'start_datetime': "2019-01-01", 'end_datetime': "2029-01-01"}])
-            self.assertEqual(len(out), 0)
+                [{'algo_name': 'test_uid', 'algo_version':'1.2.3', 'device': "%", 'start_datetime': "2019-01-01", 'end_datetime': "2029-01-01"}])
 
+
+            # # bump algo version
+            out = db.get_images_to_annotate(
+                [{'algo_name': 'test_uid', 'algo_version': '1.2.9', 'device': "%", 'start_datetime': "2019-01-01",
+                  'end_datetime': "2029-01-01"}])
+            self.assertEqual(len(out), len(self._test_images))
+
+            # another algo
+            # out = db.get_images_to_annotate(
+            #     [{'algo_name': 'test_uid2', 'algo_version': '1.0.0', 'device': "%", 'start_datetime': "2019-01-01",
+            #       'end_datetime': "2029-01-01"}])
+            # self.assertEqual(len(out), len(self._test_images))
 
         finally:
             import shutil
@@ -475,141 +486,141 @@ class LocalAndRemoteTests(object):
         finally:
             shutil.rmtree(temp_dir)
 
-# #
-#     def test_ml_bundle(self):
 #
-#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-#         temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
-#         dummy_bundle_name = os.path.basename(self._ml_bundle_dir)
-#         try:
+    def test_ml_bundle(self):
+
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        temp_dir2 = tempfile.mkdtemp(prefix='sticky-pi-')
+        dummy_bundle_name = os.path.basename(self._ml_bundle_dir)
+        try:
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+
+            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
+            self.assertEqual(len(out), 8)
+            out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
+            self.assertEqual(len(out), 0)
+
+            bundle_dir = os.path.join(temp_dir2, dummy_bundle_name)
+
+            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
+            self.assertEqual(len(out), 3)
+
+            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
+
+            self.assertEqual(len(out), 5)
+
+            out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
+            self.assertEqual(len(out), 0)
+
+
+        finally:
+            shutil.rmtree(temp_dir)
+            shutil.rmtree(temp_dir2)
+
+    def test_tiled_tuboids(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+
+            series = [{'device': '08038ade',
+                       'start_datetime': '2020-07-08T20:00:00Z',
+                       'end_datetime': '2020-07-09T15:00:00Z',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
+            # get possibly cached url
+            self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
+            import pandas as pd
+            res = pd.DataFrame(db.get_tiled_tuboid_series(series))
+
+            self.assertTrue(len(res) == res.iloc[0].n_tuboids_series)
+            #
+            self._clean_persistent_resources(db)
+            series = [{'device': '08038ade',
+                       'start_datetime': '2020-07-08T20:00:00Z',
+                       'end_datetime': '2020-07-09T15:00:00Z',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+
+
+        finally:
+            shutil.rmtree(temp_dir)
+
+
+
+    def test_itc_labels(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+
+            series = [{'device': '%',
+                       'start_datetime': '2020-01-01T00:00:00Z',
+                       'end_datetime': '2020-12-31T00:00:00Z',
+                       'n_tuboids': 6,
+                       'n_images': 10,
+                       'algo_name': 'test',
+                       'algo_version':'11111111-19191919'}]
+
+            db = self._make_client(temp_dir)
+            self._clean_persistent_resources(db)
+            # emp[ty dt should be returned if no series exist
+            db.get_tiled_tuboid_series_itc_labels(series)
+            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+            # should be missing the itc fields
+            db.get_tiled_tuboid_series_itc_labels(series)
+            info = [{
+                'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
+                'algo_version': '1111-abce',
+                'algo_name': 'insect_tuboid_classifier',
+                'label': 1,
+                'pattern': 'Insecta.*',
+                'type':'Insecta',
+                'order': 'test',
+                'family':'test',
+                'genus': 'test'
+            }
+            ]
+            #
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            # cannot add same label twice
+
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    info[0]['label'] = 2
+                    db.put_itc_labels(info)
+            #
+            info[0]['algo_name'] = 'another_algo'
+            out = db.put_itc_labels(info)
+            self.assertEqual(len(out), 1)
+            #
+            import pandas as pd
+            pd.set_option('display.max_rows', 500)
+            pd.set_option('display.max_columns', 500)
+            out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
+            # print(info[0]['tuboid_id'])
+            print(out)
+            # for i in range(len(out)):
+            #     print(out.tuboid_id[i])
+            # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+
+        finally:
+            shutil.rmtree(temp_dir)
 #
-#             db = self._make_client(temp_dir)
-#             self._clean_persistent_resources(db)
-#
-#             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
-#             self.assertEqual(len(out), 8)
-#             out = db.put_ml_bundle_dir(dummy_bundle_name, self._ml_bundle_dir)
-#             self.assertEqual(len(out), 0)
-#
-#             bundle_dir = os.path.join(temp_dir2, dummy_bundle_name)
-#
-#             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'model')
-#             self.assertEqual(len(out), 3)
-#
-#             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'data')
-#
-#             self.assertEqual(len(out), 5)
-#
-#             out = db.get_ml_bundle_dir(dummy_bundle_name, bundle_dir, 'all')
-#             self.assertEqual(len(out), 0)
-#
-#
-#         finally:
-#             shutil.rmtree(temp_dir)
-#             shutil.rmtree(temp_dir2)
-#
-#     def test_tiled_tuboids(self):
-#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-#         try:
-#
-#             db = self._make_client(temp_dir)
-#             self._clean_persistent_resources(db)
-#
-#             series = [{'device': '08038ade',
-#                        'start_datetime': '2020-07-08T20:00:00Z',
-#                        'end_datetime': '2020-07-09T15:00:00Z',
-#                        'n_tuboids': 6,
-#                        'n_images': 10,
-#                        'algo_name': 'test',
-#                        'algo_version':'11111111-19191919'}]
-#
-#             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-#             self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
-#             # get possibly cached url
-#             self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
-#             import pandas as pd
-#             res = pd.DataFrame(db.get_tiled_tuboid_series(series))
-#
-#             self.assertTrue(len(res) == res.iloc[0].n_tuboids_series)
-#             #
-#             self._clean_persistent_resources(db)
-#             series = [{'device': '08038ade',
-#                        'start_datetime': '2020-07-08T20:00:00Z',
-#                        'end_datetime': '2020-07-09T15:00:00Z',
-#                        'n_tuboids': 6,
-#                        'n_images': 10,
-#                        'algo_name': 'test',
-#                        'algo_version':'11111111-19191919'}]
-#
-#             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-#             with redirect_stderr(StringIO()) as stdout:
-#                 with self.assertRaises(self._server_error) as context:
-#                     db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-#
-#
-#         finally:
-#             shutil.rmtree(temp_dir)
-#
-#
-#
-#     def test_itc_labels(self):
-#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-#         try:
-#
-#             series = [{'device': '%',
-#                        'start_datetime': '2020-01-01T00:00:00Z',
-#                        'end_datetime': '2020-12-31T00:00:00Z',
-#                        'n_tuboids': 6,
-#                        'n_images': 10,
-#                        'algo_name': 'test',
-#                        'algo_version':'11111111-19191919'}]
-#
-#             db = self._make_client(temp_dir)
-#             self._clean_persistent_resources(db)
-#             # emp[ty dt should be returned if no series exist
-#             db.get_tiled_tuboid_series_itc_labels(series)
-#             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-#             # should be missing the itc fields
-#             db.get_tiled_tuboid_series_itc_labels(series)
-#             info = [{
-#                 'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
-#                 'algo_version': '1111-abce',
-#                 'algo_name': 'insect_tuboid_classifier',
-#                 'label': 1,
-#                 'pattern': 'Insecta.*',
-#                 'type':'Insecta',
-#                 'order': 'test',
-#                 'family':'test',
-#                 'genus': 'test'
-#             }
-#             ]
-#             #
-#             out = db.put_itc_labels(info)
-#             self.assertEqual(len(out), 1)
-#             # cannot add same label twice
-#
-#             with redirect_stderr(StringIO()) as stdout:
-#                 with self.assertRaises(self._server_error) as context:
-#                     info[0]['label'] = 2
-#                     db.put_itc_labels(info)
-#             #
-#             info[0]['algo_name'] = 'another_algo'
-#             out = db.put_itc_labels(info)
-#             self.assertEqual(len(out), 1)
-#             #
-#             import pandas as pd
-#             pd.set_option('display.max_rows', 500)
-#             pd.set_option('display.max_columns', 500)
-#             out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
-#             # print(info[0]['tuboid_id'])
-#             print(out)
-#             # for i in range(len(out)):
-#             #     print(out.tuboid_id[i])
-#             # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
-#
-#         finally:
-#             shutil.rmtree(temp_dir)
-# #
 
 class TestLocalClient(unittest.TestCase, LocalAndRemoteTests):
     _server_error = IntegrityError
