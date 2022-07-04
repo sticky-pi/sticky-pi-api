@@ -13,7 +13,7 @@ rsync -a ../src/ api/src
 rsync -a ../src/ ml/src_api
 
 # this line should also go when packages are installed from github
-#rsync -a ../../sticky-pi-ml-git/src/ ml/src
+rsync -a ../../sticky-pi-ml-git/src/ ml/src
 
 
 case "$1" in
