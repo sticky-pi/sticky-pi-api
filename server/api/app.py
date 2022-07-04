@@ -94,11 +94,11 @@ def get_user_roles(user):
     return 'admin' if is_admin else 'read_write_user'
 
 
-
-def get_user_id(user):
+def get_client_info(user):
     users = api.get_users([{'username': user}])
     assert len(users) == 1
-    return users[0]["id"]
+    u = users[0]
+    return {"id": u["id"], "username": user, "can_write": u["can_write"], "is_admin": u["is_admin"]}
 
 
 app = Flask(__name__)
@@ -111,9 +111,9 @@ template_function_profiled = """
 def %s(**kwargs):
     with profiled():
         data = request.get_json()
-        
+            
         username = auth.current_user()
-        client_info = {'username':username, 'user_id':get_user_id(username)
+        client_info = get_client_info(username)
         out = api.%s(data, client_info=client_info, **kwargs)
         return jsonify(out)
 """
@@ -124,7 +124,7 @@ template_function = """
 def %s(**kwargs):
     data = request.get_json()
     username = auth.current_user()
-    client_info = {'username':username, 'user_id':get_user_id(username)}
+    client_info = get_client_info(username)
     out = api.%s(data, client_info=client_info, **kwargs)
     return jsonify(out)
 """
@@ -150,7 +150,7 @@ def make_endpoint(method, role='admin', what=False):
 @auth.login_required()
 def get_token():
     username = auth.current_user()
-    client_info = {'username':username, 'user_id':get_user_id(username)}
+    client_info = get_client_info(username)
     out = api.get_token(client_info=client_info)
     return jsonify(out)
 
@@ -209,12 +209,9 @@ def _put_new_images():
                 md5 = d[f"{k}.md5"]
 
         username = auth.current_user()
-        client_info = {'username': username, 'user_id': get_user_id(username)}
+        client_info = get_client_info(username)
         out += api.put_images({f: md5}, client_info=client_info)
     return jsonify(out)
-
-
-
 
 
 @app.route('/_put_tiled_tuboids', methods=['POST'])
@@ -229,6 +226,6 @@ def _put_tiled_tuboids():
         data[k] = f
 
     username = auth.current_user()
-    client_info = {'username': username, 'user_id': get_user_id(username)}
+    client_info = get_client_info(username)
     out = [api._put_tiled_tuboids([data], client_info=client_info)]
     return jsonify(out)
