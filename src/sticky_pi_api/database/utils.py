@@ -7,6 +7,7 @@ from sqlalchemy import Integer, DateTime, String
 Base = declarative_base()
 
 class DescribedColumn(Column):
+    inherit_cache = True
     def __init__(self,  col_type, description="", *args, **kwargs):
         super().__init__(col_type, *args, **kwargs)
         self._description = description
