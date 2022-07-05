@@ -15,7 +15,7 @@ from sticky_pi_api.utils import multipart_etag
 
 
 class BaseStorage(ABC):
-    _multipart_chunk_size = 8 * 1024 * 1024
+    _multipart_chunk_size = 15 * 1024 * 1024
     _raw_images_dirname = 'raw_images'
     _ml_storage_dirname = 'ml'
     _tiled_tuboids_storage_dirname = 'tiled_tuboids'

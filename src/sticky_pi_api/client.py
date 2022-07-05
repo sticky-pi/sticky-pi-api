@@ -21,7 +21,7 @@ from sticky_pi_api.storage import BaseStorage
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType, AnnotType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
-from sticky_pi_api.utils import md5
+from sticky_pi_api.utils import md5,  multipart_etag
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 
@@ -349,6 +349,7 @@ class BaseClient(BaseAPISpec, ABC):
             else:
                 logging.info("Skipping %s (already on local)" % str(r['key']))
 
+
         def download_single_file(cls, f, bundle_dir):
             cls._get_ml_bundle_file(f, bundle_dir)
             os.utime(os.path.join(bundle_dir, f['key']), (time.time(), f['mtime']))
@@ -624,9 +625,9 @@ class RemoteClient(RemoteAPIConnector, BaseClient):
             logging.info("%s => %s" % (url, target))
             r = requests.get(url)
             data.write(r.content)
-        from sticky_pi_api.utils import md5
 
         assert os.path.isfile(target_tmp), f'{file_dict["key"]}: file not writen!'
-        assert md5(target_tmp) == file_dict['md5'], f'{file_dict["key"]}: md5s differ !'
+        comp_md5 = multipart_etag(target_tmp, BaseStorage._multipart_chunk_size)
+        assert comp_md5 == file_dict['md5'], f'{file_dict["key"]}: md5s differ {comp_md5} != {file_dict["md5"]}!'
         os.rename(target_tmp, target)
 
