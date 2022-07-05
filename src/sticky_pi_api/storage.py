@@ -3,6 +3,7 @@ import datetime
 import shutil
 import os
 import logging
+import re
 import boto3
 from io import BytesIO
 from abc import ABC, abstractmethod
@@ -303,6 +304,7 @@ class S3Storage(BaseStorage):
         # versioning.enable()
 
     def _s3_url_prefix(self, key):
+        key = re.sub('\ ', '%20', key)
         return f"{self._endpoint}/{self._bucket_name}/{key}"
 
     def store_image_files(self, image: Images) -> None:
@@ -401,7 +403,7 @@ class S3Storage(BaseStorage):
                                                                                 'Key': key},
                                                                         ExpiresIn=self._expiration)
             prefix, suffix = out.split("?")
-            assert prefix == self._s3_url_prefix(key), "Wrong URL prefix, cache will fail"
+            assert prefix == self._s3_url_prefix(key), f"Wrong URL prefix: {prefix}, for key: {key}, cache will fail"
             self._cached_urls[key] = suffix  # , now + self._expiration - 60) # a minute of margin so we don't serve urls that are obsolete at reception
             # logging.warning(f"setting cache for {key}")
             assert suffix == self._cached_urls[key], f'Could not read cache for {key}'
