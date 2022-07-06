@@ -5,8 +5,8 @@ from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColu
 
 
 class UIDIntents(BaseCustomisations):
-    _max_age = 60 *60
-    _max_requested_images = 64
+    _max_age = 6 * 60 * 60
+    _max_requested_images = 8
 
     __tablename__ = 'uid_intents'
 

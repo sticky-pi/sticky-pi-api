@@ -597,39 +597,53 @@ class BaseAPI(BaseAPISpec, ABC):
         sql_select = self._sql_select_fields(colnames, make_filename=True)
         out = []
         # for i, info_chunk in enumerate(chunker(info, self._get_image_chunk_size)):
-        matches = [tuple((str(inf['datetime']), inf['device'])) for inf in info]
-        condition = self._sql_in_tuples(('SUBSTR(datetime, 1, 19)', 'device'), matches)
-        full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {condition}"
-        with self._db_engine.connect() as connection:
-            full_results = connection.execute(full_query.replace("%", "%%"))
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            matches = [tuple((str(inf['datetime']), inf['device'])) for inf in info]
+            condition = self._sql_in_tuples(('SUBSTR(datetime, 1, 19)', 'device'), matches)
+            full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {condition}"
+
+            # performance difference?!
+            #full_query = full_query.replace('%', '%%')
+            # with self._db_engine.connect() as connection:
+
+            full_results = session.execute(full_query)
             for row in full_results:
                 img_dict = dict(row)
                 img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
                 del img_dict["filename"]
                 out.append(img_dict)
+        finally:
+            session.close()
         return self._manual_output_handler(out)
 
     def get_image_series(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None,
                          filter_by_intent=False):
-        # session = sessionmaker(bind=self._db_engine)() # try:
-        out = []
-        colnames = self._columns_name_types(Images)
-        sql_select = self._sql_select_fields(colnames, make_filename=True)
-        for i in info:
-            conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
-                          f"datetime < \"{str(i['end_datetime'])}\"",
-                          f"device like \"{i['device']}\""]
-            full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)}"
-            img_dict = None
-            with self._db_engine.connect() as connection:
-                full_results = connection.execute(full_query.replace("%", "%%"))
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            out = []
+            colnames = self._columns_name_types(Images)
+            sql_select = self._sql_select_fields(colnames, make_filename=True)
+            for i in info:
+                conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
+                              f"datetime < \"{str(i['end_datetime'])}\"",
+                              f"device like \"{i['device']}\""]
+                              # f"device like \"{i['device'].replace('%', '%')}\""]
+
+                full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)}"
+                img_dict = None
+                # with self._db_engine.connect() as connection:
+                full_results = session.execute(full_query)
                 for row in full_results:
                     img_dict = dict(row)
                     img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
                     del img_dict["filename"]
                     out.append(img_dict)
-            if img_dict is None:
-                logging.warning('No data for series %s' % str(i))
+                if img_dict is None:
+                    logging.warning('No data for series %s' % str(i))
+        finally:
+            session.close()
+
         return self._manual_output_handler(out)
 
     def get_images_to_annotate(self, info: MetadataType, what: str = 'metadata', client_info: Dict[str, Any] = None):
@@ -637,56 +651,51 @@ class BaseAPI(BaseAPISpec, ABC):
         out = []
         min_timestamp = UIDIntents.min_intent_timestamp()
         max_requested_images = UIDIntents.max_requested_images()
-        ## 1 delete intents before this
+        colnames = self._columns_name_types(Images)
         session = sessionmaker(bind=self._db_engine)()
         try:
-            q = session.query(Images).filter(UIDIntents.datetime_created < min_timestamp)
-            for img in q:
-                img_dict = img.to_dict()
-                session.delete(img)
-
+            ## 1 delete intents before this
+            q = session.query(UIDIntents).filter(UIDIntents.datetime_created < min_timestamp)
+            for intent in q:
+                session.delete(intent)
             session.commit()
-        finally:
-            session.close()
 
-        colnames = self._columns_name_types(Images)
+            sql_select = self._sql_select_fields(colnames, make_filename=True)
+            for i in info:
+                algo_name = i["algo_name"]
+                algo_version = i["algo_version"]
+                conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
+                              f"datetime < \"{str(i['end_datetime'])}\"",
+                              f"device like \"{i['device']}\""]
+                              # f"device like \"{i['device'].replace('%', '%%')}\""]
 
-        sql_select = self._sql_select_fields(colnames, make_filename=True)
-        for i in info:
-            algo_name, algo_version = i["algo_version"] , i["algo_name"]
-            conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
-                          f"datetime < \"{str(i['end_datetime'])}\"",
-                          f"device like \"{i['device']}\""]
-            full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)} " \
-                         f"AND id NOT IN (SELECT parent_image_id FROM {UIDIntents.table_name()}) " \
-                         f"AND id NOT IN  (SELECT parent_image_id FROM {UIDAnnotations.table_name()} WHERE algo_name != '{algo_name}' OR algo_version < '{algo_version}') LIMIT {UIDIntents.max_requested_images()}"
+                full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)} " \
+                             f"AND id NOT IN (SELECT parent_image_id FROM {UIDIntents.table_name()}) " \
+                             f"AND id NOT IN  (SELECT parent_image_id FROM {UIDAnnotations.table_name()} WHERE algo_name = '{algo_name}' AND algo_version >= '{algo_version}') " \
+                             f"LIMIT {UIDIntents.max_requested_images()}"
 
-            #fime also get those that either do not have uid or have older version /different name!
 
-            img_dict = None
-            with self._db_engine.connect() as connection:
-                full_results = connection.execute(full_query.replace("%", "%%"))
+                img_dict = None
+                full_results = session.execute(full_query)
                 for row in full_results:
                     img_dict = dict(row)
                     img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
                     del img_dict["filename"]
                     out.append(img_dict)
-            if img_dict is None:
-                logging.warning('No data for series %s' % str(i))
+                if img_dict is None:
+                    logging.warning('No data for series %s' % str(i))
 
-        out = out[0:max_requested_images]
+            out = out[0:max_requested_images]
 
-        session = sessionmaker(bind=self._db_engine)()
-        try:
             for o in out:
                 api_user_id = client_info['id'] if client_info is not None else None
                 intent = UIDIntents({"parent_image_id": o["id"]}, api_user_id=api_user_id)
                 session.add(intent)
             session.commit()
+            return self._manual_output_handler(out)
+
         finally:
             session.close()
-
-        return self._manual_output_handler(out)
 
     def delete_images(self, info: MetadataType, client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
@@ -806,21 +815,25 @@ class BaseAPI(BaseAPISpec, ABC):
 
         sql_select = self._sql_select_fields(colnames, make_filename=False)
         out = []
-        for i in info:
-            conditions = ["images.id = uid_annotations.parent_image_id",
-                          f"images.datetime >= \"{str(i['start_datetime'])}\"",
-                          f"images.datetime < \"{str(i['end_datetime'])}\"",
-                          f"images.device like \"{i['device']}\""]
-            full_query = f"SELECT {sql_select} from {UIDAnnotations.table_name()} WHERE EXISTS (Select 1 FROM {Images.table_name()} WHERE {' AND '.join(conditions)}) "
-            row_dict = None
-            with self._db_engine.connect() as connection:
-                full_results = connection.execute(full_query.replace("%", "%%"))
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            for i in info:
+                conditions = ["images.id = uid_annotations.parent_image_id",
+                              f"images.datetime >= \"{str(i['start_datetime'])}\"",
+                              f"images.datetime < \"{str(i['end_datetime'])}\"",
+                              # f"images.device like \"{i['device'].replace('%', '%%')}\""]
+                              f"images.device like \"{i['device']}\""]
+                full_query = f"SELECT {sql_select} from {UIDAnnotations.table_name()} WHERE EXISTS (Select 1 FROM {Images.table_name()} WHERE {' AND '.join(conditions)}) "
+                row_dict = None
+                # with self._db_engine.connect() as connection:
+                full_results = session.execute(full_query)
                 for row in full_results:
                     row_dict = dict(row)
                     out.append(row_dict)
-            if row_dict is None:
-                logging.warning('No data for series %s' % str(i))
-
+                if row_dict is None:
+                    logging.warning('No data for series %s' % str(i))
+        finally:
+            session.close()
         return self._manual_output_handler(out)
 
     # def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata',

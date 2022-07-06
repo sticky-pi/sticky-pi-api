@@ -3,7 +3,7 @@ import datetime
 import shutil
 import os
 import logging
-import urllib
+import re
 import boto3
 from io import BytesIO
 from abc import ABC, abstractmethod
@@ -304,9 +304,7 @@ class S3Storage(BaseStorage):
         # versioning.enable()
 
     def _s3_url_prefix(self, key):
-
-        key = urllib.parse.quote(key)
-
+        key = key.replace(' ', '%20')
         return f"{self._endpoint}/{self._bucket_name}/{key}"
 
     def store_image_files(self, image: Images) -> None:
