@@ -2,6 +2,7 @@ import logging
 import time
 import datetime
 from sqlalchemy import Integer, Boolean, String, DateTime, UniqueConstraint
+from sqlalchemy.orm import relationship
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from itsdangerous import SignatureExpired
 from passlib.apps import custom_app_context as pwd_context
@@ -13,7 +14,18 @@ from sticky_pi_api.database.utils import Base, BaseCustomisations, DescribedColu
 
 class Users(BaseCustomisations):
     __tablename__ = 'users'
-    __table_args__ = (UniqueConstraint('username'), UniqueConstraint('email'))
+    # two users may have the same email? Also, email can be null
+    __table_args__ = (UniqueConstraint('username'), )
+    # __table_args__ = (UniqueConstraint('username') , UniqueConstraint('email'))
+
+
+
+    project_permissions = relationship("ProjectPermissions",
+                                   back_populates="parent_user",
+                                   cascade="all, delete",
+                                   passive_deletes=True
+                                   )
+
 
     token_expiration = 3600 * 24
 
@@ -25,10 +37,10 @@ class Users(BaseCustomisations):
     can_write = DescribedColumn(Boolean, default=True)
 
 
-    def __init__(self, password, api_user=None, **kwargs):
+    def __init__(self, password, api_user_id=None, **kwargs):
         my_dict = kwargs
         my_dict['password_hash'] = pwd_context.encrypt(password)
-        my_dict['api_user'] = api_user
+        my_dict['api_user_id'] = api_user_id
         super().__init__(**my_dict)
 
     def verify_password(self, password):

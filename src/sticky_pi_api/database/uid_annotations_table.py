@@ -22,7 +22,7 @@ class UIDAnnotations(BaseCustomisations):
     n_objects = DescribedColumn(Integer, nullable=False)  # the number of detected objects
     json = DescribedColumn(Text(4294000000), nullable=False)  # this is a longtext
 
-    def __init__(self, info, api_user=None):
+    def __init__(self, info, api_user_id=None):
         column_names = UIDAnnotations.column_names()
         # we just keep the fields that are present in the db, we None the others
         i_dict = {}
@@ -32,12 +32,7 @@ class UIDAnnotations(BaseCustomisations):
                 i_dict[k] = info[k]
             else:
                 i_dict[k] = None
-        i_dict['api_user'] = api_user
+        i_dict['api_user_id'] = api_user_id
         super().__init__(**i_dict)
 
 
-
-
-    # def __repr__(self):
-    #     return "<Annotations(device='%s', datetime='%s', md5='%s', n_objects=%i)>" % (
-    #                                 self.device, self.datetime, self.md5, self.n_objects)

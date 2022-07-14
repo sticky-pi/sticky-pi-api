@@ -68,13 +68,22 @@ class URLOrFileOpen(object):
 
 def chunker(seq, size: int):
     """
-    Breaks an interable into a list of smaller chunks of size ``size`` (or less for the last chunk)
+    Breaks an iterable into a list of smaller chunks of size ``size`` (or less for the last chunk)
 
     :param seq: an iterable
     :param size: the size of the chunk
     :return:
     """
-    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+    if isinstance(seq, dict):
+        keys = [k for k in seq.keys()]
+        key_sets =  (keys[pos:pos + size] for pos in range(0, len(seq), size))
+        out = []
+        for ks in key_sets:
+            out.append({k:seq[k] for k in ks })
+        return out
+
+    else:
+        return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 def json_io_converter(o):
     if isinstance(o, datetime.datetime):

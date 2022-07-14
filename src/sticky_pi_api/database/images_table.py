@@ -17,6 +17,12 @@ class Images(BaseCustomisations):
                                    passive_deletes=True
                                    )
 
+    uid_intents = relationship("UIDIntents",
+                                   back_populates="parent_image",
+                                   cascade="all, delete",
+                                   passive_deletes=True
+                                   )
+
     # tasks = relationship("Task", back_populates="project", passive_deletes=True)
 
     id = DescribedColumn(Integer, primary_key=True,
@@ -53,7 +59,7 @@ class Images(BaseCustomisations):
     bat = DescribedColumn(SmallInteger, nullable=True, description="How much battery is left [0, 100]")
     but = DescribedColumn(Boolean, nullable=True, description="Whether device was manually turned on (button)")
 
-    def __init__(self, file, api_user=None):
+    def __init__(self, file, api_user_id=None):
         parser = ImageParser(file)
         self._file_blob = parser.file_blob
         self._thumbnail = parser.thumbnail
@@ -68,7 +74,7 @@ class Images(BaseCustomisations):
                 i_dict[k] = parser[k]
             else:
                 i_dict[k] = None
-        i_dict['api_user'] = api_user
+        i_dict['api_user_id'] = api_user_id
         super().__init__(**i_dict)
 
 

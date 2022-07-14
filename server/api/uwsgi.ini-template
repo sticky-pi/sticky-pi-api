@@ -2,7 +2,7 @@
 wsgi-file = app.py
 callable = app
 socket = :${API_PORT}
-processes = 8
+processes = 32
 master = true
 harakiri = 300
 #buffer-size = 32768

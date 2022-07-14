@@ -45,7 +45,7 @@ class TuboidSeries(BaseCustomisations):
     # datetime_created = DescribedColumn(DateTime, nullable=False)
     # uploader = DescribedColumn(Integer, nullable=True)  # the user_id of the user who uploaded the data
 
-    def __init__(self, data, api_user=None):
+    def __init__(self, data, api_user_id=None):
 
         i_dict = {}
         for k, v in data.items():
@@ -54,7 +54,7 @@ class TuboidSeries(BaseCustomisations):
             except (TypeError, ValueError) as e:
                 i_dict[k] = v
 
-        i_dict['api_user'] = api_user
+        i_dict['api_user_id'] = api_user_id
         super().__init__(**i_dict)
 
     def __repr__(self):

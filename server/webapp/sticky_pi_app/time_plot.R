@@ -117,6 +117,7 @@ on_clicked_time_plot <- function(state, input){
               tags$div( class= 'col-md-3', tags$img(id="previous_thumbnail", width="100%")),
                #fixme, here, we are making an assumption on the 4:3 aspect ratio, this can be checked from dt[,IMG_WIDTH] ...
               tags$div( class= 'col-md-6',  tags$a(id="current_thumbnail",tags$canvas(id="current_thumbnail", width=1200, height=900),
+                                                   target="_blank"
                                                     #
                                                     #  tags$img(id="current_thumbnail", width="100%")
                                                       #)

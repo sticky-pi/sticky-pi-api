@@ -21,6 +21,8 @@ from sticky_pi_api.storage import BaseStorage
 from sticky_pi_api.types import List, Dict, Union, InfoType, MetadataType, AnnotType
 from sticky_pi_api.specifications import LocalAPI, BaseAPISpec
 from sticky_pi_api.configuration import LocalAPIConf
+from sticky_pi_api.utils import md5,  multipart_etag
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 
 class Cache(dict):
@@ -179,15 +181,18 @@ class BaseClient(BaseAPISpec, ABC):
         """
         # instead of dealing with images one by one, we send them by chunks
         # first find which files need to be uploaded
-        to_upload = []
+        to_upload = {}
         chunk_size = self._put_chunk_size * self._n_threads
+
+        files = {f: md5(f) for f in files}
+
 
         for i, group in enumerate(chunker(files, chunk_size)):
             logging.info("Putting images - step 1/2 ... Computing statistics on files %i-%i / %i" % (i * chunk_size,
                                                                                          i * chunk_size + len(group),
                                                                                          len(files)))
 
-            to_upload += self._diff_images_to_upload(group)
+            to_upload.update(self._diff_images_to_upload(group))
             
         self._cache.sync()
 
@@ -243,10 +248,10 @@ class BaseClient(BaseAPISpec, ABC):
         Those that already exists and have the same checksum can be skipped,
         to only upload new images
 
-        :param files: A list of file paths
-        :type files: List()
+        :param files: A dict of file paths mappting md5s
+        :type files: Dict()
         :return: A list representing the subset of files to be uploaded
-        :rtype: List()
+        :rtype: Dict()
         """
 
 
@@ -277,7 +282,7 @@ class BaseClient(BaseAPISpec, ABC):
         # we use a set, should be faster
         local_img_stats_src = inspect.getsource(local_img_stats)
         hashes = self._cache.get_hashes(local_img_stats_src)
-        for f in files:
+        for f, v in files.items():
             key = f, os.path.getmtime(f)
             if key in hashes:
                 res = {key: self._cache.get_cached(local_img_stats_src, key)}
@@ -318,6 +323,7 @@ class BaseClient(BaseAPISpec, ABC):
         # images that are not yet on the db:
         out = joined[joined.already_on_db == False].url.tolist()
 
+        out = {o: files[o] for o in out}
         # fixme. warn/prompt which has a different md5 (and match md5 is not NA)
         return out
 
@@ -342,6 +348,7 @@ class BaseClient(BaseAPISpec, ABC):
                 files_to_download.append(r)
             else:
                 logging.info("Skipping %s (already on local)" % str(r['key']))
+
 
         def download_single_file(cls, f, bundle_dir):
             cls._get_ml_bundle_file(f, bundle_dir)
@@ -381,7 +388,7 @@ class BaseClient(BaseAPISpec, ABC):
         pass
 
     @abstractmethod
-    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
+    def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None) -> MetadataType:
         pass
 
 
@@ -430,12 +437,15 @@ class RemoteAPIConnector(BaseAPISpec):
         self._port = int(port)
         self._token = {'token': None, 'expiration': 0}
 
-    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, attempt=0):
+    def _default_client_to_api(self, entry_point, info=None, what: str = None, files=None, data=None, headers=None, attempt=0):
 
         if entry_point != 'get_token':
             if self._token['expiration'] < int(time.time()) + 60:  # we add 60s just to be sure
                 self._token = self.get_token()
             auth = self._token['token'], ''
+            if info is None:
+                info = [{}]
+
         else:
             auth = self._username, self._password
 
@@ -443,11 +453,14 @@ class RemoteAPIConnector(BaseAPISpec):
         if what is not None:
             url += "/" + what
         logging.debug('Requesting %s' % url)
-        response = requests.post(url, json=info, files=files, auth=auth)
+
+        # response = requests.post(url, json=info, files=files, auth=auth, data=data, headers=headers)
+        # #
+        # response = requests.post(url, json=info, files=files, auth=auth, data=data)
+        response = requests.post(url, json=info, files=files, auth=auth, data=data, headers=headers)
         if response.status_code == 200:
             return response.json(object_hook=json_out_parser)
         else:
-
             if attempt >= self._max_retry_attempts:
                 logging.error("Failed to request url: %s" % url)
                 raise RemoteAPIException(response.content)
@@ -463,18 +476,36 @@ class RemoteAPIConnector(BaseAPISpec):
                                 files[k][1].seek(0)
                             except AttributeError:
                                 pass
-                logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt))
-                return self._default_client_to_api(entry_point, info, what, files, attempt)
+                logging.warning("Failed to request url: %s. Retrying... Attempt %i" % (url, attempt + 1))
+                # response.close()
+                # requests.session().close()
+                return self._default_client_to_api(entry_point, info, what, files, data, headers = headers, attempt=attempt)
 
     def get_token(self, client_info: Dict[str, Any] = None) -> str:
         return self._default_client_to_api('get_token', info=None)
 
-    def _put_new_images(self, files: List[str], client_info: Dict[str, Any] = None) -> MetadataType:
+    def _put_new_images(self, files: Dict[str, str], client_info: Dict[str, Any] = None) -> MetadataType:
         out = []
-        for file in files:
-            with open(file, 'rb') as f:
-                payload = {os.path.basename(file): f}
-                out += self._default_client_to_api('_put_new_images', files=payload)
+        for file, md5_sum in files.items():
+            for i in range(self._max_retry_attempts):
+                with open(file, 'rb') as f:
+                    mp_encoder = MultipartEncoder(
+                        fields={
+                            os.path.basename(file): (os.path.basename(file), f, 'application/jpeg'),
+                            os.path.basename(file) + ".md5": md5_sum
+                        })
+
+                    header = {'Content-Type': mp_encoder.content_type, 'Connection': 'close'}# fixme not needed close
+                    try:
+                        out += self._default_client_to_api('_put_new_images', files=None, data=mp_encoder,
+                                                           headers=header, attempt=self._max_retry_attempts)
+                        break
+                    except RemoteAPIException:
+                        time.sleep(i)
+
+            if i == self._max_retry_attempts -1:
+                raise RemoteAPIException("Max attempts tried")
+
         return out
 
     # custom handling of file objects to upload
@@ -483,12 +514,40 @@ class RemoteAPIConnector(BaseAPISpec):
 
     def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         return self._default_client_to_api('put_users', info)
+    def delete_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('delete_users', info)
 
     def get_images(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_images', info, what=what)
 
     def get_image_series(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_image_series', info, what=what)
+
+    def get_images_to_annotate(self, info, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('get_images_to_annotate', info, what=what)
+
+    def get_project_permissions(self, info: List[Dict[str, Any]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_project_permissions', info)
+
+    def get_project_series(self, info: List[Dict[str, Any]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_project_series', info)
+
+    def get_projects(self, info: List[Dict[str, Any]] = None, client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('get_projects', info)
+
+
+    def delete_projects(self, info: List[Dict[str, str]] , client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('delete_projects', info)
+
+
+    def put_project_permissions(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_project_permissions', info)
+
+    def put_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_project_series', info)
+
+    def put_projects(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        return self._default_client_to_api('put_projects', info)
 
     def delete_images(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('delete_images', info)
@@ -566,9 +625,9 @@ class RemoteClient(RemoteAPIConnector, BaseClient):
             logging.info("%s => %s" % (url, target))
             r = requests.get(url)
             data.write(r.content)
-        from sticky_pi_api.utils import md5
 
         assert os.path.isfile(target_tmp), f'{file_dict["key"]}: file not writen!'
-        assert md5(target_tmp) == file_dict['md5'], f'{file_dict["key"]}: md5s differ !'
+        comp_md5 = multipart_etag(target_tmp, BaseStorage._multipart_chunk_size)
+        assert comp_md5 == file_dict['md5'], f'{file_dict["key"]}: md5s differ {comp_md5} != {file_dict["md5"]}!'
         os.rename(target_tmp, target)
 
