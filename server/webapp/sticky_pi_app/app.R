@@ -1,5 +1,7 @@
 rm(list=ls())
 library(shiny)
+# for debugging
+library(reactlog)
 library(shinydashboard)
 library(DT)
 library(shinyjs)
@@ -27,6 +29,15 @@ source("config.R")
 source("shiny_helpers.R")
 source('state.R')
 source("time_plot.R")
+
+# for debugging
+options(shiny.reactlog=TRUE)
+#shiny::devmode(TRUE)
+#options(error = function() {
+#            traceback(2)
+#            if(!interactive())
+#                quit("no", status = 1, runLast = FALSE)
+#        })
 
 server <- function(input, output, session) {
   config <- get_config()
@@ -87,7 +98,7 @@ server <- function(input, output, session) {
 
     output$all_imagess_data = DT::renderDataTable(get_comp_prop(state, all_image_data))
     output$time_plot = render_time_plot(state, input)
-    
+    render_time_plot
     output$time_plot_tooltip_widget <- render_time_plot_tooltip(state, input)
     #output$available_annotators <- render_available_annotators(state, input)
     #output$download_metadata_handler <-  download_metadata_handler(state, input)

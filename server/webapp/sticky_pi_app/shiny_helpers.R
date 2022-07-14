@@ -5,6 +5,7 @@ set_comp_prop <- function(state, foo){
   method_name <- deparse(substitute(foo))
   rct <- reactive({
     foo(state, state[["_input_"]])
+    #TODO: how /\ above work when foo == api_get_images?
   })
   
   state[["_computed_props_"]][[method_name]] <- rct

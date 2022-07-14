@@ -30,6 +30,8 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
   query = dt[id %in% ids, .(device, datetime)]
   query[, datetime:=strftime(as.POSIXct(datetime), DATETIME_FORMAT, tz='GMT')]
   post <- jsonlite::toJSON(query)
+  print(post)
+  write(post, "sticky_pi_app/www/thumbnail_post.json")
 
   url = make_url(state, 'get_images', what_images)
 
@@ -39,6 +41,7 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
 
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
+  #print(images)
 
   #api_entry = 'get_uid_annotations'
   #url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
@@ -83,10 +86,11 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
                                      start_datetime=dates[1],
                                      end_datetime=dates[2] )),
                            auto_unbox = TRUE)
-  print(post)
+  #print(post)
   o = POST(url, body=post,  authenticate(token, "", type = "basic"), content_type("application/json"))
 
   ct <- content(o, as='text', encoding="UTF-8")
+  write(ct, "images_data.json")
 
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)

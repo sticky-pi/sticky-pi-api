@@ -56,8 +56,6 @@ images_in_scope <- function(state, input){
     req(input$data_scope_dates)
     dates <- as.Date(input$data_scope_dates)
     images <- api_get_images(state, dates)
-    print(images) #fixme
-    images
   }
   else{
     #fixme

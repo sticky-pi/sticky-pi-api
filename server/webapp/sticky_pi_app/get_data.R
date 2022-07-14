@@ -50,10 +50,9 @@ all_images_data <- function(state, input){
                           round(temp,2),
                           round(hum,2),
                           round(light_intensity,2),
-                           n_insects_string
+                          n_insects_string
   )
   ]
-
   
   dt
 }

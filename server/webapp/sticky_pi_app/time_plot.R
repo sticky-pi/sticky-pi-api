@@ -1,6 +1,7 @@
 render_time_plot <- function(state, input){
   renderPlotly({
     dt <- get_comp_prop(state, all_images_data)
+    #print(dt)
 
     if(nrow(dt) <1)
       return()
@@ -66,7 +67,7 @@ populate_thumbail_show <- function(state, input, val=NULL){
   if(type == 1){ # next
     id_clicked <- dt[id==current_id, next_ID]
   } 
-  else if(type == -1){ # next
+  else if(type == -1){ # previous
     id_clicked <- dt[id==current_id, previous_ID]
   } 
   else if(type==0){
@@ -80,6 +81,7 @@ populate_thumbail_show <- function(state, input, val=NULL){
   next_img_id <- dt[id==current_id, next_ID]
 
   thumbnails <- api_fetch_download_s3(state, c(previous_img_id, current_id, next_img_id))
+  print(thumbnails)
   thumbnail_urls = as.list(thumbnails$url)
   raw_url= api_fetch_download_s3(state, current_id, what_images = 'image', what_annotations = 'data')$url
 

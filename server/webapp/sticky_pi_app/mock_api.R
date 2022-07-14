@@ -1,66 +1,56 @@
+MOCK_IMAGES_DATA_PATH <- "www/data.json"
 
+DATA_HEADERS <- list(
+                     datetime = "datetime",
+                     id = "id"
+)
 # fixme, this is completely broken due to the new api
 
 
+make_rand_img_url <- function(state, width){
+  # found this random image web API: https://picsum.photos/
+  url = sprintf('%s://%s/%s', state$config$RSHINY_UPSTREAM_PROTOCOL,
+                "picsum.photos", width)
+  url
+}
 
-#mock_fetch <- function(image_id, url_base, dpi=200){
-#  api_entry = sprintf("%s/%i", url_base, image_id)
-#  if(url_base=='download_s3_thumbnail'){
-#    size = c(512, 384)
-#    suffix='jpg.thumbnail'
-#    # Sys.sleep(0.5)
-#  }
-#  else if(url_base=='download_s3_thumbnail_mini'){
-#    size = c(128, 96)
-#    suffix='jpg.thumbnail-mini'
-#    # Sys.sleep(0.05)
-#  }
-#  else  if(url_base=='download_s3'){
-#     size = c(2592, 1944)
-#     # Sys.sleep(3)
-#     suffix='jpg'
-#  }
-#  else{
-#    stop( paste('Wrong api entry', url_base))
-#  }
-#
-#  now_cs <- round(100 *seconds(Sys.time()))
-#  url <- sprintf("mock-image.%s_%i_%0.f", suffix,image_id,now_cs)
-#  g <- textGrob(sprintf('id=%s\napi_entry=%s\nurl=%s',
-#                        image_id,
-#                        api_entry,
-#                        url))
-#  # add a suffix like ?UNIX_TIME to avoid caching by the browser
-#  dir.create("./www/tmp", showWarnings = FALSE)
-#  save_location = sprintf("./www/tmp/%s", url)
-#  old_files <-  list.files('./www/tmp/', pattern=sprintf('mock-image\\.%s.*', suffix),full.names = TRUE)
-#  sapply(old_files, function(name){
-#    t <- as.numeric(strsplit(name, '_')[[1]][3])
-#    if((now_cs - t) > 60*100) # delete files older than 1min
-#      unlink(name)
-#  })
-#
-#
-#  ggsave(save_location,
-#         g,
-#         device = 'jpeg',
-#         width= size[1]/dpi,
-#         height= size[2]/dpi,
-#         dpi=dpi)
-#
-#  data.table(url=sprintf("tmp/%s",url))
-#
-#}
-#
-#api_fetch_download_s3_ <- function(state, image_id, url_base){
-#  if(!isTruthy(image_id))
-#    return()
-#  url = unlist(mock_fetch(image_id, url_base))
-#}
-#
-#api_fetch_download_s3 <- function(state, image_id, url_base = "download_s3"){
-#  api_fetch_download_s3_(state, image_id, url_base)
-#}
+api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_annotations="data") {
+    state$updaters$api_fetch_time
+    dt <- get_comp_prop(state, all_images_data)
+
+    if (what_images == "thumbnail")
+        width <- 4056
+    else if (what_images == "thumbnail-mini")
+        width <- 128
+    else {
+        print("invalid value of 'what_images', setting width 128 for now")
+        width <- 128
+    }
+    # insert random image URLs
+    images <- dt[, url := make_rand_img_url(..state, ..width)]
+
+    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0), algo_version=character(0))
+    images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
+
+    writeLines("before filter ids")
+    print(images)
+    # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
+    # We will then just convert timezone when rendering
+    images <- images[id %in% ids]
+    o <- as.data.table(
+    lapply(names(images),function(x){
+      if(x %like% "*datetime*")
+        fasttime::fastPOSIXct(images[[x]], tz='UTC')
+      else
+        images[[x]]
+    })
+    )
+    setnames(o, colnames(images))
+    images <- o
+    writeLines("after filter ids")
+    print(images)
+    images
+}
 #
 #api_fetch_download_s3_thumbnail <- function(state, image_id, url_base = "download_s3_thumbnail"){
 #  api_fetch_download_s3_(state, image_id, url_base)
@@ -137,9 +127,9 @@
 ##
 ##}
 #
-#api_verify_passwd <- function(state, u, p){
-#  return("abhjegwryuibfus")
-#}
+api_verify_passwd <- function(state, u, p){
+  return("abhjegwryuibfus")
+}
 #
 ##api_get_experiments <- function(state){
 ##  state$updaters$api_fetch_time
@@ -160,6 +150,55 @@
 #    return(data.table(ID=numeric(0)))
 #  MOCK_WHOLE_DATA[ID %in% unlist(ids)]
 #}
+
+
+api_get_images <- function(state, dates, what_images="thumbnail-mini", what_annotations="metadata"){
+    # force reactive vals refresh
+    state$updaters$api_fetch_time
+    #token <- state$user$auth_token
+
+    #url = make_url(state, 'get_image_series', what_images)
+    dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
+
+    dt <- jsonlite::fromJSON(MOCK_IMAGES_DATA_PATH)
+    images <- as.data.table(dt)
+
+    if(nrow(images) == 0){
+        return(data.table())
+    }
+
+    # skip annotations for now
+    #annotations <- as.data.table(dt)
+    #if(nrow(annotations) == 0){
+    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0), algo_version=character(0))
+    #images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
+    
+# we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
+# We will then just convert timezone when rendering
+    o <- as.data.table(
+    lapply(names(images),function(x){
+      if(x %like% paste('*',"datetime",'*', sep=''))
+      {
+        fasttime::fastPOSIXct(images[[x]], tz='UTC')
+      }
+      else
+        images[[x]]
+    })
+    )
+    setnames(o, colnames(images))
+    images <- o
+
+    # limit to datetimes range
+    if(length(dates) < 2)
+        return(numeric(0))
+    # last 5 rows(captures)
+    #print(images[.N])
+    #TODO: get data.table to recognize entire `DATA_HEADERS$...` with `..` (using pre-defined vars)
+    #print(unique(images[datetime > dates[1] & datetime < dates[2], datetime]))
+    images <-unique(images[datetime > dates[1] & datetime < dates[2]])
+
+    images
+}
 #
 #api_get_images_id_from_datetimes <- function(state, dates){
 #  state$updaters$api_fetch_time
