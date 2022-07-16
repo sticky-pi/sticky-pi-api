@@ -72,12 +72,15 @@ datatable_options <- function(d, excluded_names="ID"){
                                             targets=hidden)))
 }
 #
-#experiment_list_table <- function(state, input){
-#  req(state$updaters$api_fetch_time)
-#  dt <- api_get_experiments(state)
-#  req(dt)
+experiment_list_table <- function(state, input){
+  req(state$updaters$api_fetch_time)
+  projs_table <- api_get_projects(state)
+  req(projs_table)
+
+  print(projs_table)
+  projs_table
 #
-#  dt_users <- api_users(state)
+#  users_table <- api_get_users(state)
 #  dt <- dt_users[dt, on='USER_ID']
 #  setnames(dt, c('USERNAME')
 #           ,c('OWNER'))
@@ -96,30 +99,31 @@ datatable_options <- function(d, excluded_names="ID"){
 #
 #  # list(dt=dt, datatable=datatable)
 #  dt
-#}
+}
 #
-#render_experiment_list_table<- function(state){
-#  DT::renderDataTable({
-#
-#    dt <- get_comp_prop(state, experiment_list_table)
-#    exp_id <- state$data_scope$selected_experiment_persist
-#    row <- which(dt[ ,EXPERIMENT_ID == exp_id])
-#    if(length(row) == 1){
-#      state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == exp_id, .HIDDEN_image_ids])
-#    }
-#    else{
-#      row <- NULL
-#    }
-#    dt
-#    datatable = DT::datatable(dt,
-#                              selection = list(mode='single', selected = row),
-#                              editable = TRUE,
-#                              options = datatable_options(dt,
-#                                                          excluded_names=c("ID",
-#                                                                           "EXPERIMENT_ID"))
-#    )
-#  })
-#}
+render_experiment_list_table<- function(state){
+  print("rendering")
+  DT::renderDataTable({
+
+    dt <- get_comp_prop(state, experiment_list_table)
+    #exp_id <- state$data_scope$selected_experiment_persist
+    #row <- which(dt[ ,EXPERIMENT_ID == exp_id])
+    #if(length(row) == 1){
+    #  state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == exp_id, .HIDDEN_image_ids])
+    #}
+    #else{
+    #  row <- NULL
+    #}
+
+    datatable = DT::datatable(dt,
+                              selection = list(mode='single', selected = row),
+                              editable = TRUE,
+                              options = datatable_options(dt,
+                                                          excluded_names=c("project_id")
+                                                         )
+                              )
+  })
+}
 #
 #experiment_table <- function(state, input){
 #

@@ -58,7 +58,7 @@ date_selector <- function(state){
     }
     div(h3(message),o)
 }
-#experiment_tables_ui <- function(state){
+experiment_tables_ui <- function(state){
 #
 #    if(state$data_scope$selected_experiment > 0){
 #        exp_table <- column(6,
@@ -88,24 +88,24 @@ date_selector <- function(state){
 #            exp_table = column(6 ,h2('Select and experiment'))
 #        }
 #
-#    exp_list_table <-
-#        column(6,
-#            box(width = 12,
-#                tags$h2('My experiments'),
-#                fluidRow(
-#                    column(5, h4('New Experiment')),
-#                    column(5, textInput('new_experiment_name', "Name", value = "")),
-#                    column(2, actionButton("create_experiment", "+"))
-#                ),
-#                DTOutput('experiment_list_table')
-#            )
-#    )
-#
-#    fluidRow(
-#        exp_list_table,
-#        exp_table
-#        )
-#     }
+    exp_list_table <-
+        column(6,
+            box(width = 12,
+                tags$h2('My experiments'),
+                fluidRow(
+                    column(5, h4('New Experiment')),
+                    column(5, textInput('new_experiment_name', "Name", value = "")),
+                    column(2, actionButton("create_experiment", "+"))
+                ),
+                DTOutput('experiment_list_table')
+            )
+    )
+
+    fluidRow(
+        #exp_table,
+        exp_list_table
+        )
+     }
 
 body <- function(state){
 renderUI({
@@ -118,7 +118,7 @@ renderUI({
                 column(2, actionButton('on_refresh_scope', icon('refresh'))),
                 #column(5, uiOutput('available_annotators')),
                 column(10, date_selector(state))),
-            #fluidRow(experiment_tables_ui(state)),
+            fluidRow(experiment_tables_ui(state)),
                 ),
         tabItem(tabName ="images",
                 fluidRow(

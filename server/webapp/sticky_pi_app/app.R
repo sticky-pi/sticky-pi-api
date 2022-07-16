@@ -66,21 +66,22 @@ server <- function(input, output, session) {
     #observeEvent(input$create_experiment, experiment_list_table_add_row(state, input))
 
 
-    #observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE,{
-    #  sel <- input$experiment_list_table_rows_selected
-    #  persist_sel <- input$experiment_list_table_rows_selected
-    #  if(is.null(sel))
-    #    sel <- 0
-    #  else{
-    #    sel <- as.numeric(sel)
-    #    # we want the ID of the selected experiment, not the row!
-    #    dt <- get_comp_prop(state, experiment_list_table)
-    #    sel <- dt[sel, EXPERIMENT_ID]
-    #  }
-    #  state$data_scope$selected_experiment_persist  <- isolate(sel)
-    #  state$data_scope$selected_experiment  <- sel
-    #
-    #})
+    observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE,{
+      sel <- input$experiment_list_table_row_last_clicked
+      print(input$experiment_list_table_experiment_list_table_row_last_clicked)
+      #persist_sel <- input$experiment_list_table_rows_selected
+      if(is.null(sel))
+        sel <- 0
+      else{
+        sel <- as.numeric(sel)
+        # we want the ID of the selected experiment, not the row!
+        dt <- get_comp_prop(state, experiment_list_table)
+        sel <- dt[sel, project_id]
+      }
+      #state$data_scope$selected_experiment_persist  <- isolate(sel)
+      state$data_scope$selected_experiment  <- sel
+    
+    })
 
     observeEvent(input$thumbnail_mini_to_fetch, on_thumbnail_mini_to_fetch(state, input))
     observeEvent(input$on_clicked_plot, on_clicked_time_plot(state,input))
@@ -93,7 +94,7 @@ server <- function(input, output, session) {
     output$sidebarpanel <- side_panel(state)
     output$body <- body(state)
     
-    #output$experiment_list_table = render_experiment_list_table(state)
+    output$experiment_list_table = render_experiment_list_table(state)
     #output$experiment_table =   render_experiment_table(state)
 
     output$all_imagess_data = DT::renderDataTable(get_comp_prop(state, all_image_data))
