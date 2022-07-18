@@ -76,6 +76,8 @@ server <- function(input, output, session) {
         sel <- as.numeric(sel)
         # we want the ID of the selected experiment, not the row!
         dt <- get_comp_prop(state, experiment_list_table)
+        writeLines("\nselected:")
+        print(dt[sel])
         sel <- dt[sel, project_id]
       }
       #state$data_scope$selected_experiment_persist  <- isolate(sel)

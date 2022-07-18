@@ -1,6 +1,6 @@
-
 MOCK_PROJECTS_TABLE_PATH <- "www/projects.json"
 MOCK_PERMISSIONS_TABLE_PATH <- "www/permissions.json"
+MOCK_ENTRIES_TABLES_DIR_PATH <- "www/project-entries-tables"
 MOCK_IMAGES_DATA_PATH <- "www/data.json"
 
 DATA_HEADERS <- list(
@@ -8,6 +8,9 @@ DATA_HEADERS <- list(
                      id = "id"
 )
 # fixme, this is completely broken due to the new api
+trim_ext_json <- function(path) {
+	sub('\\.json$', '', path) 
+}
 
 
 api_verify_passwd <- function(state, u, p){
@@ -100,10 +103,21 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
         return(numeric(0))
     # last 5 rows(captures)
     #print(images[.N])
-    #TODO: get data.table to recognize entire `DATA_HEADERS$...` with `..` (using pre-defined vars)
+    # TODO: get data.table to recognize entire `DATA_HEADERS$...` with `..` (using pre-defined vars)
     #print(unique(images[datetime > dates[1] & datetime < dates[2], datetime]))
     images <-unique(images[datetime > dates[1] & datetime < dates[2]])
 
+    images
+}
+
+# returns a list of the image IDs in the current selected projet/experiment
+api_get_images_id_for_experiment <- function(state, selected_proj_id, what_images="thumbnail-mini", what_annotations="metadata") {
+    # look up all datetime stretches in series table
+    # TODO: use project entries tables list
+    entry <- PROJECT_ENTRIES_TABLES_LIST[[selected_proj_id]]
+    # feed dates into api_get_images()
+    project_dates <- c(entry$start_datetime, entry$end_datetime)
+    images <- api_get_images(state, project_dates)
     images
 }
 
@@ -149,6 +163,46 @@ new_permissions_table <- function(db_file_path="") {
      )}
 }
 
+# initialize and return:
+# either an empty project entries table, or
+# if a JSON file provided, read it into a project entries table
+new_entries_table <- function(db_file_path="") {
+    if (db_file_path != "") {
+        # TODO: check validity of file data
+        as.data.table(fromJSON(file.path(db_file_path)))
+    }
+    else {
+        data.table(
+                series_id = numeric(0),
+                device_id = numeric(0),
+                # just POSIX time objects, value irrelevant
+                start_datetime = .POSIXct(0)[0],
+                end_datetime = .POSIXct(0)[0]
+                )
+    }
+}
+# initialize and return:
+# either an empty project entries tables list, or
+# if JSON files provided (one per project, all in one directory), read it into a project entries tables list
+new_entries_tables_list <- function(db_files_dir_path="") {
+    JSONs_paths <- list.files( path = db_files_dir_path,
+								pattern = "\\.json$",
+								full.names = TRUE,
+								ignore.case = TRUE )
+	writeLines(JSONs_paths)
+    if (length(JSONs_paths) == 0) {
+        list()
+    }
+    else {
+		# TODO: convert to for loop,
+		# need to *ensure* names pair data correctly
+        entries_tables_list <- lapply(JSONs_paths, new_entries_table)
+		JSONs_names <- lapply(JSONs_paths, basename)
+        names(entries_tables_list) <- lapply(JSONs_names, trim_ext_json)
+		entries_tables_list
+	}
+}
+
 ####### API Methods #######
 # return meta-info of all the projects the user has read access to
 api_get_projects <- function(state) {
@@ -159,6 +213,7 @@ api_get_projects <- function(state) {
 ####### in-mem DB #########
 # current username in state
 # master tables
+# list, each elem is a project's entrie*s* ***table***
 PROJECTS_RECORD <- new_projects_table(MOCK_PROJECTS_TABLE_PATH)
 print(PROJECTS_RECORD)
 PERMISSIONS_TABLE <- new_projects_table(MOCK_PERMISSIONS_TABLE_PATH)
@@ -175,3 +230,6 @@ print(PERMISSIONS_TABLE)
 #                        user_id = numeric(0),
 #                        level = numeric(0)
 #                     )
+PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
+print(PROJECT_ENTRIES_TABLES_LIST)
+#print(new_entries_table("www/1.json"))
