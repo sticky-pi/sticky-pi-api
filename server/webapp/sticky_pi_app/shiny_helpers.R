@@ -8,7 +8,7 @@ set_comp_prop <- function(state, foo){
     #TODO: how /\ above work when foo == api_get_images?
   })
   
-  print(method_name)
+  #print(method_name)
   state[["_computed_props_"]][[method_name]] <- rct
   state
   

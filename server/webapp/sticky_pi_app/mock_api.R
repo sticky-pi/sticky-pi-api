@@ -113,10 +113,10 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
 # returns a list of the image IDs in the current selected projet/experiment
 api_get_images_id_for_experiment <- function(state, selected_proj_id, what_images="thumbnail-mini", what_annotations="metadata") {
     # look up all datetime stretches in series table
-    # TODO: use project entries tables list
     entry <- PROJECT_ENTRIES_TABLES_LIST[[selected_proj_id]]
     # feed dates into api_get_images()
     project_dates <- c(entry$start_datetime, entry$end_datetime)
+    # TODO: check correct device
     images <- api_get_images(state, project_dates)
     images
 }
@@ -198,7 +198,7 @@ new_entries_tables_list <- function(db_files_dir_path="") {
 		# need to *ensure* names pair data correctly
         entries_tables_list <- lapply(JSONs_paths, new_entries_table)
 		JSONs_names <- lapply(JSONs_paths, basename)
-        names(entries_tables_list) <- lapply(JSONs_names, trim_ext_json)
+        names(entries_tables_list) <- as.numeric( lapply(JSONs_names, trim_ext_json) )
 		entries_tables_list
 	}
 }
@@ -208,6 +208,10 @@ new_entries_tables_list <- function(db_files_dir_path="") {
 api_get_projects <- function(state) {
     accessible_projs_ids <- PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level >= 1, project_id]
     PROJECTS_RECORD[project_id %in% accessible_projs_ids]
+}
+
+api_get_project_series <- function(state, proj_id) {
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
 }
 
 ####### in-mem DB #########

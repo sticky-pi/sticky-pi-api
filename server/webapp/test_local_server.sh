@@ -25,5 +25,5 @@ export STICKY_PI_TESTING_RSHINY_AUTOLOGIN=TRUE
 export STICKY_PI_TESTING_RSHINY_USE_MOCK_API=TRUE
 # manually set time zone, only for Windows Subsystem for Linux because no real systemd --> can't run timedatectl
 export TZ="America/Vancouver"
-R -e "shiny::runApp('sticky_pi_app', port=4434, display.mode='showcase')"
-#
+R -e "shiny::runApp('sticky_pi_app', port=4434)"
+#, display.mode='showcase'

@@ -60,6 +60,7 @@ images_in_scope <- function(state, input){
   else{
     #fixme
     images <- api_get_images_id_for_experiment(state, sel)
+    
   }
   images
 }
@@ -77,9 +78,10 @@ experiment_list_table <- function(state, input){
   projs_table <- api_get_projects(state)
   req(projs_table)
 
+  writeLines("\nexperiment_list_table():")
   print(projs_table)
   projs_table
-#
+
 #  users_table <- api_get_users(state)
 #  dt <- dt_users[dt, on='USER_ID']
 #  setnames(dt, c('USERNAME')
@@ -124,63 +126,65 @@ render_experiment_list_table<- function(state){
                               )
   })
 }
+
+experiment_table <- function(state, input){
+
+  dt_exp_list <- get_comp_prop(state, experiment_list_table)
+
+  proj_id <- state$data_scope$selected_experiment
+  if(proj_id<1)
+    return(data.table())
+
+  dt <- api_get_project_series(state, proj_id)
+  print( paste("Project", proj_id))
+  print(dt)
+  # if no matching entries table, make a blank one
+  if(is.null(dt))
+    return(new_entries_table())
+  return(dt)
+
+  # we fetch all ID for each experiment entry
+
+  #l <- lapply(dt[, row_id], function(row_id) {
+  #  out <- api_get_images_id_for_experiment(state, experiment_id=experiment_id, row_id=row_id)
+
+  #  if(is.null(out) | length(out) < 1)
+  #    return(NULL)
+
+  #  out <- data.table(ID = id, .HIDDEN_image_ids=out)
+  #  # warning(paste(id, length(unlist(out))))
+  #  out
+  #}
+  #)
+
+  #dd <- rbindlist(l)
+  #if(nrow(dd) < 1)
+  #  return(empty_exp_table) # fixme. should be populated with the default
+
+  #dd[, .COMP_N_MATCHES := length(unlist(.HIDDEN_image_ids)), by=ID]
+  #dt <- dd[dt, on="ID"]
+}
 #
-#experiment_table <- function(state, input){
-#
-#  dt_exp_list <- get_comp_prop(state, experiment_list_table)
-#
-#  row <- state$data_scope$selected_experiment
-#  if(row<1)
-#    return(data.table())
-#
-#  experiment_id <- row
-#
-#  dt <- api_get_experiment(state, experiment_id)
-#  if(is.null(dt))
-#    return(empty_exp_table)
-#
-#  # we fetch all ID for each experiment entry
-#
-#  l <- lapply(dt[, ID],function(id){
-#    out <- api_get_images_id_for_experiment(state, row_id=id,experiment_id=experiment_id)
-#
-#    if(is.null(out) | length(out) < 1)
-#      return(NULL)
-#
-#    out <- data.table(ID = id, .HIDDEN_image_ids=out)
-#    # warning(paste(id, length(unlist(out))))
-#    out
-#  }
-#  )
-#
-#  dd <- rbindlist(l)
-#  if(nrow(dd) < 1)
-#    return(empty_exp_table) # fixme. should be populated with the default
-#
-#  dd[, .COMP_N_MATCHES := length(unlist(.HIDDEN_image_ids)), by=ID]
-#  dt <- dd[dt, on="ID"]
-#}
-#
-#render_experiment_table<- function(state){
-#  DT::renderDataTable({
-#
-#    dt <- get_comp_prop(state, experiment_table)
-#    # row <- state$data_scope$selected_experiment
-#    # if(row > 0){
-#    #   state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == row, .HIDDEN_image_ids])
-#    # }
-#    # else{
-#    #   row <- NULL
-#    # }
-#    datatable = DT::datatable(dt,
-#                              selection = list(mode='single'), #, selected = row),
-#                              editable = TRUE,
-#                              options = datatable_options(dt,
-#                                                          excluded_names=c("ID"))
-#    )
-#  })
-#}
-#
+render_experiment_table<- function(state){
+  print("rendering entries")
+  DT::renderDataTable({
+    # isn't \/ dt reactive?
+    dt <- get_comp_prop(state, experiment_table)
+    # proj_id <- state$data_scope$selected_experiment
+    # if(proj_id > 0){
+    #   state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == proj_id, .HIDDEN_image_ids])
+    # }
+    # else{
+    #   proj_id <- NULL
+    # }
+    datatable = DT::datatable(dt,
+                              selection = list(mode='single'), #, selected = proj_id),
+                              editable = TRUE
+                              #options = datatable_options(dt)
+    )
+  })
+}
+
 
 #render_available_annotators <- function(state, input){
 #  renderUI({

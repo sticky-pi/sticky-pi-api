@@ -58,54 +58,54 @@ date_selector <- function(state){
     }
     div(h3(message),o)
 }
-experiment_tables_ui <- function(state){
-#
-#    if(state$data_scope$selected_experiment > 0){
-#        exp_table <- column(6,
-#            box(width = 12,
-#            tags$h2('Experimental metadata'),
-#            fluidRow(
-#              column(3, tags$h4('New metavariable')),
-#              column(3, textInput('experiment_new_col_name', "Name", value = "")),
-#              column(3, selectInput('experiment_new_col_type', "Type", choices =
-#                   list(
-#                        "longitude (override)" = 'lng',
-#                        "latitude (override)" = 'lat',
-#                        "character" = 'char',
-#                        "numeric" = 'num',
-#                        "datetime" = 'datetime'
-#                        ), selected='char'
-#              )),
-#
-#              column(3, actionButton("experiment_table_add_column", "+"))
-#            ),
-#              DTOutput('experiment_table'),
-#              actionButton("experiment_table_add_row", "Add row"),
-#              downloadButton('download_metadata_handler', 'Download metadata')
-#              ))
-#        }
-#        else{
-#            exp_table = column(6 ,h2('Select and experiment'))
-#        }
-#
+
+experiment_list_table_ui <- function(state){
     exp_list_table <-
-        column(6,
+        column(12,
             box(width = 12,
-                tags$h2('My experiments'),
+                tags$h2('My projects'),
                 fluidRow(
-                    column(5, h4('New Experiment')),
+                    column(5, h4('New project')),
                     column(5, textInput('new_experiment_name', "Name", value = "")),
                     column(2, actionButton("create_experiment", "+"))
                 ),
                 DTOutput('experiment_list_table')
             )
     )
+    exp_list_table
+}
+experiment_table_ui <- function(state){
+    #writeLines("\nexperiment_tables_ui():")
+    #print(paste( "sel'd proj ID:", state$data_scope$selected_experiment))
+    if(state$data_scope$selected_experiment > 0){
+        exp_table <- column(12,
+            box(width = 12,
+            tags$h2('Experimental metadata'),
+            fluidRow(
+              column(3, tags$h4('New metavariable')),
+              column(3, textInput('experiment_new_col_name', "Name", value = "")),
+              column(3, selectInput('experiment_new_col_type', "Type", choices =
+                   list(
+                        "longitude (override)" = 'lng',
+                        "latitude (override)" = 'lat',
+                        "character" = 'char',
+                        "numeric" = 'num',
+                        "datetime" = 'datetime'
+                        ), selected='char'
+              )),
 
-    fluidRow(
-        #exp_table,
-        exp_list_table
-        )
-     }
+              column(3, actionButton("experiment_table_add_column", "+"))
+            ),
+              DTOutput('experiment_table'),
+              #actionButton("experiment_table_add_row", "Add row"),
+#              downloadButton('download_metadata_handler', 'Download metadata')
+              ))
+        }
+        else{
+            exp_table = column(12 ,h2('Select a project'))
+        }
+    exp_table
+ }
 
 body <- function(state){
 renderUI({
@@ -118,7 +118,8 @@ renderUI({
                 column(2, actionButton('on_refresh_scope', icon('refresh'))),
                 #column(5, uiOutput('available_annotators')),
                 column(10, date_selector(state))),
-            fluidRow(experiment_tables_ui(state)),
+            fluidRow(experiment_table_ui(state)),
+            fluidRow(experiment_list_table_ui(state)),
                 ),
         tabItem(tabName ="images",
                 fluidRow(

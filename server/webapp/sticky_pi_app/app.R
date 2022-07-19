@@ -66,9 +66,11 @@ server <- function(input, output, session) {
     #observeEvent(input$create_experiment, experiment_list_table_add_row(state, input))
 
 
-    observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE,{
+    observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
+      writeLines("\nin exp-list-table-row-selected callback")
       sel <- input$experiment_list_table_row_last_clicked
-      print(input$experiment_list_table_experiment_list_table_row_last_clicked)
+      writeLines("last row clicked:")
+      print(input$experiment_list_table_row_last_clicked)
       #persist_sel <- input$experiment_list_table_rows_selected
       if(is.null(sel))
         sel <- 0
@@ -76,13 +78,14 @@ server <- function(input, output, session) {
         sel <- as.numeric(sel)
         # we want the ID of the selected experiment, not the row!
         dt <- get_comp_prop(state, experiment_list_table)
-        writeLines("\nselected:")
+        writeLines("selected:")
         print(dt[sel])
         sel <- dt[sel, project_id]
       }
       #state$data_scope$selected_experiment_persist  <- isolate(sel)
-      state$data_scope$selected_experiment  <- sel
-    
+      print(sel)
+      state$data_scope$selected_experiment <- sel
+      
     })
 
     observeEvent(input$thumbnail_mini_to_fetch, on_thumbnail_mini_to_fetch(state, input))
@@ -97,7 +100,7 @@ server <- function(input, output, session) {
     output$body <- body(state)
     
     output$experiment_list_table = render_experiment_list_table(state)
-    #output$experiment_table =   render_experiment_table(state)
+    output$experiment_table = render_experiment_table(state)
 
     output$all_imagess_data = DT::renderDataTable(get_comp_prop(state, all_image_data))
     output$time_plot = render_time_plot(state, input)
