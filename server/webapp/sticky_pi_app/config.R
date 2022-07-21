@@ -14,6 +14,7 @@ config_vars <- list(
                  RSHINY_UPSTREAM_ROOT_URL = NA, #hostname, IP, domain name...
                  RSHINY_UPSTREAM_PORT = NA, #hostname, IP, domain name...
                  RSHINY_UPSTREAM_PROTOCOL = "http"
+                 # TODO: map of column headers in real data to rendered user-facing webapp tables
 )
 
 get_config<- function(){

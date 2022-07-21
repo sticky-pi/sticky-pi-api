@@ -124,7 +124,7 @@ api_get_images_id_for_experiment <- function(state, selected_proj_id, what_image
 ########## Projects Management ###########
 put_project_series <- function() {
     data.table( series_id = numeric(0),
-                device_id = numeric(0),
+                device_id = character(0),
                 # just POSIX time objects, value irrelevant
                 start_datetime = .POSIXct(0)[0],
                 end_datetime = .POSIXct(0)[0] )
@@ -158,7 +158,7 @@ new_permissions_table <- function(db_file_path="") {
     else {
         data.table(
                 project_id = numeric(0),
-                user_id = numeric(0),
+                username = character(0),
                 level = numeric(0)
      )}
 }
@@ -174,7 +174,7 @@ new_entries_table <- function(db_file_path="") {
     else {
         data.table(
                 series_id = numeric(0),
-                device_id = numeric(0),
+                device_id = character(0),
                 # just POSIX time objects, value irrelevant
                 start_datetime = .POSIXct(0)[0],
                 end_datetime = .POSIXct(0)[0]
@@ -197,17 +197,34 @@ new_entries_tables_list <- function(db_files_dir_path="") {
 		# TODO: convert to for loop,
 		# need to *ensure* names pair data correctly
         entries_tables_list <- lapply(JSONs_paths, new_entries_table)
-		JSONs_names <- lapply(JSONs_paths, basename)
-        names(entries_tables_list) <- as.numeric( lapply(JSONs_names, trim_ext_json) )
+        names(entries_tables_list) <- lapply( lapply(JSONs_paths, basename), trim_ext_json)
 		entries_tables_list
 	}
 }
 
+# permission check utils
+is_admin <- function(proj_id, usrnm) {
+    PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] >= 3
+}
+is_member <- function(proj_id, usrnm) { 
+    PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] > 0
+}
 ####### API Methods #######
 # return meta-info of all the projects the user has read access to
 api_get_projects <- function(state) {
     accessible_projs_ids <- PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level >= 1, project_id]
     PROJECTS_RECORD[project_id %in% accessible_projs_ids]
+}
+
+# get corresponding entries(sub-data.table) in perm. table
+api_get_project_permissions <- function(state, proj_id) {
+    if (proj_id == '%') {
+        writeLines("\ngetting all projects' permissions")
+        writeLines(paste( "user =", state$config$STICKY_PI_TESTING_USER))
+        PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level > 0]
+    } else if (is_member(proj_id, state$config$STICKY_PI_TESTING_USER)) {
+        PERMISSIONS_TABLE[project_id == proj_id]
+    }
 }
 
 api_get_project_series <- function(state, proj_id) {
@@ -223,17 +240,6 @@ print(PROJECTS_RECORD)
 PERMISSIONS_TABLE <- new_projects_table(MOCK_PERMISSIONS_TABLE_PATH)
 #PERMISSIONS_TABLE[, username := ..state$config$STICKY_PI_TESTING_USER]
 print(PERMISSIONS_TABLE)
-#PROJECTS_RECORD <- data.table(
-#                        project_id = numeric(0),
-#                        name = character(0),
-#                        description = character(0),
-#                        notes = character(0)
-#                     )
-#PERMISSIONS_TABLE <- data.table(
-#                        project_id = numeric(0),
-#                        user_id = numeric(0),
-#                        level = numeric(0)
-#                     )
 PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
 print(PROJECT_ENTRIES_TABLES_LIST)
 #print(new_entries_table("www/1.json"))

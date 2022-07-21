@@ -65,32 +65,41 @@ images_in_scope <- function(state, input){
   images
 }
 
-datatable_options <- function(d, excluded_names="ID"){
+datatable_options <- function(d, excluded_names="project_id"){
   cname <- colnames(d)
   hidden <- c(grep('^\\.HIDDEN.*$',cname), which(cname  %in% excluded_names))
   # hidden <- numeric(0)
   list(scrollX=TRUE, columnDefs = list(list(visible=FALSE,
                                             targets=hidden)))
 }
+
+LEVEL_TO_ROLE_MAP = c()
+LEVEL_TO_ROLE_MAP['1'] = "read-only"
+LEVEL_TO_ROLE_MAP['2'] = "read, write"
+LEVEL_TO_ROLE_MAP['3'] = "all, admin"
 #
 experiment_list_table <- function(state, input){
+  # TODO: make separate temporary session-lifespan data.table for DataTable display (experiment list table)
   req(state$updaters$api_fetch_time)
   projs_table <- api_get_projects(state)
   req(projs_table)
 
   writeLines("\nexperiment_list_table():")
   print(projs_table)
+  
+  # API already automatically checks visibility of rows
+  all_permissions_table <- api_get_project_permissions(state, '%')
+  print(all_permissions_table)
+  # effectively just add a column of current user's permission levels for each available project
+  curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
+  writeLines(" ")
+  print(curr_user_perms)
+  # thanks to https://stackoverflow.com/a/34600831
+  projs_table[curr_user_perms, on = "project_id", PERMISSION := i.level]
+  #if (as.character(level) %in% LEVEL_TO_ROLE_MAP) {
+  #    role <- LEVEL_TO_ROLE_MAP[[ as.character(level) ]]
+  #}
   projs_table
-
-#  users_table <- api_get_users(state)
-#  dt <- dt_users[dt, on='USER_ID']
-#  setnames(dt, c('USERNAME')
-#           ,c('OWNER'))
-#  dt[, PERMISSION := paste(ifelse(CAN_ADMIN, "A", ""),
-#                           ifelse(CAN_WRITE, "W", ""),
-#                           ifelse(CAN_READ, "R", ""))
-#     ]
-#  dt <- dt[, .(EXPERIMENT_ID, NAME, OWNER, TIME_CREATED, PERMISSION,NOTES)]
 #
 #  im_id = lapply(dt[,EXPERIMENT_ID],
 #                 function(eid){

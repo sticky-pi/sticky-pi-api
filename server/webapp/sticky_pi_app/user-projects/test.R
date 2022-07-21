@@ -90,11 +90,11 @@ CURRENT_USERNAME <- 'b'
 get_projects()
 
 writeLines("\n====== All Project Permissions ======")
-get_project_users('a')
-get_project_users('b')
+get_project_permissions('a')
+get_project_permissions('b')
 CURRENT_USERNAME <- 'a'
-get_project_users('a')
-get_project_users('b')
+get_project_permissions('a')
+get_project_permissions('b')
 
 CURRENT_USERNAME <- 'b'
 
@@ -138,7 +138,7 @@ writeLines("\n====== All Projects ======")
 PROJECTS_RECORD
 
 writeLines("\nadding user 0 to this project")
-put_project_users(list(
+put_project_permissions(list(
                        data.table( project_id = 1,
                              user_id = 'b',
                              level = 1 ))
@@ -166,7 +166,7 @@ PERMISSIONS_TABLE
 
 writeLines("\nremoving user 0 from project 1")
 delete_project_user(1, 'b')
-get_project_users(1)
+get_project_permissions(1)
 
 writeLines("\ndemoting self to read and write")
 update_project_user(data.table( project_id = 1,

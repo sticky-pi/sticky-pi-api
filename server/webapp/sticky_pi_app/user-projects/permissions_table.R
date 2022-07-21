@@ -21,12 +21,12 @@ put_project_user <- function(data) {
     }
 }
 # takes a list of user data lists/data.table rows as specified in put_project_user()
-put_project_users <- function(user_datas) {
+put_project_permissions <- function(user_datas) {
     lapply(user_datas, put_project_user)
 }
 
 # get corresponding entry in perm. table
-get_project_users <- function(proj_id) {
+get_project_permissions <- function(proj_id) {
     if (is_member(proj_id, CURRENT_USERNAME))
         PERMISSIONS_TABLE[project_id == proj_id]
 }
