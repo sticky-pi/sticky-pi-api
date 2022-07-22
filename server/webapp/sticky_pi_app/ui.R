@@ -59,6 +59,37 @@ date_selector <- function(state){
     div(h3(message),o)
 }
 
+# returns a copy of orig_names(a char vector) with values corresponding to the matching names of list names_map
+fill_replace_colnames <- function(orig_names, names_map) {
+    updated_names <- orig_names
+    updated_names <- lapply(updated_names, function(orig, names_map) {
+                       if (orig %in% names(names_map)) {
+                            writeLines(paste( orig, "=>", names_map[[orig]]))
+                            names_map[[orig]]
+                       } else {
+                           orig
+                       }
+                }, names_map)
+
+    #writeLines("final:\t")
+    #print(updated_names)
+    updated_names
+}
+
+# returns the "Role" value to display for a given permission level(1-3) as stored in the database
+permission_levels_to_roles <- function(state, lvls) {
+    lapply(lvls, function(lvl, level_to_role_dt) {
+                        if (lvl == 0) {
+                            warning("current user is not permitted to view this project")
+                        } else if (1 <= lvl && lvl <= 3) {
+                            return( level_to_role_dt[level == lvl, role])
+                        } else {
+                            warning("invalid permission level value, must be 0-3")
+                        }
+                        return(NA)
+                }, state$config$PERMISSION_LEVELS_TO_ROLES)
+}
+
 experiment_list_table_ui <- function(state){
     exp_list_table <-
         column(12,

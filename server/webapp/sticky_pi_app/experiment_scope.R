@@ -65,40 +65,47 @@ images_in_scope <- function(state, input){
   images
 }
 
-datatable_options <- function(d, excluded_names="project_id"){
-  cname <- colnames(d)
-  hidden <- c(grep('^\\.HIDDEN.*$',cname), which(cname  %in% excluded_names))
-  # hidden <- numeric(0)
-  list(scrollX=TRUE, columnDefs = list(list(visible=FALSE,
-                                            targets=hidden)))
+datatable_options <- function(dt, excluded_names="project_id", header_names=NULL){
+    cnames <- colnames(dt)
+    hidden <- c(grep('^\\.HIDDEN.*$',cnames), which(cnames %in% excluded_names))
+# hidden <- numeric(0)
+    #if (!is.null(header_names)) {
+    #    cnames <- fill_replace_colnames(cnames, header_names)
+    #}
+    list(scrollX=TRUE,
+       columnDefs = list(list(visible=FALSE,
+                              targets=hidden))
+       #colnames = cnames
+    )
 }
 
-LEVEL_TO_ROLE_MAP = c()
-LEVEL_TO_ROLE_MAP['1'] = "read-only"
-LEVEL_TO_ROLE_MAP['2'] = "read, write"
-LEVEL_TO_ROLE_MAP['3'] = "all, admin"
-#
+#LEVEL_TO_ROLE_MAP = c()
+#LEVEL_TO_ROLE_MAP['1'] = "read-only"
+#LEVEL_TO_ROLE_MAP['2'] = "read, write"
+#LEVEL_TO_ROLE_MAP['3'] = "all, admin"
+# see permission_level_to_role() in `ui.R`
+
 experiment_list_table <- function(state, input){
   # TODO: make separate temporary session-lifespan data.table for DataTable display (experiment list table)
   req(state$updaters$api_fetch_time)
   projs_table <- api_get_projects(state)
   req(projs_table)
 
-  writeLines("\nexperiment_list_table():")
-  print(projs_table)
+  #writeLines("\nexperiment_list_table():")
+  #print(projs_table)
   
   # API already automatically checks visibility of rows
   all_permissions_table <- api_get_project_permissions(state, '%')
-  print(all_permissions_table)
+  #print(all_permissions_table)
+
   # effectively just add a column of current user's permission levels for each available project
   curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
-  writeLines(" ")
-  print(curr_user_perms)
-  # thanks to https://stackoverflow.com/a/34600831
-  projs_table[curr_user_perms, on = "project_id", PERMISSION := i.level]
-  #if (as.character(level) %in% LEVEL_TO_ROLE_MAP) {
-  #    role <- LEVEL_TO_ROLE_MAP[[ as.character(level) ]]
-  #}
+  #writeLines(" ")
+  #print(curr_user_perms)
+
+  # thanks to [merging in another table's column on common key](https://stackoverflow.com/a/34600831)
+  # and [get data.table to use variable for name of **new** column]
+  projs_table[curr_user_perms, on = "project_id", level := i.level]
   projs_table
 #
 #  im_id = lapply(dt[,EXPERIMENT_ID],
@@ -116,7 +123,14 @@ render_experiment_list_table<- function(state){
   print("rendering")
   DT::renderDataTable({
 
-    dt <- get_comp_prop(state, experiment_list_table)
+    dt <- get_comp_prop(state, experiment_list_table)[, !"level"]
+    # TODO: ensure experiment_list_table cannot be modified in between
+    # *copy* perm. level col to preserve levels when converting to display text
+    role_col <- get_comp_prop(state, experiment_list_table)[, .(project_id, role = permission_levels_to_roles(state, level))]
+    print(role_col)
+    role_header <- state$config$PERMISSIONS_TABLE_HEADERS[["level"]]
+    dt[role_col, on = "project_id", c(role_header) := i.role]
+
     #exp_id <- state$data_scope$selected_experiment_persist
     #row <- which(dt[ ,EXPERIMENT_ID == exp_id])
     #if(length(row) == 1){
@@ -126,9 +140,13 @@ render_experiment_list_table<- function(state){
     #  row <- NULL
     #}
 
+
+
+    # column headers renamed/"prettied" in fill_replace_colnames
     datatable = DT::datatable(dt,
                               selection = list(mode='single', selected = row),
                               editable = TRUE,
+                              colnames = fill_replace_colnames(colnames(dt), state$config$PROJECTS_LIST_HEADERS),
                               options = datatable_options(dt,
                                                           excluded_names=c("project_id")
                                                          )
@@ -145,8 +163,8 @@ experiment_table <- function(state, input){
     return(data.table())
 
   dt <- api_get_project_series(state, proj_id)
-  print( paste("Project", proj_id))
-  print(dt)
+  #print( paste("Project", proj_id))
+  #print(dt)
   # if no matching entries table, make a blank one
   if(is.null(dt))
     return(new_entries_table())
@@ -188,8 +206,11 @@ render_experiment_table<- function(state){
     # }
     datatable = DT::datatable(dt,
                               selection = list(mode='single'), #, selected = proj_id),
-                              editable = TRUE
-                              #options = datatable_options(dt)
+                              editable = TRUE,
+                              colnames = fill_replace_colnames(colnames(dt), state$config$PROJECT_SERIES_HEADERS),
+                              options = datatable_options(dt,
+                                                          excluded_names=c("series_id", "device_id")
+                                                          )
     )
   })
 }

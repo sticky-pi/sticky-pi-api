@@ -236,10 +236,10 @@ api_get_project_series <- function(state, proj_id) {
 # master tables
 # list, each elem is a project's entrie*s* ***table***
 PROJECTS_RECORD <- new_projects_table(MOCK_PROJECTS_TABLE_PATH)
-print(PROJECTS_RECORD)
+#print(PROJECTS_RECORD)
 PERMISSIONS_TABLE <- new_projects_table(MOCK_PERMISSIONS_TABLE_PATH)
 #PERMISSIONS_TABLE[, username := ..state$config$STICKY_PI_TESTING_USER]
-print(PERMISSIONS_TABLE)
+#print(PERMISSIONS_TABLE)
 PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
-print(PROJECT_ENTRIES_TABLES_LIST)
+#print(PROJECT_ENTRIES_TABLES_LIST)
 #print(new_entries_table("www/1.json"))

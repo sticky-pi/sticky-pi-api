@@ -13,8 +13,29 @@ config_vars <- list(
                  STICKY_PI_TESTING_RSHINY_USE_MOCK_API = FALSE,
                  RSHINY_UPSTREAM_ROOT_URL = NA, #hostname, IP, domain name...
                  RSHINY_UPSTREAM_PORT = NA, #hostname, IP, domain name...
-                 RSHINY_UPSTREAM_PROTOCOL = "http"
-                 # TODO: map of column headers in real data to rendered user-facing webapp tables
+                 RSHINY_UPSTREAM_PROTOCOL = "http",
+                 # map of column headers in real data to rendered user-facing webapp tables
+                 PROJECTS_LIST_HEADERS = list(
+                     name = "Name",
+                     description = "Description",
+                     notes = "Notes"
+                 ),
+                 PERMISSIONS_TABLE_HEADERS = list(
+                     username = "Username",
+                     level = "Role"
+                 ),
+                 PERMISSION_LEVELS_TO_ROLES = data.table(
+                                level = 1:3,
+                                role = c(
+                                         "Viewer",
+                                         "Editor",
+                                         "Admin"
+                                         )
+                 ),
+                 PROJECT_SERIES_HEADERS = list(
+                     start_datetime = "Start",
+                     end_datetime = "End"
+                 )
 )
 
 get_config<- function(){
