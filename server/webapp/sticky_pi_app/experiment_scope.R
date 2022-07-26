@@ -155,7 +155,6 @@ render_experiment_list_table<- function(state){
 }
 
 experiment_table <- function(state, input){
-
   dt_exp_list <- get_comp_prop(state, experiment_list_table)
 
   proj_id <- state$data_scope$selected_experiment
@@ -197,6 +196,7 @@ render_experiment_table<- function(state){
   DT::renderDataTable({
     # isn't \/ dt reactive?
     dt <- get_comp_prop(state, experiment_table)
+    print(dt)
     # proj_id <- state$data_scope$selected_experiment
     # if(proj_id > 0){
     #   state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == proj_id, .HIDDEN_image_ids])
@@ -285,14 +285,35 @@ render_experiment_table<- function(state){
 #
 #}
 #
-#experiment_list_table_add_row <- function(state, input){
-#  req(input$new_experiment_name)
-#  name <- input$new_experiment_name
-#  data = list(name=name)
-#  api_alter_experiment_list_table(state, action='add_row', data=data)
-#  state$updaters$api_fetch_time <- Sys.time()
-#
-#}
+
+show_create_project_form <- function(state, input, failed=FALSE) {
+    # create/submit button in project_modal_ui() triggers experiment_list_table_add_row()
+    showModal(project_modal_ui(state, failed))
+}
+experiment_list_table_add_row <- function(state, input){
+    writeLines("\nuser submitted create project form")
+    # should have been inputted by user in modal form
+    #req(input$new_project_name)
+    #req(input$new_project_description)
+    #req(input$new_project_notes)
+    print(input$new_project_name)
+    if (is.null(input$new_project_name) || input$new_project_name == "") {
+        print("no name entered")
+        show_create_project_form(state, input, failed=TRUE)
+    } else {
+        name <- input$new_project_name
+        description <- input$new_project_description
+        notes <- input$new_project_notes
+
+        data = list(name=name, description=description, notes=notes)
+        writeLines("\nUser wants to create a project:")
+        print(as.data.table(data))
+        api_put_project(state, data)
+        state$updaters$api_fetch_time <- Sys.time()
+
+        removeModal()
+    }
+}
 
 #download_metadata_handler <- function(state, input){
 #downloadHandler(

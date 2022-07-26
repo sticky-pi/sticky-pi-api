@@ -94,17 +94,36 @@ experiment_list_table_ui <- function(state){
     exp_list_table <-
         column(12,
             box(width = 12,
-                tags$h2('My projects'),
+                tags$h2('My Projects'),
                 fluidRow(
-                    column(5, h4('New project')),
-                    column(5, textInput('new_experiment_name', "Name", value = "")),
-                    column(2, actionButton("create_experiment", "+"))
+                    #column(5, h4('New project')),
+                    #column(5, textInput('new_project_name', "Name", value = "")),
+                    column(2, actionButton("create_project_form", "+"), offset=9)
                 ),
                 DTOutput('experiment_list_table')
             )
     )
     exp_list_table
 }
+project_modal_ui <- function(state, failed=FALSE){
+  fields_names <- state$config$PROJECTS_LIST_HEADERS
+  print(fields_names)
+  modalDialog(
+	  if (failed)
+          div(strong("Invalid name, please try again.", style = "color: red;")),
+      textInput("new_project_name", fields_names$name),
+      textAreaInput("new_project_description", paste(fields_names$description, "(optional)"), rows=3),
+      textAreaInput("new_project_notes", paste(fields_names$notes, "(optional)"), rows=3),
+      # TODO: check for other invalid inputs?
+
+      title = "Create Project",
+      footer = tagList(
+          modalButton("Cancel"),
+          actionButton("create_project_form_submit", "Create")
+      )
+  )
+}
+
 experiment_table_ui <- function(state){
     #writeLines("\nexperiment_tables_ui():")
     #print(paste( "sel'd proj ID:", state$data_scope$selected_experiment))

@@ -63,8 +63,8 @@ server <- function(input, output, session) {
     #observeEvent(input$experiment_table_add_row, experiment_table_add_row(state, input))
     #observeEvent(input$experiment_table_add_column, experiment_table_add_column(state, input))
     #
-    #observeEvent(input$create_experiment, experiment_list_table_add_row(state, input))
-
+    observeEvent(input$create_project_form, show_create_project_form(state, input))
+    observeEvent(input$create_project_form_submit, experiment_list_table_add_row(state, input))
 
     observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
       writeLines("\nin exp-list-table-row-selected callback")
