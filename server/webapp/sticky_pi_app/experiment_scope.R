@@ -85,20 +85,24 @@ datatable_options <- function(dt, excluded_names="project_id", header_names=NULL
 #LEVEL_TO_ROLE_MAP['3'] = "all, admin"
 # see permission_level_to_role() in `ui.R`
 
+# currently table consists of
+# all projects visible to current user and
+# user's "role" in each
 experiment_list_table <- function(state, input){
   # TODO: make separate temporary session-lifespan data.table for DataTable display (experiment list table)
   req(state$updaters$api_fetch_time)
+  # API already automatically checks visibility of rows
   projs_table <- api_get_projects(state)
   req(projs_table)
 
   #writeLines("\nexperiment_list_table():")
   #print(projs_table)
   
-  # API already automatically checks visibility of rows
   all_permissions_table <- api_get_project_permissions(state, '%')
   #print(all_permissions_table)
 
-  # effectively just add a column of current user's permission levels for each available project
+  # first add a column, current user's permission level for each project
+  # convert to role in render_...()
   curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
   #writeLines(" ")
   #print(curr_user_perms)
@@ -140,8 +144,6 @@ render_experiment_list_table<- function(state){
     #  row <- NULL
     #}
 
-
-
     # column headers renamed/"prettied" in fill_replace_colnames
     datatable = DT::datatable(dt,
                               selection = list(mode='single', selected = row),
@@ -152,6 +154,34 @@ render_experiment_list_table<- function(state){
                                                          )
                               )
   })
+}
+show_create_project_form <- function(state, input, failed=FALSE) {
+    # create/submit button in project_modal_ui() triggers experiment_list_table_add_row()
+    showModal(project_modal_ui(state, failed))
+}
+experiment_list_table_add_row <- function(state, input){
+    writeLines("\nuser submitted create project form")
+    # should have been inputted by user in modal form
+    #req(input$new_project_name)
+    #req(input$new_project_description)
+    #req(input$new_project_notes)
+    print(input$new_project_name)
+    if (is.null(input$new_project_name) || input$new_project_name == "") {
+        print("no name entered")
+        show_create_project_form(state, input, failed=TRUE)
+    } else {
+        name <- input$new_project_name
+        description <- input$new_project_description
+        notes <- input$new_project_notes
+
+        data = list(name=name, description=description, notes=notes)
+        writeLines("\nUser wants to create a project:")
+        print(as.data.table(data))
+        api_put_project(state, data)
+        state$updaters$api_fetch_time <- Sys.time()
+
+        removeModal()
+    }
 }
 
 experiment_table <- function(state, input){
@@ -249,13 +279,13 @@ render_experiment_table<- function(state){
 #
 #}
 #
-#experiment_table_add_row <- function(state, input){
-#  experiment_id <-state$data_scope$selected_experiment
-#  out <- api_alter_experiment_table(state,'add_row', experiment_id, data=list())
+
+#project_series_table_add_row <- function(state, input){
+#  proj_id <-state$data_scope$selected_experiment
+#  
+#  out <- api_put_project_series(state, proj_id, data=list())
 #  if(isTruthy(out))
 #    state$updaters$api_fetch_time <- Sys.time()
-#
-#
 #}
 #
 #
@@ -286,49 +316,88 @@ render_experiment_table<- function(state){
 #}
 #
 
-show_create_project_form <- function(state, input, failed=FALSE) {
-    # create/submit button in project_modal_ui() triggers experiment_list_table_add_row()
-    showModal(project_modal_ui(state, failed))
-}
-experiment_list_table_add_row <- function(state, input){
-    writeLines("\nuser submitted create project form")
-    # should have been inputted by user in modal form
-    #req(input$new_project_name)
-    #req(input$new_project_description)
-    #req(input$new_project_notes)
-    print(input$new_project_name)
-    if (is.null(input$new_project_name) || input$new_project_name == "") {
-        print("no name entered")
-        show_create_project_form(state, input, failed=TRUE)
-    } else {
-        name <- input$new_project_name
-        description <- input$new_project_description
-        notes <- input$new_project_notes
+project_series_table_add_row <- function(state, input){
+    proj_id <-state$data_scope$selected_experiment
+    user_inputs <- reactiveValues()
+    #                    dev_id = "",
+    #                    date_range = NULL,
+    #                    start_time = NULL,
+    #                    end_time = NULL )
+    warning(paste("now user_inputs", user_inputs))
 
-        data = list(name=name, description=description, notes=notes)
-        writeLines("\nUser wants to create a project:")
-        print(as.data.table(data))
-        api_put_project(state, data)
-        state$updaters$api_fetch_time <- Sys.time()
+    #user_inputs$date_range <- {
+    #    warning(paste("date range:", strftime(input$new_series_daterange)))
+    #    shinyFeedback::feedbackDanger("new_series_daterange", any(!isTruthy(strftime(input$new_series_daterange))), "Must enter a start and an end date")
+    #    req(input$new_series_daterange, cancelOutput=TRUE)
+    #    input$new_series_daterange
+    #}
 
-        removeModal()
+    user_inputs$start_datetime <- {
+        #warning(paste("start:", strftime(input$new_series_start_time, "%T")))
+
+        shinyFeedback::feedbackDanger("new_series_start_date", !isTruthy(strftime(input$new_series_start_date)), "Required")
+        req(input$new_series_start_date, cancelOutput=TRUE)
+        shinyFeedback::feedbackDanger("new_series_start_time", !isTruthy(strftime(input$new_series_start_time, "%T")), "Required")
+        req(input$new_series_start_time, cancelOutput=TRUE)
+
+        ymd(input$new_series_start_date) + hms(input$new_series_start_time)
     }
+    user_inputs$end_datetime <- {
+        #warning(paste("end:", strftime(input$new_series_end_time, "%T")))
+
+        shinyFeedback::feedbackDanger("new_series_end_date", !isTruthy(strftime(input$new_series_end_date)), "Required")
+        req(input$new_series_end_date, cancelOutput=TRUE)
+        shinyFeedback::feedbackDanger("new_series_end_time", !isTruthy(strftime(input$new_series_end_time, "%T")), "Required")
+        req(input$new_series_end_time, cancelOutput=TRUE)
+
+        end_datetime <- ymd(input$new_series_end_date) + hms(input$new_series_end_time)
+        shinyFeedback::feedbackDanger("new_series_end_time", end_datetime < user_inputs$start_datetime, "Start must be before end")
+        
+        end_datetime
+    }
+    user_inputs$dev_id <- {
+        #warning(paste("dev ID:", input$new_series_device_id))
+        # 8 char hexadec str
+        valid <- grepl('^[0-9A-Fa-f]{8}$', input$new_series_device_id)
+        shinyFeedback::feedbackDanger("new_series_device_id", !valid, "Must be 8-character hexadecimal")
+        req(valid, cancelOutput=TRUE)
+        input$new_series_device_id
+    }
+    #warning("got all vals")
+
+    print(user_inputs)
+    start_datetime <- ymd(user_inputs$date_range[[1]]) + hms(user_inputs$start_time)
+    end_datetime <- ymd(user_inputs$date_range[[2]]) + hms(user_inputs$end_time)
+
+    #if (end_datetime < start_datetime)
+    #    validate("Start must be before end")
+
+    data = list(device_id = user_inputs$dev_id,
+                start_datetime = start_datetime,
+                end_datetime = end_datetime
+    )
+    writeLines("\nUser wants to add a series:")
+    print(as.data.table(data))
+    out <- api_put_project_series(state, proj_id, data=data)
+    if(isTruthy(out))
+        state$updaters$api_fetch_time <- Sys.time()
 }
 
-#download_metadata_handler <- function(state, input){
-#downloadHandler(
-#    filename = function() {
-#      'metadata.csv'
-#    },
-#    content = function(file) {
-#      metadata = get_comp_prop(state, 'experiment_table')
-#      req(metadata)
-#      metadata = metadata[, grep('^\\.',colnames(metadata), invert=T), with=FALSE]
-#      fwrite(metadata, file, row.names = FALSE)
-#    }
-#  )
-#}
-#
+download_metadata_handler <- function(state, input){
+downloadHandler(
+    filename = function() {
+      'metadata.csv'
+    },
+    content = function(file) {
+      metadata = get_comp_prop(state, 'experiment_table')
+      req(metadata)
+      # exclude .HIDDEN cols
+      metadata = metadata[, grep('^\\.',colnames(metadata), invert=T), with=FALSE]
+      fwrite(metadata, file, row.names = FALSE)
+    }
+  )
+}
+
 download_data_handler <- function(state, input){
 downloadHandler(
     filename = function() {

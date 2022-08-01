@@ -23,7 +23,7 @@ side_panel <- function(state){renderUI({
         menuItem("Tuboids", tabName = "tuboids", icon = icon("map")),
         menuItem("Data", tabName = "data", icon = icon("table")),
         tags$hr(),
-        downloadButton("download_data_handler", "Download data")
+        downloadButton("download_data_handler", "Download data"),
       )
     }
   })}
@@ -35,7 +35,8 @@ make_ui <- function(){
     )
     sidebar <- dashboardSidebar(uiOutput("sidebarpanel"))
 
-    body <- dashboardBody(shinyjs::useShinyjs(),
+    body <- dashboardBody(shinyFeedback::useShinyFeedback(),
+                          shinyjs::useShinyjs(),
                           shinyjs::extendShinyjs('script.js', functions='click_thumbnail_button'),
                           tags$head(tags$link(rel = "shortcut icon", href = "favicon.ico")),
                           tags$head(
@@ -64,7 +65,7 @@ fill_replace_colnames <- function(orig_names, names_map) {
     updated_names <- orig_names
     updated_names <- lapply(updated_names, function(orig, names_map) {
                        if (orig %in% names(names_map)) {
-                            writeLines(paste( orig, "=>", names_map[[orig]]))
+                            #writeLines(paste( orig, "=>", names_map[[orig]]))
                             names_map[[orig]]
                        } else {
                            orig
@@ -105,7 +106,7 @@ experiment_list_table_ui <- function(state){
     )
     exp_list_table
 }
-project_modal_ui <- function(state, failed=FALSE){
+create_project_modal_ui <- function(state, failed=FALSE){
   fields_names <- state$config$PROJECTS_LIST_HEADERS
   print(fields_names)
   modalDialog(
@@ -124,35 +125,75 @@ project_modal_ui <- function(state, failed=FALSE){
   )
 }
 
-experiment_table_ui <- function(state){
+#enter_series_row_modal_ui <- function(state, input){
+#  fields_names <- state$config$PROJECT_SERIES_HEADERS
+#  fields_names[["device_id"]] <- "Device ID"
+#  print(fields_names)
+#
+#  modalDialog(
+#      # TODO: check for other invalid inputs?
+#      textInput("new_series_device_id", fields_names$device_id),
+#      dateInput("new_series_start", fields_names$start_datetime),
+#      dateInput("new_series_end", fields_names$end_datetime),
+#
+#      title = "Add Series Row",
+#      footer = tagList(
+#          modalButton("Cancel"),
+#          actionButton("enter_series_form_submit", "Add Row")
+#      )
+#  )
+#}
+experiment_table_ui <- function(state) {
     #writeLines("\nexperiment_tables_ui():")
     #print(paste( "sel'd proj ID:", state$data_scope$selected_experiment))
-    if(state$data_scope$selected_experiment > 0){
+    if(state$data_scope$selected_experiment > 0) {
+        fields_names <- state$config$PROJECT_SERIES_HEADERS
+        fields_names[["device_id"]] <- "Device ID"
+
+        # add a column
         exp_table <- column(12,
             box(width = 12,
-            tags$h2('Experimental metadata'),
-            fluidRow(
-              column(3, tags$h4('New metavariable')),
-              column(3, textInput('experiment_new_col_name', "Name", value = "")),
-              column(3, selectInput('experiment_new_col_type', "Type", choices =
-                   list(
-                        "longitude (override)" = 'lng',
-                        "latitude (override)" = 'lat',
-                        "character" = 'char',
-                        "numeric" = 'num',
-                        "datetime" = 'datetime'
-                        ), selected='char'
-              )),
+                tags$h2('Experimental metadata'),
+                fluidRow(
+                  column(3, tags$h4('Add a new column')),
+                  column(3, textInput('experiment_new_col_name', "Name", value = "")),
+                  column(3, selectInput('experiment_new_col_type', "Type", choices =
+                       list(
+                            "longitude (override)" = 'lng',
+                            "latitude (override)" = 'lat',
+                            "character" = 'char',
+                            "numeric" = 'num',
+                            "datetime" = 'datetime'
+                            ), selected='char'
+                  )),
 
-              column(3, actionButton("experiment_table_add_column", "+"))
-            ),
-              DTOutput('experiment_table'),
-              #actionButton("experiment_table_add_row", "Add row"),
-#              downloadButton('download_metadata_handler', 'Download metadata')
-              ))
-        }
-        else{
-            exp_table = column(12 ,h2('Select a project'))
+                  column(3, actionButton("experiment_table_add_column", "+"))
+                ),
+
+                # the table
+                DTOutput('experiment_table'),
+
+            # add a row
+              column(2, tags$h4('Add a new row')),
+              fluidRow(
+                  column(3, textInput("new_series_device_id", fields_names$device_id)),
+                  column(3, dateInput("new_series_start_date", "Series Start Date", startview="year", max=Sys.Date())),
+                  column(3, timeInput("new_series_start_time", "Time"))
+                  ),
+              fluidRow(
+                  column(3, dateInput("new_series_end_date", "Series End Date", startview="year", max=Sys.Date())),
+                  column(3, timeInput("new_series_end_time", "Time")),
+                ),
+              column(3, actionButton("add_project_series_table_row", "+")),
+                downloadButton('download_metadata_handler', 'Download metadata')
+              #column(3, textInput("new_series_device_id", fields_names$device_id)),
+              #column(3, dateRangeInput("new_series_daterange", "Series date range", startview="year", max=Sys.Date())),
+              #column(3, timeInput("new_series_start_time", fields_names$start_datetime)),
+              #column(3, timeInput("new_series_end_time", fields_names$end_datetime)),
+            )
+        )
+        } else {
+            exp_table <- column(12 ,h2('Select a project'))
         }
     exp_table
  }

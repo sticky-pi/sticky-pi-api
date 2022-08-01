@@ -14,11 +14,14 @@ library(plotly)
 library(ggplot2)
 library(htmlwidgets)
 library(fasttime)
+library(shinyTime)
 library(zoo)
 library(jsonlite)
 library(gridExtra) # 
 library(grid)
 library(shinyBS)
+# for user input frontend
+library(shinyFeedback)
 # 
 
 source("login.R")
@@ -60,7 +63,7 @@ server <- function(input, output, session) {
     observe({login_fun(state, input)})
 
     #observeEvent(input$experiment_table_cell_edit, experiment_table_alter_cell(state, input))
-    #observeEvent(input$experiment_table_add_row, experiment_table_add_row(state, input))
+    observeEvent(input$add_project_series_table_row, project_series_table_add_row(state, input))
     #observeEvent(input$experiment_table_add_column, experiment_table_add_column(state, input))
     #
     observeEvent(input$create_project_form, show_create_project_form(state, input))
@@ -71,15 +74,18 @@ server <- function(input, output, session) {
       sel <- input$experiment_list_table_row_last_clicked
       writeLines("last row clicked:")
       print(input$experiment_list_table_row_last_clicked)
+
       #persist_sel <- input$experiment_list_table_rows_selected
       if(is.null(sel))
         sel <- 0
-      else{
+      else {
         sel <- as.numeric(sel)
         # we want the ID of the selected experiment, not the row!
         dt <- get_comp_prop(state, experiment_list_table)
+
         writeLines("selected:")
         print(dt[sel])
+
         sel <- dt[sel, project_id]
       }
       #state$data_scope$selected_experiment_persist  <- isolate(sel)
@@ -107,7 +113,7 @@ server <- function(input, output, session) {
     render_time_plot
     output$time_plot_tooltip_widget <- render_time_plot_tooltip(state, input)
     #output$available_annotators <- render_available_annotators(state, input)
-    #output$download_metadata_handler <-  download_metadata_handler(state, input)
+    output$download_metadata_handler <-  download_metadata_handler(state, input)
     output$download_data_handler <-  download_data_handler(state, input)
 
 }
