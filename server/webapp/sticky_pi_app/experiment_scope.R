@@ -143,7 +143,6 @@ render_experiment_list_table<- function(state){
     #else{
     #  row <- NULL
     #}
-
     # column headers renamed/"prettied" in fill_replace_colnames
     datatable = DT::datatable(dt,
                               selection = list(mode='single', selected = row),
@@ -153,6 +152,8 @@ render_experiment_list_table<- function(state){
                                                           excluded_names=c("project_id")
                                                          )
                               )
+                               
+                               
   })
 }
 show_create_project_form <- function(state, input, failed=FALSE) {
@@ -234,6 +235,8 @@ render_experiment_table<- function(state){
     # else{
     #   proj_id <- NULL
     # }
+    datetime_colinds = c( match("start_datetime", colnames(dt)), match("end_datetime", colnames(dt)))
+
     datatable = DT::datatable(dt,
                               selection = list(mode='single'), #, selected = proj_id),
                               editable = TRUE,
@@ -241,10 +244,11 @@ render_experiment_table<- function(state){
                               options = datatable_options(dt,
                                                           excluded_names=c("series_id", "device_id")
                                                           )
+                            ) %>% formatDate( datetime_colinds,
+                                          method = "toUTCString"
     )
   })
 }
-
 
 #render_available_annotators <- function(state, input){
 #  renderUI({
@@ -333,27 +337,33 @@ project_series_table_add_row <- function(state, input){
     #}
 
     user_inputs$start_datetime <- {
-        #warning(paste("start:", strftime(input$new_series_start_time, "%T")))
+        datestr <- strftime(input$new_series_start_date)
+        timestr <- strftime(input$new_series_start_time, "%T")
+        warning(paste("start:", datestr))
+        warning(paste("start:", timestr))
 
-        shinyFeedback::feedbackDanger("new_series_start_date", !isTruthy(strftime(input$new_series_start_date)), "Required")
+        shinyFeedback::feedbackDanger("new_series_start_date", !isTruthy(datestr), "Required")
         req(input$new_series_start_date, cancelOutput=TRUE)
-        shinyFeedback::feedbackDanger("new_series_start_time", !isTruthy(strftime(input$new_series_start_time, "%T")), "Required")
+        shinyFeedback::feedbackDanger("new_series_start_time", !isTruthy(timestr), "Required")
         req(input$new_series_start_time, cancelOutput=TRUE)
 
-        ymd(input$new_series_start_date) + hms(input$new_series_start_time)
+        fastPOSIXct(ymd(datestr) + hms(timestr), tz="UTC")
     }
     user_inputs$end_datetime <- {
-        #warning(paste("end:", strftime(input$new_series_end_time, "%T")))
+        datestr <- strftime(input$new_series_end_date)
+        timestr <- strftime(input$new_series_end_time, "%T")
+        warning(paste("end:", strftime(input$new_series_end_date)))
+        warning(paste("end:", strftime(input$new_series_end_time, "%T")))
 
-        shinyFeedback::feedbackDanger("new_series_end_date", !isTruthy(strftime(input$new_series_end_date)), "Required")
+        shinyFeedback::feedbackDanger("new_series_end_date", !isTruthy(datestr), "Required")
         req(input$new_series_end_date, cancelOutput=TRUE)
-        shinyFeedback::feedbackDanger("new_series_end_time", !isTruthy(strftime(input$new_series_end_time, "%T")), "Required")
+        shinyFeedback::feedbackDanger("new_series_end_time", !isTruthy(timestr), "Required")
         req(input$new_series_end_time, cancelOutput=TRUE)
 
-        end_datetime <- ymd(input$new_series_end_date) + hms(input$new_series_end_time)
+        end_datetime <- ymd(datestr) + hms(timestr)
         shinyFeedback::feedbackDanger("new_series_end_time", end_datetime < user_inputs$start_datetime, "Start must be before end")
         
-        end_datetime
+        fastPOSIXct(end_datetime, tz="UTC")
     }
     user_inputs$dev_id <- {
         #warning(paste("dev ID:", input$new_series_device_id))
@@ -365,16 +375,12 @@ project_series_table_add_row <- function(state, input){
     }
     #warning("got all vals")
 
-    print(user_inputs)
-    start_datetime <- ymd(user_inputs$date_range[[1]]) + hms(user_inputs$start_time)
-    end_datetime <- ymd(user_inputs$date_range[[2]]) + hms(user_inputs$end_time)
-
     #if (end_datetime < start_datetime)
     #    validate("Start must be before end")
 
     data = list(device_id = user_inputs$dev_id,
-                start_datetime = start_datetime,
-                end_datetime = end_datetime
+                start_datetime = user_inputs$start_datetime,
+                end_datetime = user_inputs$end_datetime
     )
     writeLines("\nUser wants to add a series:")
     print(as.data.table(data))
