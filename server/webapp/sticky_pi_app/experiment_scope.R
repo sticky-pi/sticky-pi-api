@@ -244,9 +244,9 @@ render_experiment_table<- function(state){
                               options = datatable_options(dt,
                                                           excluded_names=c("series_id", "device_id")
                                                           )
-                            ) %>% formatDate( datetime_colinds,
-                                          method = "toUTCString"
-    )
+                            )
+                              #%>% formatDate( datetime_colinds,
+                              #            method = "toUTCString")
   })
 }
 
@@ -303,13 +303,18 @@ series_table_alter_cell <- function(state, input){
   #v = edit_info$value
   proj_id <- state$data_scope$selected_experiment
 
-  dt <- get_comp_prop(state, proj_table)
-  data <- api_get_project_series(state, proj_id)
+  dt <- get_comp_prop(state, experiment_list_table)
+  proj_seriess <- api_get_project_series(state, proj_id)
+  #print(proj_seriess)
+  #edit_col <- colnames(proj_seriess)[[j]]
   # keep all fields except edited same
-  data[project_id == proj_id, edit_info$col := edit_info$value]
-
+  ser_id <- proj_seriess[edit_info$row, series_id]
+  data <- proj_seriess[series_id == ser_id, (edit_info$col) := (edit_info$value)]
+  #data[, series_id := NULL]
+  warning("new values for series:")
+  print(data)
   # pass API the state$exp_table colname of index j, PROJECT_ID of index i
-  out <- api_put_project_series(state, proj_id, data=data)
+  out <- api_put_project_series(state, proj_id, data=data, ser_id=ser_id)
   #out <- api_alter_proj_table(state, 'alter_cell', proj_id, data=data)
 
   # force API requery if table was actually modified upstream
@@ -318,7 +323,6 @@ series_table_alter_cell <- function(state, input){
   else{
     warning('Wrong entry in proj table edit? API failed to modify it.')
   }
-
 }
 
 

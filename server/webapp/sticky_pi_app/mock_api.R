@@ -305,44 +305,22 @@ api_get_project_series <- function(state, proj_id) {
 
 # if `ser_id` found in the series metadata table, overwrites table entry with a row specified by `data`
 # otherwise, adds to the series metadata table for the project specified by `ser_id`, a new row defined by argument `data`
-.api_update_project_series <- function(state, ser_id, data) {
-}
-
-.api_put_new_project_series <- function(state, data) {
-}
-
-# adds to the series metadata table for the project specified by `proj_id`, a new row defined by argument `data`
-# if no table found for the `proj_id`, returns NULL <- should at least be a null-initialized one from when the project was created
-# if provided `data` is missing values, returns NULL
-api_put_project_series <- function(state, proj_id, data) {
-    #proj_row <- data.table( series_id = numeric(0),
-    #                        device_id = character(0),
-    #                        # just POSIX time objects, value irrelevant
-    #                        start_datetime = .POSIXct(0)[0],
-    #                        end_datetime = .POSIXct(0)[0] )
-    if (is.null( api_get_project_series(state, proj_id) )) {
-        warning("can't add row if table to add to doesn't exist, aborting")
+.api_update_project_series <- function(state, ser_id, proj_id, data) {
+    SERIESS_TABLE <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
+    if (SERIESS_TABLE[series_id == ser_id, .N] == 0) {
+        warning(paste("no entry of series ID", ser_id, "found"))
         return(NULL)
     }
-    #SERIESS_TABLE <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
+    # only change fields/cols specified (in data)
+    upd_cols <- names(data)
+    # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][data, on="series_id", (upd_cols) := mget(paste0("i.", upd_cols))]
 
-    # check if `data` valid
-    mand_cnames <- c("device_id", "start_datetime", "end_datetime")
-    lapply(mand_cnames, function(cname) {
-                           if (!isTruthy( data[[cname]] )) {
-                               warning(paste("api_put_project_series():", cname, "empty in supplied params"))
-                               return(NULL)
-                           }
-    })
-    writeLines("current column types")
-    print(PROJECT_ENTRIES_TABLES_LIST[[proj_id]][, lapply(.SD, class)])
+    # return added row
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]
+}
 
-    # check if entry for this series already exists
-    if (PROJECT_ENTRIES_TABLES_LIST[[proj_id]][device_id == data[device_id] && start_datetime == data[start_datetime] && end_datetime == data[end_datetime], .N] > 0) {
-        warning("series with same dev ID, start and end as one to add already in table:")
-        print(PROJECT_ENTRIES_TABLES_LIST[[proj_id]][device_id == data[device_id] && start_datetime == data[start_datetime] && end_datetime == data[end_datetime]])
-    }
-
+.api_put_new_project_series <- function(state, proj_id, data) {
     # generate ser_id
     if ((PROJECT_ENTRIES_TABLES_LIST[[proj_id]][,.N]) != 0) {
         # ids all just increment by 1 each row
@@ -353,7 +331,7 @@ api_put_project_series <- function(state, proj_id, data) {
     }
     #data[["series_id"]] <- ser_id
     row <- as.data.table(data)
-    row[1, series_id := ..ser_id]
+    row[1, series_id := ser_id]
     row[1, start_datetime := fastPOSIXct(start_datetime)]
     row[1, end_datetime := fastPOSIXct(end_datetime)]
 
@@ -362,9 +340,54 @@ api_put_project_series <- function(state, proj_id, data) {
 
     PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- rbind(PROJECT_ENTRIES_TABLES_LIST[[proj_id]], row, fill=TRUE)
 
-    print(paste("new",row))
-    row
-    #PROJECT_ENTRIES_TABLES_LIST[[proj_id]][1, series_id == ..ser_id]
+    # return added row
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]
+}
+
+# adds to the series metadata table for the project specified by `proj_id`, a new row defined by argument `data`
+# if no table found for the `proj_id`, returns NULL <- should at least be a null-initialized one from when the project was created
+# if provided `data` is missing values, returns NULL
+api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
+    #proj_row <- data.table( series_id = numeric(0),
+    #                        device_id = character(0),
+    #                        # just POSIX time objects, value irrelevant
+    #                        start_datetime = .POSIXct(0)[0],
+    #                        end_datetime = .POSIXct(0)[0] )
+    if (is.null( api_get_project_series(state, proj_id) )) {
+        warning("can't add row if table to add to doesn't exist, aborting")
+        return(NULL)
+    }
+    SERIESS_TABLE <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
+
+    # check if `data` valid
+    mand_cnames <- c("device_id", "start_datetime", "end_datetime")
+    lapply(mand_cnames, function(cname) {
+                           if (!isTruthy( data[[cname]] )) {
+                               warning(paste("api_put_project_series():", cname, "empty in supplied params"))
+                               return(NULL)
+                           }
+    })
+    writeLines("current column types")
+    print(SERIESS_TABLE[, lapply(.SD, class)])
+
+    if (!is.null(ser_id)) {
+        return(.api_update_project_series(state, ser_id, proj_id, data))
+    } else {
+        matches <- SERIESS_TABLE[device_id == data[device_id] &&
+                          start_datetime == data[start_datetime] &&
+                          end_datetime == data[end_datetime]]
+        # check if entry for this series already exists
+        if (matches[, .N] == 1) {
+            warning("series with same dev ID, start and end as the one to add already in table:")
+            print(matches)
+                                        # series ID of found/matching entry
+            return(.api_update_project_series(state, matches[1, series_id], proj_id, data))
+        } else {
+            return(.api_put_new_project_series(state, proj_id, data))
+        }
+    }
+    ## return added/updated row
+    #PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]
 }
 
 # TODO: use all columns in existing table including user-created
