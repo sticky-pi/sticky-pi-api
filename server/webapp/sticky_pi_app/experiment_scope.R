@@ -293,35 +293,37 @@ render_experiment_table<- function(state){
 #}
 #
 #
-#experiment_table_alter_cell <- function(state, input){
-#  req(state$data_scope$selected_experiment != 0)
-#  req(input$experiment_table_cell_edit)
-#  # proxy = dataTableProxy('experiment_table')
-#  info = input$experiment_table_cell_edit
-#  i = info$row
-#  j = info$col
-#  v = info$value
-#  experiment_id <- state$data_scope$selected_experiment
-#
-#  dt <- get_comp_prop(state, experiment_table)
-#
-#  alteration <- list()
-#  alteration[[colnames(dt)[j]]] = v
-#  data = list(ID=dt[i,ID], alteration=alteration)
-#  out <- api_alter_experiment_table(state, 'alter_cell', experiment_id, data=data)
-#
-#  # force API requery if table was actually modified upstream
-#  if(!is.null(out))
-#    state$updaters$api_fetch_time <- Sys.time()
-#  else{
-#    warning('Wrong entry in experiment table cell? API failed to modify it.')
-#  }
-#
-#}
-#
+series_table_alter_cell <- function(state, input){
+  req(state$data_scope$selected_experiment != 0)
+  req(input$experiment_table_cell_edit)
+  # proxy = dataTableProxy('experiment_table')
+  edit_info = input$experiment_table_cell_edit
+  #i = edit_info$row
+  #j = edit_info$col
+  #v = edit_info$value
+  proj_id <- state$data_scope$selected_experiment
+
+  dt <- get_comp_prop(state, proj_table)
+  data <- api_get_project_series(state, proj_id)
+  # keep all fields except edited same
+  data[project_id == proj_id, edit_info$col := edit_info$value]
+
+  # pass API the state$exp_table colname of index j, PROJECT_ID of index i
+  out <- api_put_project_series(state, proj_id, data=data)
+  #out <- api_alter_proj_table(state, 'alter_cell', proj_id, data=data)
+
+  # force API requery if table was actually modified upstream
+  if(!is.null(out))
+    state$updaters$api_fetch_time <- Sys.time()
+  else{
+    warning('Wrong entry in proj table edit? API failed to modify it.')
+  }
+
+}
+
 
 project_series_table_add_row <- function(state, input){
-    proj_id <-state$data_scope$selected_experiment
+    proj_id <- state$data_scope$selected_experiment
     user_inputs <- reactiveValues()
     #                    dev_id = "",
     #                    date_range = NULL,

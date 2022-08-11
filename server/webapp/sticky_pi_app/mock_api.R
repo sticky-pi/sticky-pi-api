@@ -278,7 +278,8 @@ api_get_project_series <- function(state, proj_id) {
     PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
 }
 
-# adds to the series metadata table for the project specified by `proj_id`, a new row defined by argument `data`
+# if `proj_id` found in the series metadata table, overwrites table entry with a row specified by `data`
+# otherwise, adds to the series metadata table for the project specified by `proj_id`, a new row defined by argument `data`
 # if no table found for the `proj_id`, returns NULL <- should at least be a null-initialized one from when the project was created
 # if provided `data` is missing values, returns NULL
 api_put_project_series <- function(state, proj_id, data) {

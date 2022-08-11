@@ -62,7 +62,7 @@ server <- function(input, output, session) {
 
     observe({login_fun(state, input)})
 
-    #observeEvent(input$experiment_table_cell_edit, experiment_table_alter_cell(state, input))
+    observeEvent(input$experiment_table_cell_edit, series_table_alter_cell(state, input))
     observeEvent(input$add_project_series_table_row, project_series_table_add_row(state, input))
     #observeEvent(input$experiment_table_add_column, experiment_table_add_column(state, input))
     #
