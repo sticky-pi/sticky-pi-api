@@ -67,11 +67,15 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
     state$updaters$api_fetch_time
     #token <- state$user$auth_token
 
+    #warning("dates before:")
     #url = make_url(state, 'get_image_series', what_images)
     dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
+    #warning("dates after:")
 
     dt <- jsonlite::fromJSON(MOCK_IMAGES_DATA_PATH)
     images <- as.data.table(dt)
+    #warning("images(after):")
+    #print(head(images))
 
     if(nrow(images) == 0){
         return(data.table())
@@ -367,6 +371,10 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
                                return(NULL)
                            }
     })
+    #lapply(state$config$DATETIME_COLS_HEADERS, function(colhead) {
+    #    data[[colhead]] <<- fastPOSIXct(data[[colhead]])
+    #})
+    
     writeLines("current column types")
     print(SERIESS_TABLE[, lapply(.SD, class)])
 
@@ -379,7 +387,7 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
         # check if entry for this series already exists
         if (matches[, .N] == 1) {
             warning("series with same dev ID, start and end as the one to add already in table:")
-            print(matches)
+            #print(matches)
                                         # series ID of found/matching entry
             return(.api_update_project_series(state, matches[1, series_id], proj_id, data))
         } else {

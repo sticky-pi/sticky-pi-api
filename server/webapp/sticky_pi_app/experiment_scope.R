@@ -227,7 +227,7 @@ render_experiment_table<- function(state){
   DT::renderDataTable({
     # isn't \/ dt reactive?
     dt <- get_comp_prop(state, experiment_table)
-    print(dt)
+    #print(dt)
     # proj_id <- state$data_scope$selected_experiment
     # if(proj_id > 0){
     #   state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == proj_id, .HIDDEN_image_ids])
@@ -235,14 +235,16 @@ render_experiment_table<- function(state){
     # else{
     #   proj_id <- NULL
     # }
-    datetime_colinds = c( match("start_datetime", colnames(dt)), match("end_datetime", colnames(dt)))
+    #datetime_colinds = c( match("start_datetime", colnames(dt)), match("end_datetime", colnames(dt)))
+    #datetime_colinds = c("start_datetime", "end_datetime")
+    #disp_dt <- dt[, c(state$config$DATETIME_COLS_HEADERS) := lapply(.SD, strftime, DATETIME_FORMAT), .SDcols = state$config$DATETIME_COLS_HEADERS]
 
     datatable = DT::datatable(dt,
                               selection = list(mode='single'), #, selected = proj_id),
                               editable = TRUE,
                               colnames = fill_replace_colnames(colnames(dt), state$config$PROJECT_SERIES_HEADERS),
                               options = datatable_options(dt,
-                                                          excluded_names=c("series_id", "device_id")
+                                                          excluded_names=c("series_id")
                                                           )
                             )
                               #%>% formatDate( datetime_colinds,
@@ -306,11 +308,24 @@ series_table_alter_cell <- function(state, input){
   dt <- get_comp_prop(state, experiment_list_table)
   proj_seriess <- api_get_project_series(state, proj_id)
   #print(proj_seriess)
-  #edit_col <- colnames(proj_seriess)[[j]]
+
   # keep all fields except edited same
+  edit_col <- colnames(proj_seriess)[[edit_info$col]]
+  edited_val <- edit_info$value
+  warning("before edited val:")
+  print(paste(edited_val, class(edited_val), sep='    '))
+
   ser_id <- proj_seriess[edit_info$row, series_id]
-  data <- proj_seriess[series_id == ser_id, (edit_info$col) := (edit_info$value)]
   #data[, series_id := NULL]
+
+  # if a datetime col edited, force parsing
+  if (edit_col %in% state$config$DATETIME_COLS_HEADERS) {
+    edited_val <- fastPOSIXct(edited_val)
+  }
+  data <- proj_seriess[series_id == ser_id, (edit_info$col) := (edited_val)]
+  warning("after edited val:")
+  print(edited_val)
+
   warning("new values for series:")
   print(data)
   # pass API the state$exp_table colname of index j, PROJECT_ID of index i
