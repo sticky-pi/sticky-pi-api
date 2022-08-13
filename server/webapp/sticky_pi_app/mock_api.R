@@ -138,7 +138,7 @@ new_projects_table <- function(db_file_path="") {
     }
     else {
         data.table(
-                project_id = character(0),
+                project_id = numeric(0),
                 name = character(0),
                 description = character(0),
                 notes = character(0)
@@ -157,7 +157,7 @@ new_permissions_table <- function(db_file_path="") {
     }
     else {
         data.table(
-                project_id = character(0),
+                project_id = numeric(0),
                 username = character(0),
                 level = numeric(0)
      )}
@@ -224,34 +224,41 @@ api_get_projects <- function(state) {
 api_get_project_permissions <- function(state, proj_id) {
     if (proj_id == '%') {
         writeLines("\ngetting all projects' permissions")
-        writeLines(paste( "user =", state$config$STICKY_PI_TESTING_USER))
-        PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level > 0]
-    } else if (is_member(proj_id, state$config$STICKY_PI_TESTING_USER)) {
+        writeLines(paste( "user =", "wei"))
+        PERMISSIONS_TABLE[username == "wei" & level > 0]
+    } else if (is_member(proj_id, "wei")) {
         PERMISSIONS_TABLE[project_id == proj_id]
     }
 }
 
-.api_update_project <- function(state, proj_id, data) {
+.api_update_project <- function(proj_id, data) {
+    print(PROJECTS_RECORD)
     n_match_entries <- PROJECTS_RECORD[project_id == proj_id, .N]
+    warning(paste0("num matches = ", n_match_entries))
     if (n_match_entries == 1) {
         # only change fields/cols specified (in data)
         upd_cols <- names(data)
         # force updating permissions to special modal interface
-        upd_cols[, level := NULL]
+        if ("level" %in% upd_cols) {
+            upd_cols[["level"]] <- NULL
+        }
+        warning("upd_cols")
+        print(data)
+        warning("upd_cols of PROJECTS_RECORD")
+        print(PROJECTS_RECORD[, (upd_cols)])
         # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
-        PROJECTS_RECORD[data, on=project_id, (upd_cols) := mget(paste0("i.", upd_cols))]
+        PROJECTS_RECORD[data, on="project_id", (upd_cols) := mget(paste0("i.", upd_cols))]
     } else if (n_match_entries > 1) {
         warning(paste("multiple project metadata table entries found for project ID", proj_id))
     }
 }
 
-.api_put_new_project <- function(state, data) {
+.api_put_new_project <- function(data) {
     # 1_dec == 1_hexadec
-    proj_id <- as.character(1)
+    proj_id <- 1
     if ((PROJECTS_RECORD[,.N]) != 0) {
         # ids all just increment by 1 each row
-        proj_id <- PROJECTS_RECORD[, max(as.hexmode(project_id))] + 1
-        proj_id <- as.character(as.hexmode(proj_id))
+        proj_id <- PROJECTS_RECORD[, max(project_id)] + 1
     }
     # NOTE: below assignments use global <<-
     # when translate to Python, actually update orig SQL tables
@@ -265,7 +272,7 @@ api_get_project_permissions <- function(state, proj_id) {
     # creator must be an admin
     PERMISSIONS_TABLE <<- rbindlist(list( PERMISSIONS_TABLE,
                                       data.table(project_id = proj_id,
-                                                 username = state$config$STICKY_PI_TESTING_USER,
+                                                 username = "wei",
                                                  level = 3 )
                                       ))
     # init blank entries table
@@ -284,21 +291,41 @@ api_get_project_permissions <- function(state, proj_id) {
 #       2: read, write, admin(manage members, delete proj)
 # will be back/mid-end for webapp create new project interface
 # TODO: change to put_projects(state, <a list of "data"s>)
-api_put_project <- function(state, data, proj_id=NULL) {
-    if (!is.null(proj_id)) {
-        .api_update_project(state, proj_id, data)
-    } else {
-        .api_put_new_project(state, data)
-    }
-
-    PROJECTS_RECORD[project_id == proj_id]
+#api_put_project <- function(state, data, proj_id=NULL) {
+#    if (!is.null(proj_id)) {
+#        .api_update_project(state, proj_id, data)
+#    } else {
+#        .api_put_new_project(state, data)
+#    }
+#    PROJECTS_RECORD[project_id == proj_id]
+#}
+# datas_list a list of the data fields dictionaries each specifying a project metadata entry
+#api_put_projects <- function(state, datas_list) {
+api_put_projects <- function(datas_list) {
+    added_rows <- lapply(datas_list, function(data) {
+            #"project_id" %in% names(data) &&
+        if (!is.null(data[["project_id"]]) )
+        {
+            warning("project ID:")
+            print(data[["project_id"]])
+            .api_update_project(data[["project_id"]], data)
+        }
+        else {
+            .api_put_new_project(data)
+        }
+    })
+    # combine into a vec
+    #PROJECTS_RECORD[project_id == proj_id]
+    warning("rows added:")
+    print(added_rows)
+    added_rows
 }
 
 # returns the all-data/series metadata data.table for the project specified by the given proj_id
 # if none found, returns NULL
 api_get_project_series <- function(state, proj_id) {
-    if (typeof(proj_id) != "character") {
-        warning("`proj_id` must be a (hexadecimal character) string")
+    if (class(proj_id) != "numeric") {
+        warning("`proj_id` must be an integer")
     }
     if (!(proj_id %in% names(PROJECT_ENTRIES_TABLES_LIST))) {
         warning(paste( "Entries/data table not found for project", proj_id))
@@ -378,13 +405,18 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
     writeLines("current column types")
     print(SERIESS_TABLE[, lapply(.SD, class)])
 
+    writeLines("data")
+    print(data)
+    writeLines("data column types")
+    print(lapply(data, class))
+
     if (!is.null(ser_id)) {
         return(.api_update_project_series(state, ser_id, proj_id, data))
     } else {
-        matches <- SERIESS_TABLE[device_id == data[device_id] &&
-                          start_datetime == data[start_datetime] &&
-                          end_datetime == data[end_datetime]]
-        # check if entry for this series already exists
+        matches <- SERIESS_TABLE[device_id == as.character(data[["device_id"]]) &&
+                          start_datetime == data[["start_datetime"]] &&
+                          end_datetime == data[["end_datetime"]] ]
+            # check if entry for this series already exists
         if (matches[, .N] == 1) {
             warning("series with same dev ID, start and end as the one to add already in table:")
             #print(matches)
@@ -413,3 +445,22 @@ PERMISSIONS_TABLE <- new_permissions_table(MOCK_PERMISSIONS_TABLE_PATH)
 PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
 #print(PROJECT_ENTRIES_TABLES_LIST)
 #print(new_entries_table("www/1.json"))
+
+###### Tests ######
+TESTPROJ3_4_ENTRIES <- list(
+    list(
+        name = "Afer",
+        description = "Exploring predators of aphids in Kananaskis",
+        notes = "bring snowshoes from fall to early spring"
+    ),
+    list(
+        project_id = 2,
+        notes = "bring snowshoes from fall to early spring"
+    ),
+    list(
+        name = "Zambia local",
+        description = "ecological study for local community smallholder farm in Zambia",
+        notes = character(0)
+    )
+)
+api_put_projects(TESTPROJ3_4_ENTRIES)

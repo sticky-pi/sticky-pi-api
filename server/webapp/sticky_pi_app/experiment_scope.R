@@ -158,7 +158,7 @@ render_experiment_list_table<- function(state){
 }
 show_create_project_form <- function(state, input, failed=FALSE) {
     # create/submit button in project_modal_ui() triggers experiment_list_table_add_row()
-    showModal(project_modal_ui(state, failed))
+    showModal(create_project_modal_ui(state, failed))
 }
 experiment_list_table_add_row <- function(state, input){
     writeLines("\nuser submitted create project form")
@@ -175,10 +175,10 @@ experiment_list_table_add_row <- function(state, input){
         description <- input$new_project_description
         notes <- input$new_project_notes
 
-        data = list(name=name, description=description, notes=notes)
+        data = list(list(name=name, description=description, notes=notes))
         writeLines("\nUser wants to create a project:")
         print(as.data.table(data))
-        api_put_project(state, data)
+        api_put_projects(state, data)
         state$updaters$api_fetch_time <- Sys.time()
 
         removeModal()
