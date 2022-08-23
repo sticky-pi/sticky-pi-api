@@ -15,10 +15,8 @@ export RSHINY_UPSTREAM_PROTOCOL=https
 #export STICKY_PI_TESTING_PASSWORD=**************
 #source /tmp/.spi_webapp.secret.env
 
-#export STICKY_PI_TESTING_USER="wei"
-#export STICKY_PI_TESTING_PASSWORD="cbsfbyuekiw678sdhw"
-source /home/mxie/StickyPi/api_login.env
-echo "$STICKY_PI_TESTING_USER"
+source ../.devel.env
+export STICKY_PI_TESTING_USER="$STICKY_PI_TESTING_USER"
 echo "$STICKY_PI_TESTING_PASSWORD"
 
 export STICKY_PI_TESTING_RSHINY_AUTOLOGIN=TRUE

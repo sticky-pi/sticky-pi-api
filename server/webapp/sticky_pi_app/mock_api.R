@@ -138,7 +138,7 @@ new_projects_table <- function(db_file_path="") {
     }
     else {
         data.table(
-                project_id = numeric(0),
+                id = numeric(0),
                 name = character(0),
                 description = character(0),
                 notes = character(0)
@@ -217,23 +217,26 @@ is_member <- function(proj_id, usrnm) {
 # return meta-info of all the projects the user has read access to
 api_get_projects <- function(state) {
     accessible_projs_ids <- PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level >= 1, project_id]
-    PROJECTS_RECORD[project_id %in% accessible_projs_ids]
+    print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+    print(state$config$STICKY_PI_TESTING_USER )
+    print(PERMISSIONS_TABLE)
+    PROJECTS_RECORD[id %in% accessible_projs_ids]
 }
 
 # get corresponding entries(sub-data.table) in perm. table
 api_get_project_permissions <- function(state, proj_id) {
     if (proj_id == '%') {
         writeLines("\ngetting all projects' permissions")
-        writeLines(paste( "user =", "wei"))
-        PERMISSIONS_TABLE[username == "wei" & level > 0]
-    } else if (is_member(proj_id, "wei")) {
+        writeLines(paste( "user =", "testing"))
+        PERMISSIONS_TABLE[username == "testing" & level > 0]
+    } else if (is_member(proj_id, "testing")) {
         PERMISSIONS_TABLE[project_id == proj_id]
     }
 }
 
 .api_update_project <- function(proj_id, data) {
     print(PROJECTS_RECORD)
-    n_match_entries <- PROJECTS_RECORD[project_id == proj_id, .N]
+    n_match_entries <- PROJECTS_RECORD[id == proj_id, .N]
     warning(paste0("num matches = ", n_match_entries))
     if (n_match_entries == 1) {
         # only change fields/cols specified (in data)
@@ -247,7 +250,12 @@ api_get_project_permissions <- function(state, proj_id) {
         warning("upd_cols of PROJECTS_RECORD")
         print(PROJECTS_RECORD[, (upd_cols)])
         # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
-        PROJECTS_RECORD[data, on="project_id", (upd_cols) := mget(paste0("i.", upd_cols))]
+        # fixme id on projects_dt and project_id on premission_dt
+        out = PROJECTS_RECORD
+        out[, "project_id" := id]
+        out <-  out[data, on="project_id", (upd_cols) := mget(paste0("i.", upd_cols))]
+        out[, project_id := NULL]
+        out
     } else if (n_match_entries > 1) {
         warning(paste("multiple project metadata table entries found for project ID", proj_id))
     }
@@ -258,11 +266,11 @@ api_get_project_permissions <- function(state, proj_id) {
     proj_id <- 1
     if ((PROJECTS_RECORD[,.N]) != 0) {
         # ids all just increment by 1 each row
-        proj_id <- PROJECTS_RECORD[, max(project_id)] + 1
+        proj_id <- PROJECTS_RECORD[, max(id)] + 1
     }
     # NOTE: below assignments use global <<-
     # when translate to Python, actually update orig SQL tables
-    proj_row <- data.table(project_id = proj_id,
+    proj_row <- data.table(id = proj_id,
                            name = data[["name"]],
                            description = data[["description"]],
                            notes = data[["notes"]]
@@ -271,8 +279,8 @@ api_get_project_permissions <- function(state, proj_id) {
 
     # creator must be an admin
     PERMISSIONS_TABLE <<- rbindlist(list( PERMISSIONS_TABLE,
-                                      data.table(project_id = proj_id,
-                                                 username = "wei",
+                                      data.table(id = proj_id,
+                                                 username = "testing",
                                                  level = 3 )
                                       ))
     # init blank entries table
@@ -304,11 +312,11 @@ api_get_project_permissions <- function(state, proj_id) {
 api_put_projects <- function(datas_list) {
     added_rows <- lapply(datas_list, function(data) {
             #"project_id" %in% names(data) &&
-        if (!is.null(data[["project_id"]]) )
+        if (!is.null(data[["id"]]) )
         {
             warning("project ID:")
-            print(data[["project_id"]])
-            .api_update_project(data[["project_id"]], data)
+            print(data[["id"]])
+            .api_update_project(data[["id"]], data)
         }
         else {
             .api_put_new_project(data)
@@ -324,8 +332,9 @@ api_put_projects <- function(datas_list) {
 # returns the all-data/series metadata data.table for the project specified by the given proj_id
 # if none found, returns NULL
 api_get_project_series <- function(state, proj_id) {
-    if (class(proj_id) != "numeric") {
+    if (! class(proj_id) %in% c("numeric", "integer")) {
         warning("`proj_id` must be an integer")
+        warning(class(proj_id))
     }
     if (!(proj_id %in% names(PROJECT_ENTRIES_TABLES_LIST))) {
         warning(paste( "Entries/data table not found for project", proj_id))
@@ -454,7 +463,6 @@ TESTPROJ3_4_ENTRIES <- list(
         notes = "bring snowshoes from fall to early spring"
     ),
     list(
-        project_id = 2,
         notes = "bring snowshoes from fall to early spring"
     ),
     list(
@@ -463,4 +471,4 @@ TESTPROJ3_4_ENTRIES <- list(
         notes = character(0)
     )
 )
-api_put_projects(TESTPROJ3_4_ENTRIES)
+# api_put_projects(TESTPROJ3_4_ENTRIES)

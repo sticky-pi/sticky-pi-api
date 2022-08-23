@@ -86,11 +86,11 @@ server <- function(input, output, session) {
         writeLines("selected:")
         print(dt[sel])
 
-        sel <- dt[sel, project_id]
+        sel <- dt[sel, id]
       }
       #state$data_scope$selected_experiment_persist  <- isolate(sel)
       print(sel)
-      state$data_scope$selected_experiment <- sel
+      state$data_scope$selected_experiment <<- sel
       
     })
 

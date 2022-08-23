@@ -23,21 +23,36 @@ api_verify_passwd <- function(state, u, p){
 api_get_users <- function(state){
   state$updaters$api_fetch_time
   token <- state$user$auth_token
-  print(token)
   url = make_url(state, 'get_users')
-  payload = jsonlite::toJSON(list(list(username="%")))
+#  payload = jsonlite::toJSON(list(list(username="%")))
   payload = "[{}]"
-  print(url)
-  print(payload)
-  print(payload)
   o <- POST(url, body=payload,
             authenticate(token, "", type = "basic"), content_type("application/json"))
-  print(o)
   ct <- content(o, as='text', encoding="UTF-8")
-  print(ct)
   dt <- jsonlite::fromJSON(ct)
   users <- as.data.table(dt)
 }
+
+
+api_get_projects <- function(state){
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'get_projects')
+  payload = "[{}]"
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  users <- as.data.table(dt)
+}
+
+
+
+
+
+
+
+
 api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_annotations="data"){
 
   state$updaters$api_fetch_time
