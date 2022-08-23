@@ -1,4 +1,4 @@
-is_admin <- function(proj_id, usrnm) {
+    is_admin <- function(proj_id, usrnm) {
     PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] >= 3
 }
 is_member <- function(proj_id, usrnm) { 
