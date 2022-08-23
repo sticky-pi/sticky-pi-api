@@ -10,7 +10,6 @@ class ProjectPermissions(BaseCustomisations):
     parent_project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), nullable=False)
     parent_project = relationship("Projects", back_populates="project_permissions")
 
-
     parent_user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
     parent_user = relationship("Users", back_populates="project_permissions")
 

@@ -377,7 +377,7 @@ class BaseAPISpec(ABC):
         :param info: A dictionary acting as a filter, using an SQL like-type match.
             For instance ``{'name': '%'}`` return all projects.
         :param client_info: optional information about the client/user contains key ``'username'``
-        :return: A list of projects as represented in the underlying database, as one dictionary
+        :return: a list representing the deleted projects.
         """
         pass
 
@@ -406,8 +406,58 @@ class BaseAPISpec(ABC):
         """
         pass
 
+    @abstractmethod
+    def put_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """
+        Add series to a project. series are defined st least with ``'device'``, ``'start_datetime'``, ``'end_datetime'``.
+        In addition, each series may contain values for project series columns, which are nullable.
+        Series can also be updated if the explicit ``'id'`` is provided.
 
-# @abstractmethod
+        :param info: A list of dictionary each dictionary has, at least, the fields  {``'project_id'``, ``'device'``,
+        ``'start_datetime'``, ``'end_datetime'``}
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: A list of dictionaries describing the series added, as represented in the underlying database.
+        """
+        pass
+
+    @abstractmethod
+    def delete_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[
+        Dict[str, Any]]:
+        """
+        Delete project series by ID
+
+        :param info: A list of dictionary each dictionary has the fields  {``'project_id'``, ``'id'``}
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: a list representing the deleted series.
+        """
+        pass
+
+    @abstractmethod
+    def put_project_columns(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[
+        Dict[str, Any]]:
+        """
+        Add or update a column to a project series table. If ``'old_column_name'`` is defined, then this call will rename the old column.
+         Requires write permission for this project
+
+        :param info: A list of dictionary each dictionary has the fields  {``'project_id'``, ``'column_name'``, ``'column_SQL_type'``, ``'old_column_name'``}
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: A list of columns that were added {`'column_name'``, ``'column_SQL_type'``}
+        """
+        pass
+
+    @abstractmethod
+    def delete_project_columns(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[
+        Dict[str, Any]]:
+        """
+        Delete a column  from a project series. Requires admin rights for this project
+
+        :param info: A list of dictionary each dictionary has the fields   {``'project_id'``, ``'column_name'``}
+        :param client_info: optional information about the client/user contains key ``'username'``
+        :return: the name of the columns that were indeed deleted
+        """
+        pass
+
+    # @abstractmethod
     # def put_project_series_metadata(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     #     """
     #     Add columns to project series
@@ -419,27 +469,7 @@ class BaseAPISpec(ABC):
     #     """
     #     pass
     #
-    @abstractmethod
-    def get_project_series(self, info: List[Dict[str, str]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        """
-        Get a list of series for specific monitoring projects.
 
-        :param info: A dictionary to query a project. same format as get_projects
-        :param client_info: optional information about the client/user contains key ``'username'``
-        :return: A list of projects as represented in the underlying database, as one dictionary
-        """
-        pass
-
-    @abstractmethod
-    def put_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        """
-        Add entries to a projects in the form of series. Each series must contain a ``'device'``, a ``'start_datetime'`` and an ``'end_datetime'``.
-
-        :param info: A list of dictionary each dictionary has the fields {``'device'``, ``'start_datetime'``, ``'end_datetime'``}
-        :param client_info: optional information about the client/user contains key ``'username'``
-        :return: A list of dictionaries describing the rows that were created
-        """
-        pass
 
     # @abstractmethod
     # def put_project_series_columns(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
@@ -469,6 +499,8 @@ class BaseAPI(BaseAPISpec, ABC):
     @abstractmethod
     def _create_db_engine(self, *args, **kwargs) -> sqlalchemy.engine.Engine:
         pass
+
+
 
     @abstractmethod
     def _engine_specific_hooks(self):
@@ -836,30 +868,6 @@ class BaseAPI(BaseAPISpec, ABC):
             session.close()
         return self._manual_output_handler(out)
 
-    # def get_uid_annotations_series(self, info: MetadataType, what: str = 'metadata',
-    #                                client_info: Dict[str, Any] = None):
-    #     session = sessionmaker(bind=self._db_engine)()
-    #     try:
-    #         out = []
-    #         info = copy.deepcopy(info)
-    #         for i in info:
-    #             q = session.query(UIDAnnotations).filter(UIDAnnotations.parent_image.has(and_(
-    #                 Images.datetime >= i['start_datetime'],
-    #                 Images.datetime < i['end_datetime'],
-    #                 Images.device.like(i['device']))))
-    #             logging.warning(q)
-    #             if q.count() == 0:
-    #                 logging.warning('No data for series %s' % str(i))
-    #
-    #             for annots in q:
-    #                 annot_dict = annots.to_dict()
-    #                 if what == 'metadata':
-    #                     del annot_dict['json']
-    #                 out.append(annot_dict)
-    #         return out
-    #     finally:
-    #         session.close()
-
     def get_tiled_tuboid_series(self, info: InfoType, what: str = 'metadata',
                                 client_info: Dict[str, Any] = None) -> MetadataType:
         session = sessionmaker(bind=self._db_engine)()
@@ -963,22 +971,7 @@ class BaseAPI(BaseAPISpec, ABC):
         finally:
             session.close()
 
-    def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-        info = copy.deepcopy(info)
-        session = sessionmaker(bind=self._db_engine)()
-        try:
-            out = []
-            for data in info:
-                api_user_id = client_info['id'] if client_info is not None else None
-                user = Users(**data, api_user_id=api_user_id)
-                out.append(user.to_dict())
-                session.add(user)
-                session.commit()
-            out = self.get_users([{'username': o['username'] for o in out}])
 
-            return out
-        finally:
-            session.close()
 
     def get_projects(self, info: List[Dict[str, str]] = None,
                      client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
@@ -1022,13 +1015,14 @@ class BaseAPI(BaseAPISpec, ABC):
                     project_dict = project.to_dict()
                     command = f"DROP TABLE {project.series_table_name()}"
                     session.execute(command)
-                    session. delete(project)
+                    session.delete(project)
                     session.commit()
                     out.append(project_dict)
 
             return out
         finally:
             session.close()
+
     def put_projects(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         info = copy.deepcopy(info)
         session = sessionmaker(bind=self._db_engine)()
@@ -1136,7 +1130,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 else:
                     api_user_id = client_info['id']
                     q = session.query(Projects).join(Projects.project_permissions).filter( Projects.id == inf["project_id"]). \
-                        filter(and_(ProjectPermissions.parent_user_id == api_user_id, ProjectPermissions.level > 1))
+                        filter(and_(ProjectPermissions.parent_user_id == api_user_id, ProjectPermissions.level > 0))
                 projects = [p for p in q.all()]
 
                 assert len(projects) == 1
@@ -1150,6 +1144,7 @@ class BaseAPI(BaseAPISpec, ABC):
             return out
         finally:
             session.close()
+
     def put_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         out = []
         session = sessionmaker(bind=self._db_engine)()
@@ -1168,16 +1163,24 @@ class BaseAPI(BaseAPISpec, ABC):
                 assert len(projects) == 1
                 table_name = projects[0].series_table_name()
                 colnames, values = [], []
+                id = None
                 for k,v in inf.items():
                     if k == "project_id":
                         continue
+                    if k == "id":
+                        id = v
+                        continue
                     colnames.append(k)
                     if isinstance(v, datetime.datetime):
-                        # v = datetime_to_string(v)
                         v = datetime.datetime.strftime(v, '%Y-%m-%d %H:%M:%S')
                     values.append(v)
 
-                command = f" INSERT INTO {table_name} ({', '.join(colnames)}) VALUES {tuple(values)}"
+                if id:
+                    set_statement = ", ".join([f'{c}  = "{v}"' for c, v in zip(colnames, values)])
+                    command = f" UPDATE  {table_name} SET {set_statement} WHERE id = {id}"
+                else:
+                    command = f" INSERT INTO {table_name} ({', '.join(colnames)}) VALUES {tuple(values)}"
+
                 session.execute(command)
                 session.commit()
                 conditions = " AND ". join([f"{c} = '{v}'"for c, v in  zip(colnames, values)])
@@ -1187,13 +1190,138 @@ class BaseAPI(BaseAPISpec, ABC):
                 for r in q:
                     d = {k: v for k, v in zip(keys, r)}
                     out.append(d)
+            return out
+
+        finally:
+            session.close()
+
+
+    def delete_project_series(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[
+        Dict[str, Any]]:
+
+        out = []
+        session = sessionmaker(bind=self._db_engine)()
+        assert info is not None
+        try:
+            for inf in info:
+                assert "project_id" in inf
+                if client_info is None or client_info['is_admin']:
+                    q = session.query(Projects).filter(Projects.id == inf["project_id"])
+                else:
+                    api_user_id = client_info['id']
+                    q = session.query(Projects).join(Projects.project_permissions).filter( Projects.id == inf["project_id"]). \
+                        filter(and_(ProjectPermissions.parent_user_id == api_user_id, ProjectPermissions.level > 2))
+                projects = [p for p in q.all()]
+
+                assert len(projects) == 1
+                table_name = projects[0].series_table_name()
+                id = inf["id"]
+                out.append(self.get_project_series([inf], client_info)[0])
+                command = f" DELETE FROM  {table_name}  WHERE id = {id}"
+                session.execute(command)
+
+            session.commit()
+            return out
+
+        finally:
+            session.close()
+
+    def put_project_columns(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> \
+            List[Dict[str, Any]]:
+
+        out = []
+        session = sessionmaker(bind=self._db_engine)()
+        assert info is not None
+        try:
+            for inf in info:
+                assert "project_id" in inf
+                assert "column_name" in inf
+                assert "column_SQL_type" in inf or "old_column_name" in inf
+                if client_info is None or client_info['is_admin']:
+                    q = session.query(Projects).filter(Projects.id == inf["project_id"])
+                else:
+                    api_user_id = client_info['id']
+                    q = session.query(Projects).join(Projects.project_permissions).filter(Projects.id == inf["project_id"]). \
+                        filter(and_(ProjectPermissions.parent_user_id == api_user_id, ProjectPermissions.level > 1))
+                projects = [p for p in q.all()]
+                assert len(projects) == 1
+
+                table_name = projects[0].series_table_name()
+
+                colname = inf["column_name"]
+                if "old_column_name" in inf:
+                    old_colname = inf["old_column_name"]
+                    command = f"ALTER TABLE {table_name} RENAME COLUMN {old_colname} TO {colname}  "
+                    coltype  = None
+                else:
+                    coltype = inf["column_SQL_type"]
+                    command = f"ALTER TABLE {table_name} ADD {colname} {coltype}"
+                session.execute(command)
+                # o = session.execute(f"PRAGMA table_info({table_name})")
+                # for r in o:
+                #     print(r)
+
+                out.append({"column_name": colname,
+                            "column_SQL_type": coltype
+                })
+
+            session.commit()
+
 
             return out
 
-                # for project in q.all():
-                    # project_dict = project.to_dict()
-                    # project_tables.add(project_dict.series_table_name())
+        finally:
+            session.close()
 
+
+    def delete_project_columns(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[
+        Dict[str, Any]]:
+        out = []
+        session = sessionmaker(bind=self._db_engine)()
+        assert info is not None
+        try:
+            for inf in info:
+                assert "project_id" in inf
+                assert "column_name" in inf
+                if client_info is None or client_info['is_admin']:
+                    q = session.query(Projects).filter(Projects.id == inf["project_id"])
+                else:
+                    api_user_id = client_info['id']
+                    q = session.query(Projects).join(Projects.project_permissions).filter(
+                        Projects.id == inf["project_id"]). \
+                        filter(and_(ProjectPermissions.parent_user_id == api_user_id, ProjectPermissions.level > 2))
+                projects = [p for p in q.all()]
+                assert len(projects) == 1
+
+                table_name = projects[0].series_table_name()
+
+                command = f"ALTER TABLE {table_name} DROP COLUMN {inf['column_name']}"
+                session.execute(command)
+
+                out.append({"column_name": inf["column_name"],
+                            })
+
+            session.commit()
+
+            return out
+
+        finally:
+            session.close()
+
+    def put_users(self, info: List[Dict[str, Any]], client_info: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        info = copy.deepcopy(info)
+        session = sessionmaker(bind=self._db_engine)()
+        try:
+            out = []
+            for data in info:
+                api_user_id = client_info['id'] if client_info is not None else None
+                user = Users(**data, api_user_id=api_user_id)
+                out.append(user.to_dict())
+                session.add(user)
+                session.commit()
+            out = self.get_users([{'username': o['username'] for o in out}])
+
+            return out
         finally:
             session.close()
 
