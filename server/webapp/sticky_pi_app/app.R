@@ -71,27 +71,22 @@ server <- function(input, output, session) {
 
     observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
       writeLines("\nin exp-list-table-row-selected callback")
-      sel <- input$experiment_list_table_row_last_clicked
-      writeLines("last row clicked:")
-      print(input$experiment_list_table_row_last_clicked)
-
+      sel <- unique(input$experiment_list_table_rows_selected)
       #persist_sel <- input$experiment_list_table_rows_selected
-      if(is.null(sel))
+      if(is.null(sel)){
+
         sel <- 0
+          }
       else {
         sel <- as.numeric(sel)
         # we want the ID of the selected experiment, not the row!
         dt <- get_comp_prop(state, experiment_list_table)
-
-        writeLines("selected:")
-        print(dt[sel])
-
         sel <- dt[sel, id]
       }
-      #state$data_scope$selected_experiment_persist  <- isolate(sel)
-      print(sel)
       state$data_scope$selected_experiment <<- sel
-      
+      warning("selected_experiment")
+      warning(state$data_scope$selected_experiment)
+
     })
 
     observeEvent(input$thumbnail_mini_to_fetch, on_thumbnail_mini_to_fetch(state, input))

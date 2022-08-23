@@ -62,7 +62,7 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
     images
 }
 
-api_get_images <- function(state, dates, what_images="thumbnail-mini", what_annotations="metadata"){
+api_get_images <- function(state, dates, dev = "%", what_images="thumbnail-mini", what_annotations="metadata"){
     # force reactive vals refresh
     state$updaters$api_fetch_time
     #token <- state$user$auth_token
@@ -73,7 +73,14 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
     #warning("dates after:")
 
     dt <- jsonlite::fromJSON(MOCK_IMAGES_DATA_PATH)
+
     images <- as.data.table(dt)
+
+   if(dev != "%"){
+       print(images)
+       images <- images[device == dev]
+   }
+
     #warning("images(after):")
     #print(head(images))
 
@@ -114,16 +121,16 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
     images
 }
 
-# returns a list of the image IDs in the current selected projet/experiment
-api_get_images_id_for_experiment <- function(state, selected_proj_id, what_images="thumbnail-mini", what_annotations="metadata") {
-    # look up all datetime stretches in series table
-    entry <- PROJECT_ENTRIES_TABLES_LIST[[selected_proj_id]]
-    # feed dates into api_get_images()
-    project_dates <- c(entry$start_datetime, entry$end_datetime)
-    # TODO: check correct device
-    images <- api_get_images(state, project_dates)
-    images
-}
+# # returns a list of the image IDs in the current selected projet/experiment
+# api_get_images_id_for_experiment <- function(state, selected_proj_id, what_images="thumbnail-mini", what_annotations="metadata") {
+#     # look up all datetime stretches in series table
+#     entry <- PROJECT_ENTRIES_TABLES_LIST[[selected_proj_id]]
+#     # feed dates into api_get_images()
+#     project_dates <- c(entry$start_datetime, entry$end_datetime)
+#     # TODO: check correct device
+#     images <- api_get_images(state, project_dates)
+#     images
+# }
 
 ########## Projects Management ###########
 
@@ -176,7 +183,7 @@ new_entries_table <- function(db_file_path="") {
     }
     else {
         data.table(
-                series_id = character(0),
+                id = character(0),
                 device_id = character(0),
                 # just POSIX time objects, value irrelevant
                 start_datetime = .POSIXct(0)[0],
@@ -217,9 +224,7 @@ is_member <- function(proj_id, usrnm) {
 # return meta-info of all the projects the user has read access to
 api_get_projects <- function(state) {
     accessible_projs_ids <- PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level >= 1, project_id]
-    print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-    print(state$config$STICKY_PI_TESTING_USER )
-    print(PERMISSIONS_TABLE)
+
     PROJECTS_RECORD[id %in% accessible_projs_ids]
 }
 
@@ -347,14 +352,14 @@ api_get_project_series <- function(state, proj_id) {
 # otherwise, adds to the series metadata table for the project specified by `ser_id`, a new row defined by argument `data`
 .api_update_project_series <- function(state, ser_id, proj_id, data) {
     SERIESS_TABLE <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
-    if (SERIESS_TABLE[series_id == ser_id, .N] == 0) {
+    if (SERIESS_TABLE[id == ser_id, .N] == 0) {
         warning(paste("no entry of series ID", ser_id, "found"))
         return(NULL)
     }
     # only change fields/cols specified (in data)
     upd_cols <- names(data)
     # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
-    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][data, on="series_id", (upd_cols) := mget(paste0("i.", upd_cols))]
+        PROJECT_ENTRIES_TABLES_LIST[[proj_id]][data, on="series_id", (upd_cols) := mget(paste0("i.", upd_cols))]
 
     # return added row
     PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]

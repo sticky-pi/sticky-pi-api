@@ -1,1 +1,4 @@
-[{"series_id":"57fb031a","device_id":"57fb031c","start_datetime":"2016-05-30 09:45:00","end_datetime":"2016-07-10 09:45:00","orientation_angle":203.7065},{"series_id":"57fb131b","device_id":"57fb131c","start_datetime":"2017-02-10 17:30:00","end_datetime":"2020-02-10 17:30:00","orientation_angle":439.4434},{"series_id":"57fb032c","device_id":"57fb032d","start_datetime":"2008-06-20 14:45:00","end_datetime":"2009-06-20 14:45:00","orientation_angle":713.2804},{"series_id":"57fb031d","device_id":"57fb031c","start_datetime":"2022-01-21 11:47:00","end_datetime":"2022-03-28 11:47:00","orientation_angle":907.6277}]
+[{"id":1,"device":"28abf9ab","start_datetime":"2016-05-30 09:45:00","end_datetime":"2023-07-10 09:45:00","orientation_angle":203.7065},
+ {"id":2,"device":"74e9715b","start_datetime":"2017-02-10 17:30:00","end_datetime":"2023-02-10 17:30:00","orientation_angle":439.4434},
+ {"id":3,"device":"b9bba862","start_datetime":"2008-06-20 14:45:00","end_datetime":"2023-06-20 14:45:00","orientation_angle":713.2804},
+ {"id":4,"device":"f090a1c2","start_datetime":"2022-01-21 11:47:00","end_datetime":"2023-03-28 11:47:00","orientation_angle":907.6277}]

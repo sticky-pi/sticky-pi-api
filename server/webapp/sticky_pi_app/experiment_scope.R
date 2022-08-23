@@ -51,16 +51,34 @@ handle_new_experiment_metavariable <- function(dt,  name, code){
 
 images_in_scope <- function(state, input){
   req(state$data_scope$selected_experiment)
+
   sel <- state$data_scope$selected_experiment
+
+  warning("TODEL")
+  warning(sel)
   if(sel == 0){
+    warning("SEL==0")
     req(input$data_scope_dates)
     dates <- as.Date(input$data_scope_dates)
     images <- api_get_images(state, dates)
+    print(images)
   }
-  else{
-    #fixme
-    images <- api_get_images_id_for_experiment(state, sel)
-    
+else{
+    # projs_table <- api_get_projects(state)
+    project_series <- api_get_project_series(state, sel)
+    images <- lapply(project_series$id, function(i){
+      row <- project_series[id==i]
+      api_get_images(state, c(row$start_datetime, row$end_datetime), dev = row$device )
+    })
+
+    images <- rbindlist(images)
+    print("TODEL images")
+    print(images)
+    old_n <- nrow(images)
+    images <- unique(images)
+
+    if(old_n != nrow(images))
+      warning("Mismatch between total number of images in scope and sum of all series images. Likely a duplicate")
   }
   images
 }
@@ -94,6 +112,9 @@ experiment_list_table <- function(state, input){
   # API already automatically checks visibility of rows
   projs_table <- api_get_projects(state)
   req(projs_table)
+  # we force recomputing the images in scope. we can use that to assess the number of image belonging to each series!
+  images <- get_comp_prop(state, images_in_scope)
+  req(images)
 
   #writeLines("\nexperiment_list_table():")
   #print(projs_table)
@@ -111,7 +132,10 @@ experiment_list_table <- function(state, input){
   # and [get data.table to use variable for name of **new** column]
   #fixme
   # projs_table[curr_user_perms, on = "project_id", level := i.level]
-
+  # if(nrow(images) > 0)
+  #   print(projs_table)
+  #   projs_table[, .COMP_N_MATCHES := nrow(images[device==device && datetime >= start && datetime < end]),
+  #               by=id]
   projs_table
 #
 #  im_id = lapply(dt[,EXPERIMENT_ID],
@@ -126,7 +150,7 @@ experiment_list_table <- function(state, input){
 }
 #
 render_experiment_list_table<- function(state){
-  print("rendering")
+
   DT::renderDataTable({
 
     dt <- get_comp_prop(state, experiment_list_table)[, !"level"]
@@ -140,7 +164,6 @@ render_experiment_list_table<- function(state){
 
     exp_id <- state$data_scope$selected_experiment
     row <- which(dt[ ,id == exp_id])
-
     # if(length(row) == 1 && row > 0){
     #  state$data_scope$selected_image_ids <- unlist(dt[id == exp_id, .HIDDEN_image_ids])
     # }

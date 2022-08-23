@@ -15,16 +15,26 @@ side_panel <- function(state){renderUI({
         data <- get_comp_prop(state, "images_in_scope") # fixme, canno tcall by deparsing...?
         scope <- h3(id='scope_title', sprintf(" %i", nrow(data)), br()," images in scope")
       # scope <- h2("images in scope")
-      sidebarMenu(
-        scope,
-        tags$hr(),
-        menuItem("Experiments", tabName = "experiments", icon = icon("flask")),
-        menuItem("Images", tabName = "images", icon = icon("calendar-alt")),
-        menuItem("Tuboids", tabName = "tuboids", icon = icon("map")),
-        menuItem("Data", tabName = "data", icon = icon("table")),
-        tags$hr(),
-        downloadButton("download_data_handler", "Download data"),
+        print("TODEL data")
+        print(data)
+      sidebarMenu(scope,
+                  tags$hr(),
+                  menuItem("Projects", tabName = "project", icon = icon("flask")),
+                  menuItem("Images", tabName = "images", icon = icon("calendar-alt")),
+                  menuItem("Tuboids", tabName = "tuboids", icon = icon("map")),
+                  menuItem("Data", tabName = "data", icon = icon("table")),
+                  tags$hr()
       )
+      # sidebarMenu(
+      #   scope,
+      #   tags$hr(),
+      #   menuItem("Experiments", tabName = "experiments", icon = icon("flask")),
+      #   menuItem("Images", tabName = "images", icon = icon("calendar-alt")),
+      #   menuItem("Tuboids", tabName = "tuboids", icon = icon("map")),
+      #   menuItem("Data", tabName = "data", icon = icon("table")),
+      #   tags$hr(),
+      #   downloadButton("download_data_handler", "Download data"),
+      # )
     }
   })}
 
@@ -48,7 +58,10 @@ make_ui <- function(){
 
 
 date_selector <- function(state){
-    dates <-  state$data_scope$selected_dates
+
+  req(state$data_scope$selected_experiment)
+  print("updating date selector")
+  dates <-  state$data_scope$selected_dates
     o <- dateRangeInput("data_scope_dates", "Date range", start = dates[1], end = dates[2], min = NULL,
                        max = today()+1, format = "yyyy-mm-dd", startview = "month", weekstart = 0,
                        language = "en", separator = " to ", width = NULL)
@@ -204,14 +217,14 @@ renderUI({
   
     if (state$user$is_logged_in == TRUE ) {
       o <- tabItems(
-        tabItem(tabName ="experiments", class = "active",
+        tabItem(tabName ="project", class = "active",
             fluidRow(
                 column(2, actionButton('on_refresh_scope', icon('refresh'))),
                 #column(5, uiOutput('available_annotators')),
                 column(10, date_selector(state))),
-            fluidRow(experiment_table_ui(state)),
-            fluidRow(experiment_list_table_ui(state)),
-                ),
+                fluidRow(experiment_list_table_ui(state)),
+                fluidRow(experiment_table_ui(state)),
+        ),
         tabItem(tabName ="images",
                 fluidRow(
                   # box(width = 12,uiOutput('time_plot')),

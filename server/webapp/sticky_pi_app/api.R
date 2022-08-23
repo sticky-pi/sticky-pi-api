@@ -104,7 +104,7 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
   images <- o
 }
 
-api_get_images <- function(state, dates, what_images="thumbnail-mini", what_annotations="metadata"){
+api_get_images <- function(state, dates, dev="%", what_images="thumbnail-mini", what_annotations="metadata"){
 
   state$updaters$api_fetch_time
   token <- state$user$auth_token
@@ -116,7 +116,7 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
 
   dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
 
-  post <- jsonlite::toJSON(list(list(device="%",
+  post <- jsonlite::toJSON(list(list(device=device,
                                      start_datetime=dates[1],
                                      end_datetime=dates[2] )),
                            auto_unbox = TRUE)
