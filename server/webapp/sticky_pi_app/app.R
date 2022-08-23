@@ -70,7 +70,6 @@ server <- function(input, output, session) {
     observeEvent(input$create_project_form_submit, experiment_list_table_add_row(state, input))
 
     observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
-      writeLines("\nin exp-list-table-row-selected callback")
       sel <- unique(input$experiment_list_table_rows_selected)
       #persist_sel <- input$experiment_list_table_rows_selected
       if(is.null(sel)){

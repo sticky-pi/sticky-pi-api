@@ -61,8 +61,7 @@ images_in_scope <- function(state, input){
     req(input$data_scope_dates)
     dates <- as.Date(input$data_scope_dates)
     images <- api_get_images(state, dates)
-    print(images)
-  }
+}
 else{
     # projs_table <- api_get_projects(state)
     project_series <- api_get_project_series(state, sel)
@@ -173,7 +172,7 @@ render_experiment_list_table<- function(state){
     # column headers renamed/"prettied" in fill_replace_colnames
     datatable = DT::datatable(dt,
                               selection = list(mode='single', selected = row),
-                              editable = TRUE,
+                              editable = FALSE,
                               colnames = fill_replace_colnames(colnames(dt), state$config$PROJECTS_LIST_HEADERS),
                               options = datatable_options(dt,
                                                           excluded_names=c("id")
