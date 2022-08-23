@@ -1,7 +1,7 @@
-empty_exp_table <- {data.table(ID=numeric(0),
-                  DEVICE_ID=character(0),
-                  START_DATETIME=POSIXct(0),
-                  END_DATETIME=POSIXct(0))}
+empty_exp_table <- {data.table(id=numeric(0),
+                  device=character(0),
+                  start_datetime=POSIXct(0),
+                  end_datetime=POSIXct(0))}
 
 check_var_name <- function(string) {
   
@@ -68,7 +68,7 @@ images_in_scope <- function(state, input){
   images
 }
 
-datatable_options <- function(dt, excluded_names="project_id", header_names=NULL){
+datatable_options <- function(dt, excluded_names="id", header_names=NULL){
     cnames <- colnames(dt)
     hidden <- c(grep('^\\.HIDDEN.*$',cnames), which(cnames %in% excluded_names))
 # hidden <- numeric(0)
@@ -101,18 +101,20 @@ experiment_list_table <- function(state, input){
   #writeLines("\nexperiment_list_table():")
   #print(projs_table)
   
-  all_permissions_table <- api_get_project_permissions(state, '%')
+  # all_permissions_table <- api_get_project_permissions(state, '%')
   #print(all_permissions_table)
 
   # first add a column, current user's permission level for each project
   # convert to role in render_...()
-  curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
+  # curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(id, level)]
   #writeLines(" ")
   #print(curr_user_perms)
 
   # thanks to [merging in another table's column on common key](https://stackoverflow.com/a/34600831)
   # and [get data.table to use variable for name of **new** column]
-  projs_table[curr_user_perms, on = "project_id", level := i.level]
+  #fixme
+  # projs_table[curr_user_perms, on = "project_id", level := i.level]
+
   projs_table
 #
 #  im_id = lapply(dt[,EXPERIMENT_ID],
@@ -133,26 +135,28 @@ render_experiment_list_table<- function(state){
     dt <- get_comp_prop(state, experiment_list_table)[, !"level"]
     # TODO: ensure experiment_list_table cannot be modified in between
     # *copy* perm. level col to preserve levels when converting to display text
-    role_col <- get_comp_prop(state, experiment_list_table)[, .(project_id, role = permission_levels_to_roles(state, level))]
-    print(role_col)
+    # role_col <- get_comp_prop(state, experiment_list_table)[, .(id, role = permission_levels_to_roles(state, level))]
+    # print(role_col)
     role_header <- state$config$PERMISSIONS_TABLE_HEADERS[["level"]]
-    dt[role_col, on = "project_id", c(role_header) := i.role]
+    #fixme
+    # dt[role_col, on = "project_id", c(role_header) := i.role]
 
-    #exp_id <- state$data_scope$selected_experiment_persist
-    #row <- which(dt[ ,EXPERIMENT_ID == exp_id])
-    #if(length(row) == 1){
-    #  state$data_scope$selected_image_ids <- unlist(dt[EXPERIMENT_ID == exp_id, .HIDDEN_image_ids])
-    #}
-    #else{
+    exp_id <- state$data_scope$selected_experiment
+    row <- which(dt[ ,id == exp_id])
+
+    # if(length(row) == 1 && row > 0){
+    #  state$data_scope$selected_image_ids <- unlist(dt[id == exp_id, .HIDDEN_image_ids])
+    # }
+    # else{
     #  row <- NULL
-    #}
+    # }
     # column headers renamed/"prettied" in fill_replace_colnames
     datatable = DT::datatable(dt,
                               selection = list(mode='single', selected = row),
                               editable = FALSE,
                               colnames = fill_replace_colnames(colnames(dt), state$config$PROJECTS_LIST_HEADERS),
                               options = datatable_options(dt,
-                                                          excluded_names=c("project_id")
+                                                          excluded_names=c("id")
                                                          )
                               )
                                

@@ -20,6 +20,38 @@ api_verify_passwd <- function(state, u, p){
   return(token$token)
 }
 
+api_get_users <- function(state){
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'get_users')
+#  payload = jsonlite::toJSON(list(list(username="%")))
+  payload = "[{}]"
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  users <- as.data.table(dt)
+}
+
+
+api_get_projects <- function(state){
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'get_projects')
+  payload = "[{}]"
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  users <- as.data.table(dt)
+}
+
+
+
+
+
+
+
 
 api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_annotations="data"){
 
@@ -72,11 +104,13 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
   images <- o
 }
 
-
 api_get_images <- function(state, dates, what_images="thumbnail-mini", what_annotations="metadata"){
 
   state$updaters$api_fetch_time
   token <- state$user$auth_token
+
+  #fixme, here, nnotations, images and users can be retreived async. using future maybe?!
+  users <- api_get_users(state)
 
   url = make_url(state, 'get_image_series', what_images)
 
@@ -86,12 +120,10 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
                                      start_datetime=dates[1],
                                      end_datetime=dates[2] )),
                            auto_unbox = TRUE)
-  #print(post)
+
+
   o = POST(url, body=post,  authenticate(token, "", type = "basic"), content_type("application/json"))
-
   ct <- content(o, as='text', encoding="UTF-8")
-  write(ct, "images_data.json")
-
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
 
@@ -100,22 +132,19 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
     return(data.table())
   }
 
-  #post <- jsonlite::toJSON(images[, .(device, datetime)])
-  #api_entry = 'get_uid_annotations_series'
-  #url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
-  url = make_url(state, 'get_uid_annotations_series', what_annotations)
 
+  url = make_url(state, 'get_uid_annotations_series', what_annotations)
   o = POST(url, body=post,
           authenticate(token, "", type = "basic"), content_type("application/json"))
-
   ct <- content(o, as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
 
 
-  if(nrow(annotations) == 0){
-    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0), algo_version=character(0))
-  }
+
+    if(nrow(annotations) == 0){
+      annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0), algo_version=character(0))
+    }
 
   #fixme we should only get the unique by algo name x version so we don't have multiple matches for annots
   annotations =  unique(annotations[order(algo_version),], by='parent_image_id', fromLast=TRUE)
@@ -134,6 +163,9 @@ api_get_images <- function(state, dates, what_images="thumbnail-mini", what_anno
     })
   )
   setnames(o, colnames(images))
+
+  o <-  merge(x=o, y=users[, .(id, username)], by.x="api_user_id", by.y="id", all.x=TRUE)
+  setnames(o,"username", "api_user")
   images <- o
 
   images

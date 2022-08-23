@@ -155,10 +155,8 @@ def get_token():
     return jsonify(out)
 
 
-make_endpoint(api.get_users, role='admin')
+make_endpoint(api.get_users, role='')
 make_endpoint(api.put_users, role='admin')
-
-
 make_endpoint(api.get_projects, role="")
 make_endpoint(api.put_projects, role=["admin", "read_write_user"])
 make_endpoint(api.delete_users, role=["admin", "read_write_user"])
@@ -167,6 +165,9 @@ make_endpoint(api.get_project_permissions, role="")
 make_endpoint(api.put_project_permissions, role=["admin", "read_write_user"])
 make_endpoint(api.get_project_series, role="")
 make_endpoint(api.put_project_series, role=["admin", "read_write_user"])
+make_endpoint(api.delete_project_series, role=["admin", "read_write_user"])
+make_endpoint(api.put_project_columns, role=["admin", "read_write_user"])
+make_endpoint(api.delete_project_columns, role=["admin", "read_write_user"])
 
 # todo
 # make_endpoint(api.delete_users, role="admin")

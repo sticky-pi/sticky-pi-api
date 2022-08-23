@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install R deps
 RUN R -e "install.packages(c('shinydashboard', 'DT', 'shinyjs', 'sodium', 'RMariaDB', 'data.table', 'httr', 'lubridate', 'plotly', 'ggplot2', 'htmlwidgets', 'zoo', 'fasttime', 'gridExtra', 'jsonlite', 'shinyBS', 'xml2'), repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages(c('reactlog', 'shinyFeedback', 'shinyTime'), repos='http://cran.rstudio.com/')"
 
 
 

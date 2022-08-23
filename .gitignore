@@ -129,7 +129,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 _build/
-.pytest_cache/
 
 # History files
 .Rhistory
@@ -180,3 +179,4 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+.secret
