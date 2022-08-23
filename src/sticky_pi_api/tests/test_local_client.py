@@ -57,180 +57,243 @@ class LocalAndRemoteTests(object):
 #
 #     #
 #     # ##########################################################################################################
-#     #
-#     def test_init(self):
-#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-#         try:
-#             db = self._make_client(temp_dir)
-#         finally:
-#             shutil.rmtree(temp_dir)
-#
-#     def test_users(self):
-#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-#         try:
-#             users = [
-#                 {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
-#                 {'username': 'grace', 'password': 'hopper', 'is_admin': True},
-#             ]
-#             cli = self._make_client(temp_dir)
-#             self._clean_persistent_resources(cli)
-#             cli.put_users(users)
-#             cli.get_token({'username': 'ada'})
-#
-#             # cannot add same users twice
-#             with redirect_stderr(StringIO()) as stdout:
-#                 with self.assertRaises(self._server_error) as context:
-#                     cli.put_users(users)
-#             out = cli.get_users(info=[{'username': '%'}])
-#
-#             self.assertEqual(len(out), 2 + len(self._protected_users))
-#             out = cli.get_users(info=[{'username': 'ada'}])
-#             self.assertEqual(len(out), 1)
-#             out = cli.get_users(info=[{'id': 1}])
-#             self.assertEqual(len(out), 1)
-#         finally:
-#             shutil.rmtree(temp_dir)
-#     # #
-#     def test_projects(self):
-#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-#         try:
-#             users = [
-#                 {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
-#                 {'username': 'grace', 'password': 'hopper', 'is_admin': True},
-#                 {'username': 'emilie', 'password': 'duchatelet', 'is_admin': False},
-#             ]
-#             cli = self._make_client(temp_dir)
-#             self._clean_persistent_resources(cli)
-#             cli.put_users(users)
-#
-#             out = cli.put_projects([
-#                 {"name": "project1"},
-#                 {"name": "project2", "description": "some project", "notes": "testing is caring"}
-#             ])
-#
-#             self.assertEqual(len(out), 2)
-#             out = cli.get_projects()
-#             self.assertEqual(len(out), 2)
-#             out = cli.get_projects([{"name": "project1"}])
-#             self.assertEqual(len(out), 1)
-#             ada = cli.get_users(info=[{'username': 'ada'}])[0]
-#             grace = cli.get_users(info=[{'username': 'grace'}])[0]
-#             emilie = cli.get_users(info=[{'username': 'emilie'}])[0]
-#
-#             if isinstance(cli, RemoteClient):
-#                 admin_password = cli._password
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "ada", "lovelace", {'token': None, 'expiration': 0}
-#             out = cli.put_projects([
-#                 {"name": "project3"},
-#                 {"name": "project4", "description": "another project"}], client_info=ada)
-#
-#             self.assertEqual(len(out), 2)
-#
-#             out = cli.get_projects(client_info=ada)
-#             self.assertEqual(len(out), 2)
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "grace", "hopper", {'token': None, 'expiration': 0}
-#             out = cli.get_projects(client_info=grace)
-#             self.assertEqual(len(out), 4)
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "emilie", "duchatelet", {'token': None, 'expiration': 0}
-#             out = cli.get_projects(client_info=emilie)
-#             self.assertEqual(len(out), 0)
-#
-#             out = cli.get_projects(client_info=emilie)
-#             self.assertEqual(len(out), 0)
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "ada", "lovelace", {'token': None, 'expiration': 0}
-#             out = cli.get_projects([{"name": "project3"}], client_info=ada)
-#             self.assertEqual(len(out), 1)
-#             cli.put_project_permissions([{"user_id": emilie["id"],
-#                                           "project_id": out[0]["id"],
-#                                           "level": 1}], client_info=ada)
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "emilie", "duchatelet", {'token': None, 'expiration': 0}
-#
-#             out = cli.get_projects(client_info=emilie)
-#             self.assertEqual(len(out), 1)
-#
-#             out = cli.get_project_permissions(client_info=emilie)
-#             self.assertEqual(len(out), 2)
-#
-#             out = cli.delete_projects([{}], client_info=emilie)
-#             self.assertEqual(len(out), 0)
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "grace", "hopper", {'token': None, 'expiration': 0}
-#
-#             out = cli.get_projects(client_info=grace)
-#             self.assertEqual(len(out), 4)
-#
-#             test_project_id = out[0]["id"]
-#             out = cli.get_project_series([{"project_id": test_project_id}],
-#                                          client_info=grace)
-#             self.assertEqual(len(out), 0)
-#             #
-#             out = cli.put_project_series([{"project_id": test_project_id, "device": "0123abcd",
-#                                            "start_datetime": "2021-01-01T12:12:12Z",
-#                                            "end_datetime": "2021-01-12T12:12:12Z"},
-#                                           {"project_id": test_project_id, "device": "cdef1234",
-#                                            "start_datetime": "2021-01-01T12:12:14Z",
-#                                            "end_datetime": "2021-01-12T12:12:30Z"}
-#                                           ],
-#                                          client_info=grace)
-#
-#             self.assertEqual(len(out), 2)
-#             out = cli.get_project_series([{"project_id": test_project_id}],
-#                                          client_info=grace)
-#
-#             self.assertEqual(len(out), 2)
-#             #
-#
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "ada", "lovelace", {'token': None, 'expiration': 0}
-#
-#             # Projects can be deleted by the appropriate users/owners
-#             out = cli.delete_projects([{}], client_info=ada)
-#             self.assertEqual(len(out), 2)
-#
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "grace", "hopper", {'token': None, 'expiration': 0}
-#
-#             out = cli.get_projects(client_info=grace)
-#             self.assertEqual(len(out), 2)
-#
-#             ## grace cannot delete project owned by admin on the local client
-#             ## but she is admin on the remote
-#             out = cli.delete_projects([{}], client_info=grace)
-#             if isinstance(cli, RemoteClient):
-#                 self.assertEqual(len(out), 2)
-#             else:
-#                 self.assertEqual(len(out), 0)
-#
-#
-#             if isinstance(cli, RemoteClient):
-#                 cli._username, cli._password, cli._token = "admin", admin_password, {'token': None, 'expiration': 0}
-#
-#             # out = cli.get_projects([{}])
-#             # self.assertEqual(len(out), 2)
-#             out = cli.delete_projects([{}])
-#             # self.assertEqual(len(out), 0)
-#
-#             # new projects can be added with same name
-#             out = cli.put_projects([
-#                 {"name": "project3"},
-#                 {"name": "project4", "description": "another project"}], client_info=ada)
-#             self.assertEqual(len(out), 2)
-#         finally:
-#             shutil.rmtree(temp_dir)
-#
-#
+    #
+    def test_init(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            db = self._make_client(temp_dir)
+        finally:
+            shutil.rmtree(temp_dir)
+
+    def test_users(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            users = [
+                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+            ]
+            cli = self._make_client(temp_dir)
+            self._clean_persistent_resources(cli)
+            cli.put_users(users)
+            cli.get_token({'username': 'ada'})
+
+            # cannot add same users twice
+            with redirect_stderr(StringIO()) as stdout:
+                with self.assertRaises(self._server_error) as context:
+                    cli.put_users(users)
+            out = cli.get_users(info=[{'username': '%'}])
+
+            self.assertEqual(len(out), 2 + len(self._protected_users))
+            out = cli.get_users(info=[{'username': 'ada'}])
+            self.assertEqual(len(out), 1)
+            out = cli.get_users(info=[{'id': 1}])
+            self.assertEqual(len(out), 1)
+        finally:
+            shutil.rmtree(temp_dir)
+    # #
+    def test_projects(self):
+        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+        try:
+            users = [
+                {'username': 'ada', 'password': 'lovelace', 'email': 'mymail@computer.com'},
+                {'username': 'grace', 'password': 'hopper', 'is_admin': True},
+                {'username': 'emilie', 'password': 'duchatelet', 'is_admin': False},
+            ]
+            cli = self._make_client(temp_dir)
+            self._clean_persistent_resources(cli)
+            cli.put_users(users)
+
+            out = cli.put_projects([
+                {"name": "project1"},
+                {"name": "project2", "description": "some project", "notes": "testing is caring"}
+            ])
+
+            self.assertEqual(len(out), 2)
+            out = cli.get_projects()
+            self.assertEqual(len(out), 2)
+            out = cli.get_projects([{"name": "project1"}])
+            self.assertEqual(len(out), 1)
+            ada = cli.get_users(info=[{'username': 'ada'}])[0]
+            grace = cli.get_users(info=[{'username': 'grace'}])[0]
+            emilie = cli.get_users(info=[{'username': 'emilie'}])[0]
+
+            if isinstance(cli, RemoteClient):
+                admin_password = cli._password
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "ada", "lovelace", {'token': None, 'expiration': 0}
+            out = cli.put_projects([
+                {"name": "project3"},
+                {"name": "project4", "description": "another project"}], client_info=ada)
+
+            self.assertEqual(len(out), 2)
+
+            out = cli.get_projects(client_info=ada)
+            self.assertEqual(len(out), 2)
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "grace", "hopper", {'token': None, 'expiration': 0}
+            out = cli.get_projects(client_info=grace)
+            self.assertEqual(len(out), 4)
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "emilie", "duchatelet", {'token': None, 'expiration': 0}
+            out = cli.get_projects(client_info=emilie)
+            self.assertEqual(len(out), 0)
+
+            out = cli.get_projects(client_info=emilie)
+            self.assertEqual(len(out), 0)
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "ada", "lovelace", {'token': None, 'expiration': 0}
+            out = cli.get_projects([{"name": "project3"}], client_info=ada)
+            self.assertEqual(len(out), 1)
+            cli.put_project_permissions([{"user_id": emilie["id"],
+                                          "project_id": out[0]["id"],
+                                          "level": 1}], client_info=ada)
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "emilie", "duchatelet", {'token': None, 'expiration': 0}
+
+            out = cli.get_projects(client_info=emilie)
+            self.assertEqual(len(out), 1)
+
+            out = cli.get_project_permissions(client_info=emilie)
+            self.assertEqual(len(out), 2)
+
+            out = cli.delete_projects([{}], client_info=emilie)
+            self.assertEqual(len(out), 0)
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "grace", "hopper", {'token': None, 'expiration': 0}
+
+            out = cli.get_projects(client_info=grace)
+            self.assertEqual(len(out), 4)
+
+            test_project_id = out[0]["id"]
+            out = cli.get_project_series([{"project_id": test_project_id}],
+                                         client_info=grace)
+            self.assertEqual(len(out), 0)
+            #
+            out = cli.put_project_series([{"project_id": test_project_id, "device": "0123abcd",
+                                           "start_datetime": "2021-01-01T12:12:12Z",
+                                           "end_datetime": "2021-01-12T12:12:12Z"},
+                                          {"project_id": test_project_id, "device": "cdef1234",
+                                           "start_datetime": "2021-01-01T12:12:14Z",
+                                           "end_datetime": "2021-01-12T12:12:30Z"}
+                                          ],
+                                         client_info=grace)
+
+            self.assertEqual(len(out), 2)
+            out = cli.get_project_series([{"project_id": test_project_id}],
+                                         client_info=grace)
+
+            self.assertEqual(len(out), 2)
+
+            ## UPDATE PROJECT USING EXPLICIT ID
+            info = out[0]
+            info["device"] = "99999999"
+            info["project_id"] = test_project_id
+
+            out = cli.put_project_series([info],
+                                         client_info=grace)
+
+            self.assertEqual(len(out), 1)
+            del info["project_id"]
+            self.assertEqual(info, out[0])
+
+            info["project_id"] = test_project_id
+
+            out = cli.delete_project_series([info],
+                                         client_info=grace)
+            self.assertEqual(len(out), 1)
+
+            out = cli.get_project_series([{"project_id": test_project_id}],
+                                         client_info=grace)
+
+            self.assertEqual(len(out), 1)
+
+
+            out = cli.put_project_columns([{"project_id": test_project_id, "column_name": "bait", "column_SQL_type": 'Integer'}],
+                                         client_info=grace)
+
+
+            self.assertEqual(len(out), 1)
+
+            out = cli.put_project_columns([{"project_id": test_project_id, "column_name": "has_bait",  "old_column_name": "bait"}],
+                                         client_info=grace)
+
+            self.assertEqual(len(out), 1)
+
+
+            out = cli.get_project_series([{"project_id": test_project_id}],
+                                         client_info=grace)
+
+            info = out[0]
+
+            info["project_id"] = test_project_id
+            info["has_bait"] = 1
+            out = cli.put_project_series([info],
+                                         client_info=grace)
+
+            out = cli.get_project_series([{"project_id": test_project_id}],
+                                         client_info=grace)
+            self.assertEqual(out[0]["has_bait"], 1)
+
+
+
+            out = cli.delete_project_columns([{"project_id": test_project_id, "column_name": "has_bait"}])
+
+            out = cli.get_project_series([{"project_id": test_project_id}],
+                                         client_info=grace)
+
+            self.assertTrue("has_bait" not in out[0])
+
+
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "ada", "lovelace", {'token': None, 'expiration': 0}
+
+            # Projects can be deleted by the appropriate users/owners
+            out = cli.delete_projects([{}], client_info=ada)
+            self.assertEqual(len(out), 2)
+
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "grace", "hopper", {'token': None, 'expiration': 0}
+
+            out = cli.get_projects(client_info=grace)
+            self.assertEqual(len(out), 2)
+
+            ## grace cannot delete project owned by admin on the local client
+            ## but she is admin on the remote
+            out = cli.delete_projects([{}], client_info=grace)
+            if isinstance(cli, RemoteClient):
+                self.assertEqual(len(out), 2)
+            else:
+                self.assertEqual(len(out), 0)
+
+
+            if isinstance(cli, RemoteClient):
+                cli._username, cli._password, cli._token = "admin", admin_password, {'token': None, 'expiration': 0}
+
+            # out = cli.get_projects([{}])
+            # self.assertEqual(len(out), 2)
+            out = cli.delete_projects([{}])
+            # self.assertEqual(len(out), 0)
+
+            # new projects can be added with same name
+            out = cli.put_projects([
+                    {"name": "project3"},
+                    {"name": "project4", "description": "another project"}], client_info=ada)
+            self.assertEqual(len(out), 2)
+
+
+
+
+        finally:
+            shutil.rmtree(temp_dir)
+
+
 # #
 #     def test_put_images(self):
 #         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
@@ -464,145 +527,145 @@ class LocalAndRemoteTests(object):
 #
 #         finally:
 #             shutil.rmtree(temp_dir)
-
-    def test_get_image_with_uid_annotations_series(self):
-        import copy
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-            db = self._make_client(temp_dir)
-            from sticky_pi_api.image_parser import ImageParser
-            from sticky_pi_api.utils import datetime_to_string
-            self._clean_persistent_resources(db)
-            to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
-            db.put_images(to_upload)
-
-
-            # we upload annotations for all, but the last image
-
-            annot_to_up = []
-            for ti in to_upload[:-1]:
-                p = ImageParser(ti)
-                annotation_stub = copy.deepcopy(self._test_annotation)
-                annotation_stub['metadata']['device'] = p['device']
-                annotation_stub['metadata']['datetime'] = datetime_to_string(p['datetime'])
-                annotation_stub['metadata']['md5'] = p['md5']
-                annot_to_up.append(annotation_stub)
-
-            db.put_uid_annotations(annot_to_up)
-
-            out = db.get_images_with_uid_annotations_series([{'device': '0a5bb6f4',
-                                                            'start_datetime': '2020-01-01T00:00:00Z',
-                                                            'end_datetime': '2020-12-31T00:00:00Z'}])
-
-            # should return just the annotations for the matched query , not one per image (one image has no annot)
-            self.assertEqual(len(out), len(to_upload))
-
-        finally:
-            shutil.rmtree(temp_dir)
-
-
-
-    def test_tiled_tuboids(self):
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-
-            db = self._make_client(temp_dir)
-            self._clean_persistent_resources(db)
-
-            series = [{'device': '08038ade',
-                       'start_datetime': '2020-07-08T20:00:00Z',
-                       'end_datetime': '2020-07-09T15:00:00Z',
-                       'n_tuboids': 6,
-                       'n_images': 10,
-                       'algo_name': 'test',
-                       'algo_version':'11111111-19191919'}]
-
-            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-            self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
-            # get possibly cached url
-            self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
-            import pandas as pd
-            res = pd.DataFrame(db.get_tiled_tuboid_series(series))
-
-            self.assertTrue(len(res) == res.iloc[0].n_tuboids_series)
-            #
-            self._clean_persistent_resources(db)
-            series = [{'device': '08038ade',
-                       'start_datetime': '2020-07-08T20:00:00Z',
-                       'end_datetime': '2020-07-09T15:00:00Z',
-                       'n_tuboids': 6,
-                       'n_images': 10,
-                       'algo_name': 'test',
-                       'algo_version':'11111111-19191919'}]
-
-            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-            with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(self._server_error) as context:
-                    db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-
-
-        finally:
-            shutil.rmtree(temp_dir)
-
-
-
-    def test_itc_labels(self):
-        temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
-        try:
-
-            series = [{'device': '%',
-                       'start_datetime': '2020-01-01T00:00:00Z',
-                       'end_datetime': '2020-12-31T00:00:00Z',
-                       'n_tuboids': 6,
-                       'n_images': 10,
-                       'algo_name': 'test',
-                       'algo_version':'11111111-19191919'}]
-
-            db = self._make_client(temp_dir)
-            self._clean_persistent_resources(db)
-            # emp[ty dt should be returned if no series exist
-            db.get_tiled_tuboid_series_itc_labels(series)
-            db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
-            # should be missing the itc fields
-            db.get_tiled_tuboid_series_itc_labels(series)
-            info = [{
-                'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
-                'algo_version': '1111-abce',
-                'algo_name': 'insect_tuboid_classifier',
-                'label': 1,
-                'pattern': 'Insecta.*',
-                'type':'Insecta',
-                'order': 'test',
-                'family':'test',
-                'genus': 'test'
-            }
-            ]
-            #
-            out = db.put_itc_labels(info)
-            self.assertEqual(len(out), 1)
-            # cannot add same label twice
-
-            with redirect_stderr(StringIO()) as stdout:
-                with self.assertRaises(self._server_error) as context:
-                    info[0]['label'] = 2
-                    db.put_itc_labels(info)
-            #
-            info[0]['algo_name'] = 'another_algo'
-            out = db.put_itc_labels(info)
-            self.assertEqual(len(out), 1)
-            #
-            import pandas as pd
-            pd.set_option('display.max_rows', 500)
-            pd.set_option('display.max_columns', 500)
-            out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
-            # print(info[0]['tuboid_id'])
-            print(out)
-            # for i in range(len(out)):
-            #     print(out.tuboid_id[i])
-            # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
-
-        finally:
-            shutil.rmtree(temp_dir)
+#
+#     def test_get_image_with_uid_annotations_series(self):
+#         import copy
+#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+#         try:
+#             db = self._make_client(temp_dir)
+#             from sticky_pi_api.image_parser import ImageParser
+#             from sticky_pi_api.utils import datetime_to_string
+#             self._clean_persistent_resources(db)
+#             to_upload = [ti for ti in self._test_images if ImageParser(ti)['device'] == '0a5bb6f4']
+#             db.put_images(to_upload)
+#
+#
+#             # we upload annotations for all, but the last image
+#
+#             annot_to_up = []
+#             for ti in to_upload[:-1]:
+#                 p = ImageParser(ti)
+#                 annotation_stub = copy.deepcopy(self._test_annotation)
+#                 annotation_stub['metadata']['device'] = p['device']
+#                 annotation_stub['metadata']['datetime'] = datetime_to_string(p['datetime'])
+#                 annotation_stub['metadata']['md5'] = p['md5']
+#                 annot_to_up.append(annotation_stub)
+#
+#             db.put_uid_annotations(annot_to_up)
+#
+#             out = db.get_images_with_uid_annotations_series([{'device': '0a5bb6f4',
+#                                                             'start_datetime': '2020-01-01T00:00:00Z',
+#                                                             'end_datetime': '2020-12-31T00:00:00Z'}])
+#
+#             # should return just the annotations for the matched query , not one per image (one image has no annot)
+#             self.assertEqual(len(out), len(to_upload))
+#
+#         finally:
+#             shutil.rmtree(temp_dir)
+#
+#
+#
+#     def test_tiled_tuboids(self):
+#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+#         try:
+#
+#             db = self._make_client(temp_dir)
+#             self._clean_persistent_resources(db)
+#
+#             series = [{'device': '08038ade',
+#                        'start_datetime': '2020-07-08T20:00:00Z',
+#                        'end_datetime': '2020-07-09T15:00:00Z',
+#                        'n_tuboids': 6,
+#                        'n_images': 10,
+#                        'algo_name': 'test',
+#                        'algo_version':'11111111-19191919'}]
+#
+#             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+#             self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
+#             # get possibly cached url
+#             self.assertEqual(len(db.get_tiled_tuboid_series(series, what='data')), 6)
+#             import pandas as pd
+#             res = pd.DataFrame(db.get_tiled_tuboid_series(series))
+#
+#             self.assertTrue(len(res) == res.iloc[0].n_tuboids_series)
+#             #
+#             self._clean_persistent_resources(db)
+#             series = [{'device': '08038ade',
+#                        'start_datetime': '2020-07-08T20:00:00Z',
+#                        'end_datetime': '2020-07-09T15:00:00Z',
+#                        'n_tuboids': 6,
+#                        'n_images': 10,
+#                        'algo_name': 'test',
+#                        'algo_version':'11111111-19191919'}]
+#
+#             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+#             with redirect_stderr(StringIO()) as stdout:
+#                 with self.assertRaises(self._server_error) as context:
+#                     db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+#
+#
+#         finally:
+#             shutil.rmtree(temp_dir)
+#
+#
+#
+#     def test_itc_labels(self):
+#         temp_dir = tempfile.mkdtemp(prefix='sticky-pi-')
+#         try:
+#
+#             series = [{'device': '%',
+#                        'start_datetime': '2020-01-01T00:00:00Z',
+#                        'end_datetime': '2020-12-31T00:00:00Z',
+#                        'n_tuboids': 6,
+#                        'n_images': 10,
+#                        'algo_name': 'test',
+#                        'algo_version':'11111111-19191919'}]
+#
+#             db = self._make_client(temp_dir)
+#             self._clean_persistent_resources(db)
+#             # emp[ty dt should be returned if no series exist
+#             db.get_tiled_tuboid_series_itc_labels(series)
+#             db.put_tiled_tuboids(self._tiled_tuboid_dirs, series[0])
+#             # should be missing the itc fields
+#             db.get_tiled_tuboid_series_itc_labels(series)
+#             info = [{
+#                 'tuboid_id': '08038ade.2020-07-08_20-00-00.2020-07-09_15-00-00.1606980656-91e2199fccf371d3d690b2856613e8f5.0000',
+#                 'algo_version': '1111-abce',
+#                 'algo_name': 'insect_tuboid_classifier',
+#                 'label': 1,
+#                 'pattern': 'Insecta.*',
+#                 'type':'Insecta',
+#                 'order': 'test',
+#                 'family':'test',
+#                 'genus': 'test'
+#             }
+#             ]
+#             #
+#             out = db.put_itc_labels(info)
+#             self.assertEqual(len(out), 1)
+#             # cannot add same label twice
+#
+#             with redirect_stderr(StringIO()) as stdout:
+#                 with self.assertRaises(self._server_error) as context:
+#                     info[0]['label'] = 2
+#                     db.put_itc_labels(info)
+#             #
+#             info[0]['algo_name'] = 'another_algo'
+#             out = db.put_itc_labels(info)
+#             self.assertEqual(len(out), 1)
+#             #
+#             import pandas as pd
+#             pd.set_option('display.max_rows', 500)
+#             pd.set_option('display.max_columns', 500)
+#             out = pd.DataFrame(db.get_tiled_tuboid_series_itc_labels(series))
+#             # print(info[0]['tuboid_id'])
+#             print(out)
+#             # for i in range(len(out)):
+#             #     print(out.tuboid_id[i])
+#             # self.assertEqual(len(out[out.tuboid_id == info[0]['tuboid_id']]), 2)
+#
+#         finally:
+#             shutil.rmtree(temp_dir)
 
     # def test_ml_bundle(self):
     #
