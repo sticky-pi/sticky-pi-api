@@ -1,7 +1,8 @@
 MOCK_PROJECTS_TABLE_PATH <- "www/projects.json"
 MOCK_PERMISSIONS_TABLE_PATH <- "www/permissions.json"
 MOCK_ENTRIES_TABLES_DIR_PATH <- "www/project-entries-tables"
-MOCK_IMAGES_DATA_PATH <- "www/data.json"
+#MOCK_IMAGES_DATA_PATH <- "www/data.json"
+MOCK_IMAGES_DATA_PATH <- "www/data_short_test.json"
 
 DATA_HEADERS <- list(
                      datetime = "datetime",
@@ -62,66 +63,110 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
     images
 }
 
-api_get_images <- function(state, dates, what_images="thumbnail-mini", what_annotations="metadata"){
+get_date_col_headers <- function(col_headers, match_pattern="*datetime*") {
+    col_headers[col_headers %like% match_pattern]
+}
+
+fmt_datetime <- function(in_str, fmt, tz="GMT") {
+    strftime(as.POSIXct(in_str), fmt, tz=tz)
+}
+
+# returns entries of master images/captures metadata table matching given image series in `data`
+# format of `data` is data.table containing device ID, start and end datetimes
+api_get_images <- function(state, query_data, what="metadata", scope_projs=FALSE){
     # force reactive vals refresh
     state$updaters$api_fetch_time
     #token <- state$user$auth_token
 
-    #warning("dates before:")
     #url = make_url(state, 'get_image_series', what_images)
-    dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
-    #warning("dates after:")
+
+    # TODO: consolidate all col headers into global consts in config,
+    # see [*Programming on data.table*](https://rdatatable.gitlab.io/data.table/articles/datatable-programming.html)
+    date_cols <- c("start_datetime", "end_datetime")
+    query_data[, c(date_cols) := lapply(.SD, fmt_datetime, DATETIME_FORMAT), .SDcols = date_cols]
+    #dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
 
     dt <- jsonlite::fromJSON(MOCK_IMAGES_DATA_PATH)
     images <- as.data.table(dt)
     #warning("images(after):")
     #print(head(images))
 
-    if(nrow(images) == 0){
+    if(images[,.N] == 0){
         return(data.table())
     }
 
     # skip annotations for now
     #annotations <- as.data.table(dt)
-    #if(nrow(annotations) == 0){
-    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0), algo_version=character(0))
-    #images =  merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
+    #if(annotations[,.N] == 0){
+    #    annotations <- data.table(parent_image_id=integer(0), n_objects=integer(0), json=character(0), algo_version=character(0))
+    #}
+    #images = merge(x=images, y=annotations, by.y="parent_image_id", by.x="id", all.x=TRUE, suffixes=c('','_annot'))[]
     
-# we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
-# We will then just convert timezone when rendering
-    o <- as.data.table(
-    lapply(names(images),function(x){
-      if(x %like% paste('*',"datetime",'*', sep=''))
-      {
-        fasttime::fastPOSIXct(images[[x]], tz='UTC')
-      }
-      else
-        images[[x]]
-    })
-    )
-    setnames(o, colnames(images))
-    images <- o
+    # we convert all *datetime* to posixct. we assume the input timezone is UTC (from the API/database, all is in UTC)
+    # We will then just convert timezone when rendering
+    imgs_date_cols <- get_date_col_headers(names(images))
+    images[, c(imgs_date_cols) := lapply(.SD, fasttime::fastPOSIXct, tz="UTC"), .SDcols = imgs_date_cols]
+    #o <- as.data.table(
+    #lapply(names(images), function(col_head){
+    #  if(col_head %like% paste('*',"datetime",'*', sep=''))
+    #  {
+    #    fasttime::fastPOSIXct(images[[col_head]], tz='UTC')
+    #  }
+    #  else
+    #    images[[col_head]]
+    #})
+    #)
+    #setnames(o, colnames(images))
+    #images <- o
 
     # limit to datetimes range
-    if(length(dates) < 2)
-        return(numeric(0))
+    # get all rows of images in datetime ranges
+    if (scope_projs) {
+        # first for efficiency, sort both tables by (1) device ID, then (2) datetimes
+        setkey(query_data, device_id, start_datetime, end_datetime)
+        setkey(images, device, datetime)
+        scoped_imgs <- images[query_data,
+                              on="device_id", allow.cartesian=T
+                            ][datetime >= start_datetime & datetime <= end_datetime, -c("start_datetime","end_datetime")
+                             ]
+    } else {
+        start <- query_data[1, start_datetime]
+        end <- query_data[1, end_datetime]
+        scoped_imgs <- images[datetime > start & datetime < end]
+    }
+    scoped_imgs <- unique(scoped_imgs)
+    #images[query_data,
+    #       paste0("x.", names(images)),
+    #       on = .(device = device_id, datetime >= start_datetime, datetime <= end_datetime)
+    #       ]
+    print(scoped_imgs)
+    # TODO: fwrite scoped images, check against data.csv
+    scoped_imgs
+
+    #if(length(dates) < 2)
+    #    return(numeric(0))
+
     # last 5 rows(captures)
     #print(images[.N])
+
     # TODO: get data.table to recognize entire `DATA_HEADERS$...` with `..` (using pre-defined vars)
     #print(unique(images[datetime > dates[1] & datetime < dates[2], datetime]))
-    images <-unique(images[datetime > dates[1] & datetime < dates[2]])
+    #images <- unique(images[datetime > dates[1] & datetime < dates[2]])
 
-    images
+    #images
 }
 
 # returns a list of the image IDs in the current selected projet/experiment
 api_get_images_id_for_experiment <- function(state, selected_proj_id, what_images="thumbnail-mini", what_annotations="metadata") {
     # look up all datetime stretches in series table
-    entry <- PROJECT_ENTRIES_TABLES_LIST[[selected_proj_id]]
-    # feed dates into api_get_images()
-    project_dates <- c(entry$start_datetime, entry$end_datetime)
+    seriess <- api_get_project_series(state, selected_proj_id)
+    warning(paste0("series for project ", selected_proj_id))
+    print(seriess)
+    # feed dates into api_get_images(), combine into one data.table to return
+    
+    #project_dates <- c(entry$start_datetime, entry$end_datetime)
     # TODO: check correct device
-    images <- api_get_images(state, project_dates)
+    images <- api_get_images(state, seriess)
     images
 }
 
@@ -176,7 +221,7 @@ new_entries_table <- function(db_file_path="") {
     }
     else {
         data.table(
-                series_id = character(0),
+                series_id = numeric(0),
                 device_id = character(0),
                 # just POSIX time objects, value irrelevant
                 start_datetime = .POSIXct(0)[0],
@@ -224,9 +269,9 @@ api_get_projects <- function(state) {
 api_get_project_permissions <- function(state, proj_id) {
     if (proj_id == '%') {
         writeLines("\ngetting all projects' permissions")
-        writeLines(paste( "user =", "wei"))
-        PERMISSIONS_TABLE[username == "wei" & level > 0]
-    } else if (is_member(proj_id, "wei")) {
+        writeLines(paste( "user =", state$config$STICKY_PI_TESTING_USER))
+        PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level > 0]
+    } else if (is_member(proj_id, state$config$STICKY_PI_TESTING_USER)) {
         PERMISSIONS_TABLE[project_id == proj_id]
     }
 }
@@ -253,7 +298,7 @@ api_get_project_permissions <- function(state, proj_id) {
     }
 }
 
-.api_put_new_project <- function(data) {
+.api_put_new_project <- function(state, data) {
     # 1_dec == 1_hexadec
     proj_id <- 1
     if ((PROJECTS_RECORD[,.N]) != 0) {
@@ -272,7 +317,7 @@ api_get_project_permissions <- function(state, proj_id) {
     # creator must be an admin
     PERMISSIONS_TABLE <<- rbindlist(list( PERMISSIONS_TABLE,
                                       data.table(project_id = proj_id,
-                                                 username = "wei",
+                                                 username = state$config$STICKY_PI_TESTING_USER,
                                                  level = 3 )
                                       ))
     # init blank entries table
@@ -301,19 +346,20 @@ api_get_project_permissions <- function(state, proj_id) {
 #}
 # datas_list a list of the data fields dictionaries each specifying a project metadata entry
 #api_put_projects <- function(state, datas_list) {
-api_put_projects <- function(datas_list) {
+api_put_projects <- function(state, datas_list) {
     added_rows <- lapply(datas_list, function(data) {
             #"project_id" %in% names(data) &&
-        if (!is.null(data[["project_id"]]) )
+        if (!is.null( data[["project_id"]] ))
         {
             warning("project ID:")
             print(data[["project_id"]])
-            .api_update_project(data[["project_id"]], data)
+            # Note: `data` can include project ID or not, update_proj() only sources it from `proj_id`(2nd) arg
+            .api_update_project(state, data[["project_id"]], data)
         }
         else {
-            .api_put_new_project(data)
+            .api_put_new_project(state, data)
         }
-    })
+    }, state)
     # combine into a vec
     #PROJECTS_RECORD[project_id == proj_id]
     warning("rows added:")
@@ -355,10 +401,9 @@ api_get_project_series <- function(state, proj_id) {
     # generate ser_id
     if ((PROJECT_ENTRIES_TABLES_LIST[[proj_id]][,.N]) != 0) {
         # ids all just increment by 1 each row
-        ser_id <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]][, max(as.hexmode(series_id))] + 1
-        ser_id <- as.character(as.hexmode(ser_id))
+        ser_id <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]][, max(series_id)] + 1
     } else {
-        ser_id <- "00000001"
+        ser_id <- 1
     }
     #data[["series_id"]] <- ser_id
     row <- as.data.table(data)
@@ -440,7 +485,7 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
 PROJECTS_RECORD <- new_projects_table(MOCK_PROJECTS_TABLE_PATH)
 #print(PROJECTS_RECORD)
 PERMISSIONS_TABLE <- new_permissions_table(MOCK_PERMISSIONS_TABLE_PATH)
-#PERMISSIONS_TABLE[, username := ..state$config$STICKY_PI_TESTING_USER]
+#PERMISSIONS_TABLE[, username := (state$config$STICKY_PI_TESTING_USER)]
 #print(PERMISSIONS_TABLE)
 PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
 #print(PROJECT_ENTRIES_TABLES_LIST)
@@ -463,4 +508,5 @@ TESTPROJ3_4_ENTRIES <- list(
         notes = character(0)
     )
 )
-api_put_projects(TESTPROJ3_4_ENTRIES)
+# tested without persist selected
+#api_put_projects(TESTPROJ3_4_ENTRIES)

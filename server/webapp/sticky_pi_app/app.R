@@ -70,10 +70,10 @@ server <- function(input, output, session) {
     observeEvent(input$create_project_form_submit, experiment_list_table_add_row(state, input))
 
     observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
-      writeLines("\nin exp-list-table-row-selected callback")
+      #writeLines("\nin exp-list-table-row-selected callback")
       sel <- input$experiment_list_table_row_last_clicked
-      writeLines("last row clicked:")
-      print(input$experiment_list_table_row_last_clicked)
+      #writeLines("last row clicked:")
+      #print(input$experiment_list_table_row_last_clicked)
 
       #persist_sel <- input$experiment_list_table_rows_selected
       if(is.null(sel))
@@ -89,7 +89,7 @@ server <- function(input, output, session) {
         sel <- dt[sel, project_id]
       }
       #state$data_scope$selected_experiment_persist  <- isolate(sel)
-      print(sel)
+      #print(sel)
       state$data_scope$selected_experiment <- sel
       
     })
