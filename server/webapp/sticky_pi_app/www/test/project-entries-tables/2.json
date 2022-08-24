@@ -1,1 +1,4 @@
-[{"series_id":2,"device_id":"c77dd32c","start_datetime":"2022-06-13 18:15:49","end_datetime":"2022-06-13 18:23:22","orientation_angle":29.8303},{"series_id":1,"device_id":"74e9715b","start_datetime":"2022-06-12 19:42:19","end_datetime":"2022-06-21 18:19:51","orientation_angle":439.4434},{"series_id":3,"device_id":"6ee9a123","start_datetime":"2022-06-13 18:15:42","end_datetime":"2022-06-13 18:23:24","orientation_angle":713.2804},{"series_id":4,"device_id":"512858f4","start_datetime":"2022-05-25 00:03:33","end_datetime":"2022-05-26 00:15:46","orientation_angle":907.6277}]
+[ {"id":2,"device":"c77dd32c","start_datetime":"2021-06-13 18:15:49","end_datetime":"2023-06-13 18:23:22","orientation_angle":29.8303},
+  {"id":1,"device":"74e9715b","start_datetime":"2021-06-12 19:42:19","end_datetime":"2023-06-21 18:19:51","orientation_angle":439.4434},
+  {"id":3,"device":"6ee9a123","start_datetime":"2021-06-13 18:15:42","end_datetime":"2023-06-13 18:23:24","orientation_angle":713.2804},
+  {"id":4,"device":"512858f4","start_datetime":"2021-05-25 00:03:33","end_datetime":"2023-05-26 00:15:46","orientation_angle":907.6277}]
