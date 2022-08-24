@@ -4,27 +4,27 @@ empty_exp_table <- {data.table(id=numeric(0),
                   end_datetime=POSIXct(0))}
 
 check_var_name <- function(string) {
-  
+
   isValidName <- function(string) {
     grepl("^([[:alpha:]]|[.][._[:alpha:]])[._[:alnum:]]*$", string)
   }
-  
+
   isValidAndUnreservedName <- function(string) {
     make.names(string) == string
   }
-  
+
   valid <- isValidName(string)
   unreserved <- isValidAndUnreservedName(string)
   return(valid & unreserved)
 }
 
 handle_new_experiment_metavariable <- function(dt,  name, code){
-  
+
   if(name %in% colnames(dt)){
     warning('Column already exists')
     return(NULL)
   }
-  
+
   map <- list("lng"= function(name)list("LONGITUDE"=  "DECIMAL(11, 8)"),
               "lat"= function(name)list("LATITUDE"=  "DECIMAL(11, 8)"),
               "char"= function(name){
@@ -39,7 +39,7 @@ handle_new_experiment_metavariable <- function(dt,  name, code){
                   out[[name]] <- "DATETIME"
                   return(out)
                 }},
-              
+
               "num"= function(name){
                 out = list()
                 if(check_var_name(name)){
@@ -68,8 +68,6 @@ images_in_scope <- function(state, input){
     })
 
     images <- rbindlist(images)
-    print("TODEL images")
-    print(images)
     old_n <- nrow(images)
     images <- unique(images)
 
@@ -108,18 +106,12 @@ experiment_list_table <- function(state, input){
   images <- get_comp_prop(state, images_in_scope)
   req(images)
 
-  warning("TODEL \nprojects table:")
-  print(projs_table)
-  
+
   all_permissions_table <- api_get_project_permissions(state, '%')
-  warning("TODEL\nall permissions table:")
-  print(all_permissions_table)
 
   # first add a column, current user's permission level for each project
   # convert to role in render_...()
   curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
-  warning("TODEL \ncurr user permissions table:")
-  print(curr_user_perms)
 
   # thanks to [merging in another table's column on common key](https://stackoverflow.com/a/34600831)
   # and [get data.table to use variable for name of **new** column]
@@ -142,17 +134,17 @@ experiment_list_table <- function(state, input){
 render_experiment_list_table<- function(state){
 
   DT::renderDataTable({
-
-    dt <- get_comp_prop(state, experiment_list_table)[, !"level"]
+    exp_id <- state$data_scope$selected_experiment
+    proj_table <- get_comp_prop(state, experiment_list_table)
+    dt <- proj_table[, !"level"]
     # TODO: ensure experiment_list_table cannot be modified in between
     # *copy* perm. level col to preserve levels when converting to display text
-    role_col <- get_comp_prop(state, experiment_list_table)[, .(id, role = permission_levels_to_roles(state, level))]
+    role_col <- proj_table[, .(id, role = permission_levels_to_roles(state, level))]
     # print(role_col)
     role_header <- state$config$PERMISSIONS_TABLE_HEADERS[["level"]]
     #fixme
      dt[role_col, on="id", c(role_header) := i.role]
 
-    exp_id <- state$data_scope$selected_experiment
     row <- which(dt[ ,id == exp_id])
     # if(length(row) == 1 && row > 0){
     #  state$data_scope$selected_image_ids <- unlist(dt[id == exp_id, .HIDDEN_image_ids])
@@ -161,6 +153,8 @@ render_experiment_list_table<- function(state){
     #  row <- NULL
     # }
     # column headers renamed/"prettied" in fill_replace_colnames
+    warning("TODEL render selected")
+    warning(row)
     datatable = DT::datatable(dt,
                               selection = list(mode='single', selected = row),
                               editable = FALSE,
@@ -169,8 +163,8 @@ render_experiment_list_table<- function(state){
                                                           excluded_names=c("id")
                                                          )
                               )
-                               
-                               
+
+
   })
 }
 show_create_project_form <- function(state, input, failed=FALSE) {
@@ -193,10 +187,9 @@ experiment_list_table_add_row <- function(state, input){
         notes <- input$new_project_notes
 
         data = list(list(name=name, description=description, notes=notes))
-        writeLines("\nUser wants to create a project:")
-        print(as.data.table(data))
-        api_put_projects(state, data)
+        rows <- api_put_projects(state, data)
         state$updaters$api_fetch_time <- Sys.time()
+        state$data_scope$selected_experiment <- rows[[1]][["id"]]
 
         removeModal()
     }
@@ -319,7 +312,7 @@ render_experiment_table<- function(state){
 
 #project_series_table_add_row <- function(state, input){
 #  proj_id <-state$data_scope$selected_experiment
-#  
+#
 #  out <- api_put_project_series(state, proj_id, data=list())
 #  if(isTruthy(out))
 #    state$updaters$api_fetch_time <- Sys.time()
@@ -414,7 +407,7 @@ project_series_table_add_row <- function(state, input){
 
         end_datetime <- ymd(datestr) + hms(timestr)
         shinyFeedback::feedbackDanger("new_series_end_time", end_datetime < user_inputs$start_datetime, "Start must be before end")
-        
+
         fastPOSIXct(end_datetime, tz="UTC")
     }
     user_inputs$dev_id <- {

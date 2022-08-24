@@ -239,7 +239,6 @@ api_get_project_permissions <- function(state, proj_id) {
 }
 
 .api_update_project <- function(proj_id, data) {
-    print(PROJECTS_RECORD)
     n_match_entries <- PROJECTS_RECORD[id == proj_id, .N]
     warning(paste0("num matches = ", n_match_entries))
     if (n_match_entries == 1) {
@@ -280,17 +279,23 @@ api_get_project_permissions <- function(state, proj_id) {
                            description = data[["description"]],
                            notes = data[["notes"]]
                         )
-    PROJECTS_RECORD <<- rbindlist(list( PROJECTS_RECORD, proj_row ))
+
+
+    PROJECTS_RECORD <<- rbind(PROJECTS_RECORD, proj_row )
 
     # creator must be an admin
-    PERMISSIONS_TABLE <<- rbindlist(list( PERMISSIONS_TABLE,
-                                      data.table(id = proj_id,
-                                                 username = "testing",
-                                                 level = 3 )
-                                      ))
-    # init blank entries table
-    PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- new_entries_table()
+    print(PERMISSIONS_TABLE)
+    PERMISSIONS_TABLE <<- rbind(PERMISSIONS_TABLE,
+                                data.table(project_id = proj_id,
+                                           username = "testing",
+                                           level = 3 )
+    )
+    print(PERMISSIONS_TABLE)
 
+    # init blank entries table
+
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- new_entries_table()
+    proj_row
 }
 
 # for all below, if proj_id specified, will try to update existing entry with data specified
@@ -314,7 +319,7 @@ api_get_project_permissions <- function(state, proj_id) {
 #}
 # datas_list a list of the data fields dictionaries each specifying a project metadata entry
 #api_put_projects <- function(state, datas_list) {
-api_put_projects <- function(datas_list) {
+api_put_projects <- function(state, datas_list) {
     added_rows <- lapply(datas_list, function(data) {
             #"project_id" %in% names(data) &&
         if (!is.null(data[["id"]]) )
@@ -380,6 +385,7 @@ api_get_project_series <- function(state, proj_id) {
 
     writeLines("putting")
     print(row)
+
 
     PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- rbind(PROJECT_ENTRIES_TABLES_LIST[[proj_id]], row, fill=TRUE)
 

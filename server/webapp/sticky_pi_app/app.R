@@ -72,8 +72,8 @@ server <- function(input, output, session) {
     observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
       sel <- unique(input$experiment_list_table_rows_selected)
       #persist_sel <- input$experiment_list_table_rows_selected
-      if(is.null(sel)){
 
+       if(is.null(sel)){
         sel <- 0
           }
       else {
@@ -82,10 +82,11 @@ server <- function(input, output, session) {
         dt <- get_comp_prop(state, experiment_list_table)
         sel <- dt[sel, id]
       }
-      state$data_scope$selected_experiment <<- sel
-      warning("selected_experiment")
-      warning(state$data_scope$selected_experiment)
 
+      state$data_scope$selected_experiment <<- sel
+
+      warning("TODEL app selected")
+      warning(sel)
     })
 
     observeEvent(input$thumbnail_mini_to_fetch, on_thumbnail_mini_to_fetch(state, input))

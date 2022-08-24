@@ -15,7 +15,7 @@ side_panel <- function(state){renderUI({
         data <- get_comp_prop(state, "images_in_scope") # fixme, canno tcall by deparsing...?
         scope <- h3(id='scope_title', sprintf(" %i", nrow(data)), br()," images in scope")
       # scope <- h2("images in scope")
-        
+
       sidebarMenu(scope,
                   tags$hr(),
                   menuItem("Projects", tabName = "project", icon = icon("flask")),
