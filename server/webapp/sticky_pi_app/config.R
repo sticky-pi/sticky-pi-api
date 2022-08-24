@@ -33,9 +33,10 @@ config_vars <- list(
                                          )
                  ),
                  PROJECT_SERIES_HEADERS = list(
-                     device_id = "Device ID",
+                     device = "Device ID",
                      start_datetime = "Start",
-                     end_datetime = "End"
+                     end_datetime = "End",
+                     .COMP_N_MATCHES = "N_images"
                  ),
                  DATETIME_COLS_HEADERS = c(
                      "start_datetime",

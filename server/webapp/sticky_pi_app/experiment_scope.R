@@ -54,15 +54,12 @@ images_in_scope <- function(state, input){
 
   sel <- state$data_scope$selected_experiment
 
-  warning("TODEL")
-  warning(sel)
   if(sel == 0){
-    warning("SEL==0")
     req(input$data_scope_dates)
     dates <- as.Date(input$data_scope_dates)
     images <- api_get_images(state, dates)
-}
-else{
+  }
+  else{
     # projs_table <- api_get_projects(state)
     project_series <- api_get_project_series(state, sel)
     images <- lapply(project_series$id, function(i){
@@ -111,27 +108,24 @@ experiment_list_table <- function(state, input){
   images <- get_comp_prop(state, images_in_scope)
   req(images)
 
-  warning("\nprojects table:")
+  warning("TODEL \nprojects table:")
   print(projs_table)
   
   all_permissions_table <- api_get_project_permissions(state, '%')
-  warning("\nall permissions table:")
+  warning("TODEL\nall permissions table:")
   print(all_permissions_table)
 
   # first add a column, current user's permission level for each project
   # convert to role in render_...()
   curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
-  warning("\ncurr user permissions table:")
+  warning("TODEL \ncurr user permissions table:")
   print(curr_user_perms)
 
   # thanks to [merging in another table's column on common key](https://stackoverflow.com/a/34600831)
   # and [get data.table to use variable for name of **new** column]
   #fixme
   projs_table[curr_user_perms, on=c(id = "project_id"), level := i.level]
-  # if(nrow(images) > 0)
-  #   print(projs_table)
-  #   projs_table[, .COMP_N_MATCHES := nrow(images[device==device && datetime >= start && datetime < end]),
-  #               by=id]
+
   projs_table
 #
 #  im_id = lapply(dt[,EXPERIMENT_ID],
@@ -209,7 +203,10 @@ experiment_list_table_add_row <- function(state, input){
 }
 
 experiment_table <- function(state, input){
+
   dt_exp_list <- get_comp_prop(state, experiment_list_table)
+  images <- get_comp_prop(state, images_in_scope)
+  req(images)
 
   proj_id <- state$data_scope$selected_experiment
   if(proj_id<1)
@@ -219,8 +216,19 @@ experiment_table <- function(state, input){
   #print( paste("Project", proj_id))
   #print(dt)
   # if no matching entries table, make a blank one
+
+
   if(is.null(dt))
     return(new_entries_table())
+
+   comp_n_matches <- function(dev, start, end){
+                nrow(images[device==dev & datetime >= start & datetime < end])
+                    }
+
+  if(nrow(images) > 0){
+    dt[, .COMP_N_MATCHES := comp_n_matches(.SD$device, .SD$start_datetime, .SD$end_datetime),
+                  by=id]
+  }
   return(dt)
 
   # we fetch all ID for each experiment entry
@@ -246,7 +254,7 @@ experiment_table <- function(state, input){
 }
 #
 render_experiment_table<- function(state){
-  print("rendering entries")
+
   DT::renderDataTable({
     # isn't \/ dt reactive?
     dt <- get_comp_prop(state, experiment_table)
@@ -349,8 +357,8 @@ series_table_alter_cell <- function(state, input){
   warning("after edited val:")
   print(edited_val)
 
-  warning("new values for series:")
-  print(data)
+  valid_columns <- grep("^\\.COMP_", colnames(data), value=TRUE, invert=TRUE)
+  data <- dt[ ,colnames(dt) %in% valid_columns, with=FALSE]
   # pass API the state$exp_table colname of index j, PROJECT_ID of index i
   out <- api_put_project_series(state, proj_id, data=data, ser_id=ser_id)
   #out <- api_alter_proj_table(state, 'alter_cell', proj_id, data=data)
