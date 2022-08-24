@@ -120,7 +120,7 @@ experiment_list_table_ui <- function(state){
 }
 create_project_modal_ui <- function(state, failed=FALSE){
   fields_names <- state$config$PROJECTS_LIST_HEADERS
-  print(fields_names)
+  #warning(paste0("TODEL: ",fields_names))
   modalDialog(
 	  if (failed)
           div(strong("Invalid name, please try again.", style = "color: red;")),
@@ -139,12 +139,11 @@ create_project_modal_ui <- function(state, failed=FALSE){
 
 #enter_series_row_modal_ui <- function(state, input){
 #  fields_names <- state$config$PROJECT_SERIES_HEADERS
-#  fields_names[["device_id"]] <- "Device ID"
-#  print(fields_names)
+#  warning(paste("TODEL: new row col headers:", '\n', fields_names))
 #
 #  modalDialog(
 #      # TODO: check for other invalid inputs?
-#      textInput("new_series_device_id", fields_names$device_id),
+#      textInput("new_series_device", fields_names$device_id),
 #      dateInput("new_series_start", fields_names$start_datetime),
 #      dateInput("new_series_end", fields_names$end_datetime),
 #
@@ -181,27 +180,19 @@ experiment_table_ui <- function(state) {
 
                   column(3, actionButton("experiment_table_add_column", "+"))
                 ),
-
                 # the table
                 DTOutput('experiment_table'),
 
-            # add a row
-              column(2, tags$h4('Add a new row')),
-              fluidRow(
-                  column(3, textInput("new_series_device_id", fields_names$device_id)),
-                  column(3, dateInput("new_series_start_date", "Series Start Date", startview="year", max=Sys.Date())),
-                  column(3, timeInput("new_series_start_time", "Time"))
-                  ),
-              fluidRow(
-                  column(3, dateInput("new_series_end_date", "Series End Date", startview="year", max=Sys.Date())),
-                  column(3, timeInput("new_series_end_time", "Time")),
-                ),
-              column(3, actionButton("add_project_series_table_row", "+")),
-                downloadButton('download_metadata_handler', 'Download metadata')
-              #column(3, textInput("new_series_device_id", fields_names$device_id)),
-              #column(3, dateRangeInput("new_series_daterange", "Series date range", startview="year", max=Sys.Date())),
-              #column(3, timeInput("new_series_start_time", fields_names$start_datetime)),
-              #column(3, timeInput("new_series_end_time", fields_names$end_datetime)),
+                # add a row
+                fluidRow(
+                    column(2, tags$h4('Add a new row')),
+                    column(3, textInput("new_series_device", fields_names$device_id)),
+                    column(3, textInput("new_series_start_datetime", "Series start datetime", placeholder = "Ex: 2017-07-01T09:37:12Z")),
+                    column(3, textInput("new_series_end_datetime", "Series end datetime", placeholder = paste("Ex:", strftime(Sys.time(), DATETIME_FORMAT, tz="UTC")) )),
+                    column(3, actionButton("add_project_series_table_row", "+")),
+                    downloadButton('download_metadata_handler', 'Download metadata')
+                
+                )
             )
         )
         } else {

@@ -163,8 +163,6 @@ render_experiment_list_table<- function(state){
                                                           excluded_names=c("id")
                                                          )
                               )
-
-
   })
 }
 show_create_project_form <- function(state, input, failed=FALSE) {
@@ -172,14 +170,10 @@ show_create_project_form <- function(state, input, failed=FALSE) {
     showModal(create_project_modal_ui(state, failed))
 }
 experiment_list_table_add_row <- function(state, input){
-    writeLines("\nuser submitted create project form")
+    warning("TODEL: user submitted create project form")
     # should have been inputted by user in modal form
-    #req(input$new_project_name)
-    #req(input$new_project_description)
-    #req(input$new_project_notes)
-    print(input$new_project_name)
     if (is.null(input$new_project_name) || input$new_project_name == "") {
-        print("no name entered")
+        print("TODEL: no name entered")
         show_create_project_form(state, input, failed=TRUE)
     } else {
         name <- input$new_project_name
@@ -187,6 +181,8 @@ experiment_list_table_add_row <- function(state, input){
         notes <- input$new_project_notes
 
         data = list(list(name=name, description=description, notes=notes))
+        #warning("TODEL: putting rows with query: ")
+        #print(data)
         rows <- api_put_projects(state, data)
         state$updaters$api_fetch_time <- Sys.time()
         state$data_scope$selected_experiment <- rows[[1]][["id"]]
@@ -202,14 +198,13 @@ experiment_table <- function(state, input){
   req(images)
 
   proj_id <- state$data_scope$selected_experiment
-  if(proj_id<1)
+  if (proj_id < 1)
     return(data.table())
 
   dt <- api_get_project_series(state, proj_id)
   #print( paste("Project", proj_id))
   #print(dt)
   # if no matching entries table, make a blank one
-
 
   if(is.null(dt))
     return(new_entries_table())
@@ -382,41 +377,35 @@ project_series_table_add_row <- function(state, input){
     #}
 
     user_inputs$start_datetime <- {
-        datestr <- strftime(input$new_series_start_date)
-        timestr <- strftime(input$new_series_start_time, "%T")
-        warning(paste("start:", datestr))
-        warning(paste("start:", timestr))
+        warning(paste("start:", input$new_series_start_datetime))
 
-        shinyFeedback::feedbackDanger("new_series_start_date", !isTruthy(datestr), "Required")
-        req(input$new_series_start_date, cancelOutput=TRUE)
-        shinyFeedback::feedbackDanger("new_series_start_time", !isTruthy(timestr), "Required")
-        req(input$new_series_start_time, cancelOutput=TRUE)
+        start_datetime <- fastPOSIXct(input$new_series_start_datetime)
+        # when improper string passed, fastPOSIXct returns NA
+        shinyFeedback::feedbackDanger("new_series_start_datetime", !isTruthy(start_datetime), "Must be ISO datetime format")
+        req(input$new_series_start_datetime, cancelOutput=TRUE)
 
-        fastPOSIXct(ymd(datestr) + hms(timestr), tz="UTC")
+        start_datetime
     }
     user_inputs$end_datetime <- {
-        datestr <- strftime(input$new_series_end_date)
-        timestr <- strftime(input$new_series_end_time, "%T")
-        warning(paste("end:", strftime(input$new_series_end_date)))
-        warning(paste("end:", strftime(input$new_series_end_time, "%T")))
+        warning(paste("end:", input$new_series_end_datetime))
 
-        shinyFeedback::feedbackDanger("new_series_end_date", !isTruthy(datestr), "Required")
-        req(input$new_series_end_date, cancelOutput=TRUE)
-        shinyFeedback::feedbackDanger("new_series_end_time", !isTruthy(timestr), "Required")
-        req(input$new_series_end_time, cancelOutput=TRUE)
+        end_datetime <- fastPOSIXct(input$new_series_end_datetime)
+        # when improper string passed, fastPOSIXct returns NA
+        shinyFeedback::feedbackDanger("new_series_end_datetime", !isTruthy(end_datetime), "Must be ISO datetime format")
+        req(input$new_series_end_datetime, cancelOutput=TRUE)
 
-        end_datetime <- ymd(datestr) + hms(timestr)
-        shinyFeedback::feedbackDanger("new_series_end_time", end_datetime < user_inputs$start_datetime, "Start must be before end")
+        shinyFeedback::feedbackDanger("new_series_end_datetime", end_datetime < user_inputs$start_datetime, "Start must be before end")
+        req(end_datetime > user_inputs$start_datetime, cancelOutput=TRUE)
 
-        fastPOSIXct(end_datetime, tz="UTC")
+        end_datetime
     }
     user_inputs$dev_id <- {
-        #warning(paste("dev ID:", input$new_series_device_id))
+        #warning(paste("dev ID:", input$new_series_device))
         # 8 char hexadec str
-        valid <- grepl('^[0-9A-Fa-f]{8}$', input$new_series_device_id)
-        shinyFeedback::feedbackDanger("new_series_device_id", !valid, "Must be 8-character hexadecimal")
+        valid <- grepl('^[0-9A-Fa-f]{8}$', input$new_series_device)
+        shinyFeedback::feedbackDanger("new_series_device", !valid, "Must be 8-character hexadecimal")
         req(valid, cancelOutput=TRUE)
-        input$new_series_device_id
+        input$new_series_device
     }
     #warning("got all vals")
 

@@ -248,19 +248,15 @@ api_get_project_permissions <- function(state, proj_id) {
         if ("level" %in% upd_cols) {
             upd_cols[["level"]] <- NULL
         }
-        warning("upd_cols")
-        print(data)
-        warning("upd_cols of PROJECTS_RECORD")
-        print(PROJECTS_RECORD[, (upd_cols)])
+        #warning("TODEL: upd_cols")
+        #print(data)
+        #warning("TODEL: upd_cols of PROJECTS_RECORD")
+        #print(PROJECTS_RECORD[, (upd_cols)])
         # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
         # fixme id on projects_dt and project_id on premission_dt
         PROJECTS_RECORD[data, on=c(id = "project_id"), (upd_cols) := mget(paste0("i.", upd_cols))]
-        #out = PROJECTS_RECORD
-        #out[, "project_id" := id]
-        #out <-  out[data, on="project_id", (upd_cols) := mget(paste0("i.", upd_cols))]
-        #out[, project_id := NULL]
-        #out
-    } else if (n_match_entries > 1) {
+    }
+    else if (n_match_entries > 1) {
         warning(paste("multiple project metadata table entries found for project ID", proj_id))
     }
 }
@@ -279,22 +275,19 @@ api_get_project_permissions <- function(state, proj_id) {
                            description = data[["description"]],
                            notes = data[["notes"]]
                         )
-
-
     PROJECTS_RECORD <<- rbind(PROJECTS_RECORD, proj_row )
 
     # creator must be an admin
-    print(PERMISSIONS_TABLE)
     PERMISSIONS_TABLE <<- rbind(PERMISSIONS_TABLE,
                                 data.table(project_id = proj_id,
                                            username = "testing",
                                            level = 3 )
     )
-    print(PERMISSIONS_TABLE)
-
     # init blank entries table
+    # list attribute names must be strings
+    PROJECT_ENTRIES_TABLES_LIST[[as.character(proj_id)]] <<- new_entries_table()
 
-    PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- new_entries_table()
+    #warning("TODEL: new entries put in projects table, permissions table and series tables list")
     proj_row
 }
 
@@ -308,33 +301,21 @@ api_get_project_permissions <- function(state, proj_id) {
 #       1: read, write
 #       2: read, write, admin(manage members, delete proj)
 # will be back/mid-end for webapp create new project interface
-# TODO: change to put_projects(state, <a list of "data"s>)
-#api_put_project <- function(state, data, proj_id=NULL) {
-#    if (!is.null(proj_id)) {
-#        .api_update_project(state, proj_id, data)
-#    } else {
-#        .api_put_new_project(state, data)
-#    }
-#    PROJECTS_RECORD[id == proj_id]
-#}
 # datas_list a list of the data fields dictionaries each specifying a project metadata entry
-#api_put_projects <- function(state, datas_list) {
 api_put_projects <- function(state, datas_list) {
     added_rows <- lapply(datas_list, function(data) {
             #"project_id" %in% names(data) &&
         if (!is.null(data[["id"]]) )
         {
-            warning("project ID:")
-            print(data[["id"]])
+            #warning("TODEL: project ID:")
+            #print(data[["id"]])
             .api_update_project(data[["id"]], data)
         }
         else {
             .api_put_new_project(data)
         }
     })
-    # combine into a vec
-    #PROJECTS_RECORD[id == proj_id]
-    warning("rows added:")
+    warning("TODEL: rows added:")
     print(added_rows)
     added_rows
 }
