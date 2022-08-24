@@ -96,10 +96,6 @@ datatable_options <- function(dt, excluded_names="id", header_names=NULL){
     )
 }
 
-#LEVEL_TO_ROLE_MAP = c()
-#LEVEL_TO_ROLE_MAP['1'] = "read-only"
-#LEVEL_TO_ROLE_MAP['2'] = "read, write"
-#LEVEL_TO_ROLE_MAP['3'] = "all, admin"
 # see permission_level_to_role() in `ui.R`
 
 # currently table consists of
@@ -115,22 +111,23 @@ experiment_list_table <- function(state, input){
   images <- get_comp_prop(state, images_in_scope)
   req(images)
 
-  #writeLines("\nexperiment_list_table():")
-  #print(projs_table)
+  warning("\nprojects table:")
+  print(projs_table)
   
-  # all_permissions_table <- api_get_project_permissions(state, '%')
-  #print(all_permissions_table)
+  all_permissions_table <- api_get_project_permissions(state, '%')
+  warning("\nall permissions table:")
+  print(all_permissions_table)
 
   # first add a column, current user's permission level for each project
   # convert to role in render_...()
-  # curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(id, level)]
-  #writeLines(" ")
-  #print(curr_user_perms)
+  curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
+  warning("\ncurr user permissions table:")
+  print(curr_user_perms)
 
   # thanks to [merging in another table's column on common key](https://stackoverflow.com/a/34600831)
   # and [get data.table to use variable for name of **new** column]
   #fixme
-  # projs_table[curr_user_perms, on = "project_id", level := i.level]
+  projs_table[curr_user_perms, on=c(id = "project_id"), level := i.level]
   # if(nrow(images) > 0)
   #   print(projs_table)
   #   projs_table[, .COMP_N_MATCHES := nrow(images[device==device && datetime >= start && datetime < end]),
@@ -155,11 +152,11 @@ render_experiment_list_table<- function(state){
     dt <- get_comp_prop(state, experiment_list_table)[, !"level"]
     # TODO: ensure experiment_list_table cannot be modified in between
     # *copy* perm. level col to preserve levels when converting to display text
-    # role_col <- get_comp_prop(state, experiment_list_table)[, .(id, role = permission_levels_to_roles(state, level))]
+    role_col <- get_comp_prop(state, experiment_list_table)[, .(id, role = permission_levels_to_roles(state, level))]
     # print(role_col)
     role_header <- state$config$PERMISSIONS_TABLE_HEADERS[["level"]]
     #fixme
-    # dt[role_col, on = "project_id", c(role_header) := i.role]
+     dt[role_col, on="id", c(role_header) := i.role]
 
     exp_id <- state$data_scope$selected_experiment
     row <- which(dt[ ,id == exp_id])
@@ -270,7 +267,7 @@ render_experiment_table<- function(state){
                               editable = TRUE,
                               colnames = fill_replace_colnames(colnames(dt), state$config$PROJECT_SERIES_HEADERS),
                               options = datatable_options(dt,
-                                                          excluded_names=c("series_id")
+                                                          excluded_names=c("id")
                                                           )
                             )
                               #%>% formatDate( datetime_colinds,
@@ -341,14 +338,14 @@ series_table_alter_cell <- function(state, input){
   warning("before edited val:")
   print(paste(edited_val, class(edited_val), sep='    '))
 
-  ser_id <- proj_seriess[edit_info$row, series_id]
-  #data[, series_id := NULL]
+  ser_id <- proj_seriess[edit_info$row, id]
+  #data[, id := NULL]
 
   # if a datetime col edited, force parsing
   if (edit_col %in% state$config$DATETIME_COLS_HEADERS) {
     edited_val <- fastPOSIXct(edited_val)
   }
-  data <- proj_seriess[series_id == ser_id, (edit_info$col) := (edited_val)]
+  data <- proj_seriess[id == ser_id, (edit_info$col) := (edited_val)]
   warning("after edited val:")
   print(edited_val)
 
@@ -425,7 +422,7 @@ project_series_table_add_row <- function(state, input){
     #if (end_datetime < start_datetime)
     #    validate("Start must be before end")
 
-    data = list(device_id = user_inputs$dev_id,
+    data = list(device = user_inputs$dev_id,
                 start_datetime = user_inputs$start_datetime,
                 end_datetime = user_inputs$end_datetime
     )

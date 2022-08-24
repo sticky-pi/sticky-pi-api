@@ -1,7 +1,8 @@
-MOCK_PROJECTS_TABLE_PATH <- "www/projects.json"
-MOCK_PERMISSIONS_TABLE_PATH <- "www/permissions.json"
-MOCK_ENTRIES_TABLES_DIR_PATH <- "www/project-entries-tables"
-MOCK_IMAGES_DATA_PATH <- "www/data.json"
+TEST_DATA_DIR_PATH <- "www/test"
+MOCK_PROJECTS_TABLE_PATH <- file.path(TEST_DATA_DIR_PATH, "projects.json")
+MOCK_PERMISSIONS_TABLE_PATH <- file.path(TEST_DATA_DIR_PATH, "permissions.json")
+MOCK_ENTRIES_TABLES_DIR_PATH <- file.path(TEST_DATA_DIR_PATH, "project-entries-tables")
+MOCK_IMAGES_DATA_PATH <- file.path(TEST_DATA_DIR_PATH, "data.json")
 
 DATA_HEADERS <- list(
                      datetime = "datetime",
@@ -73,6 +74,7 @@ api_get_images <- function(state, dates, dev = "%", what_images="thumbnail-mini"
     #warning("dates after:")
 
     dt <- jsonlite::fromJSON(MOCK_IMAGES_DATA_PATH)
+    warning(MOCK_IMAGES_DATA_PATH)
 
     images <- as.data.table(dt)
 
@@ -183,8 +185,8 @@ new_entries_table <- function(db_file_path="") {
     }
     else {
         data.table(
-                id = character(0),
-                device_id = character(0),
+                id = numeric(0),
+                device = character(0),
                 # just POSIX time objects, value irrelevant
                 start_datetime = .POSIXct(0)[0],
                 end_datetime = .POSIXct(0)[0]
@@ -256,11 +258,12 @@ api_get_project_permissions <- function(state, proj_id) {
         print(PROJECTS_RECORD[, (upd_cols)])
         # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
         # fixme id on projects_dt and project_id on premission_dt
-        out = PROJECTS_RECORD
-        out[, "project_id" := id]
-        out <-  out[data, on="project_id", (upd_cols) := mget(paste0("i.", upd_cols))]
-        out[, project_id := NULL]
-        out
+        PROJECTS_RECORD[data, on=c(id = "project_id"), (upd_cols) := mget(paste0("i.", upd_cols))]
+        #out = PROJECTS_RECORD
+        #out[, "project_id" := id]
+        #out <-  out[data, on="project_id", (upd_cols) := mget(paste0("i.", upd_cols))]
+        #out[, project_id := NULL]
+        #out
     } else if (n_match_entries > 1) {
         warning(paste("multiple project metadata table entries found for project ID", proj_id))
     }
@@ -310,7 +313,7 @@ api_get_project_permissions <- function(state, proj_id) {
 #    } else {
 #        .api_put_new_project(state, data)
 #    }
-#    PROJECTS_RECORD[project_id == proj_id]
+#    PROJECTS_RECORD[id == proj_id]
 #}
 # datas_list a list of the data fields dictionaries each specifying a project metadata entry
 #api_put_projects <- function(state, datas_list) {
@@ -328,7 +331,7 @@ api_put_projects <- function(datas_list) {
         }
     })
     # combine into a vec
-    #PROJECTS_RECORD[project_id == proj_id]
+    #PROJECTS_RECORD[id == proj_id]
     warning("rows added:")
     print(added_rows)
     added_rows
@@ -359,24 +362,22 @@ api_get_project_series <- function(state, proj_id) {
     # only change fields/cols specified (in data)
     upd_cols <- names(data)
     # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
-        PROJECT_ENTRIES_TABLES_LIST[[proj_id]][data, on="series_id", (upd_cols) := mget(paste0("i.", upd_cols))]
+        PROJECT_ENTRIES_TABLES_LIST[[proj_id]][data, on = c(id="id"), (upd_cols) := mget(paste0("i.", upd_cols))]
 
     # return added row
-    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][id == ser_id]
 }
 
 .api_put_new_project_series <- function(state, proj_id, data) {
     # generate ser_id
     if ((PROJECT_ENTRIES_TABLES_LIST[[proj_id]][,.N]) != 0) {
         # ids all just increment by 1 each row
-        ser_id <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]][, max(as.hexmode(series_id))] + 1
-        ser_id <- as.character(as.hexmode(ser_id))
+        ser_id <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]][, max(id)] + 1
     } else {
-        ser_id <- "00000001"
+        ser_id <- 1
     }
-    #data[["series_id"]] <- ser_id
     row <- as.data.table(data)
-    row[1, series_id := ser_id]
+    row[1, id := ser_id]
     row[1, start_datetime := fastPOSIXct(start_datetime)]
     row[1, end_datetime := fastPOSIXct(end_datetime)]
 
@@ -386,7 +387,7 @@ api_get_project_series <- function(state, proj_id) {
     PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- rbind(PROJECT_ENTRIES_TABLES_LIST[[proj_id]], row, fill=TRUE)
 
     # return added row
-    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]][id == ser_id]
 }
 
 # adds to the series metadata table for the project specified by `proj_id`, a new row defined by argument `data`
@@ -394,7 +395,7 @@ api_get_project_series <- function(state, proj_id) {
 # if provided `data` is missing values, returns NULL
 api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
     #proj_row <- data.table( series_id = numeric(0),
-    #                        device_id = character(0),
+    #                        device = character(0),
     #                        # just POSIX time objects, value irrelevant
     #                        start_datetime = .POSIXct(0)[0],
     #                        end_datetime = .POSIXct(0)[0] )
@@ -405,7 +406,7 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
     SERIESS_TABLE <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
 
     # check if `data` valid
-    mand_cnames <- c("device_id", "start_datetime", "end_datetime")
+    mand_cnames <- c("device", "start_datetime", "end_datetime")
     lapply(mand_cnames, function(cname) {
                            if (!isTruthy( data[[cname]] )) {
                                warning(paste("api_put_project_series():", cname, "empty in supplied params"))
@@ -427,7 +428,7 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
     if (!is.null(ser_id)) {
         return(.api_update_project_series(state, ser_id, proj_id, data))
     } else {
-        matches <- SERIESS_TABLE[device_id == as.character(data[["device_id"]]) &&
+        matches <- SERIESS_TABLE[device == as.character(data[["device"]]) &&
                           start_datetime == data[["start_datetime"]] &&
                           end_datetime == data[["end_datetime"]] ]
             # check if entry for this series already exists
@@ -435,13 +436,13 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
             warning("series with same dev ID, start and end as the one to add already in table:")
             #print(matches)
                                         # series ID of found/matching entry
-            return(.api_update_project_series(state, matches[1, series_id], proj_id, data))
+            return(.api_update_project_series(state, matches[1, id], proj_id, data))
         } else {
             return(.api_put_new_project_series(state, proj_id, data))
         }
     }
     ## return added/updated row
-    #PROJECT_ENTRIES_TABLES_LIST[[proj_id]][series_id == ser_id]
+    #PROJECT_ENTRIES_TABLES_LIST[[proj_id]][id == ser_id]
 }
 
 # TODO: use all columns in existing table including user-created
