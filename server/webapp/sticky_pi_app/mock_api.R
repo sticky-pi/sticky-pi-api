@@ -453,14 +453,63 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
 
 ####### in-mem DB #########
 # current username in state
+
 # master tables
-# list, each elem is a project's entrie*s* ***table***
-PROJECTS_RECORD <- new_projects_table(MOCK_PROJECTS_TABLE_PATH)
+#PROJECTS_RECORD <- new_projects_table(MOCK_PROJECTS_TABLE_PATH)
+PROJECTS_RECORD <- data.table(
+                      id = 1:2,
+                      name = c("Light Trials",
+                               "First Try"),
+                      description = c("investigating effect of artificial lighting on insect communities",
+                                      "standard experiments with humidity, temp data"),
+                      notes = c("light data from external intensity sensor",
+                                "")
+)
 #print(PROJECTS_RECORD)
-PERMISSIONS_TABLE <- new_permissions_table(MOCK_PERMISSIONS_TABLE_PATH)
+#PERMISSIONS_TABLE <- new_permissions_table(MOCK_PERMISSIONS_TABLE_PATH)
+PERMISSIONS_TABLE <- data.table(
+                      project_id = 1:2,
+                      username = c("testing", "testing"),
+                      level = c(2, 3)
+)
 #PERMISSIONS_TABLE[, username := ..state$config$STICKY_PI_TESTING_USER]
 #print(PERMISSIONS_TABLE)
-PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
+
+# list, each elem is a project's entrie*s* ***table***
+#PROJECT_ENTRIES_TABLES_LIST <- new_entries_tables_list(MOCK_ENTRIES_TABLES_DIR_PATH)
+PROJECT_ENTRIES_TABLES_LIST <- list(
+                            "2" = data.table(
+                                    id = 1:4,
+                                    device = c("c77dd32c", "74e9715b", "6ee9a123", "512858f4"),
+                                    start_datetime = fastPOSIXct(
+                                                        "2022-06-13T18:15:49Z",
+                                                        "2022-06-12T19:42:19Z",
+                                                        "2022-06-13T18:15:42Z",
+                                                        "2022-05-25T00:03:33Z"
+                                                    ),
+                                    end_datetime = fastPOSIXct(
+                                                        "2022-06-13T18:23:22Z",
+                                                        "2022-06-21T18:19:51Z",
+                                                        "2022-06-13T18:23:24Z",
+                                                        "2022-05-26T00:15:46Z"
+                                                    ),
+                                    bait_strength = c(29.8303, 439.4434, 713.2804, 907.6277)
+                            ),
+                            "1" = data.table(
+                                    id = 1:3,
+                                    device = c("f090a1c2", "c77dd32c", "ca52767f"),
+                                    start_datetime = fastPOSIXct(
+                                                        "2022-06-10 21:12:48",
+                                                        "2022-06-13 18:15:49",
+                                                        "2022-05-25 00:45:33" ),
+                                    end_datetime = fastPOSIXct(
+                                                        "2022-06-21 18:09:44",
+                                                        "2022-06-13 18:23:22",
+                                                        "2022-06-20 21:20:20" ),
+                                    height = c(42.6508, 29.8303, 61.9988),
+                                    bait_strength = c(12.4906, 19.1173, 29.3656)
+                            )
+) 
 #print(PROJECT_ENTRIES_TABLES_LIST)
 #print(new_entries_table("www/1.json"))
 
