@@ -67,8 +67,6 @@ api_get_images <- function(state, dates, dev = "%", what_images="thumbnail-mini"
     # force reactive vals refresh
     state$updaters$api_fetch_time
     #token <- state$user$auth_token
-
-    #warning("dates before:")
     #url = make_url(state, 'get_image_series', what_images)
     dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
     #warning("dates after:")
@@ -79,7 +77,6 @@ api_get_images <- function(state, dates, dev = "%", what_images="thumbnail-mini"
     images <- as.data.table(dt)
 
    if(dev != "%"){
-       print(images)
        images <- images[device == dev]
    }
 
