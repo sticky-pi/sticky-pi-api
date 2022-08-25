@@ -68,25 +68,23 @@ server <- function(input, output, session) {
     #
     observeEvent(input$create_project_form, show_create_project_form(state, input))
     observeEvent(input$create_project_form_submit, experiment_list_table_add_row(state, input))
+    #
+    observeEvent(input$experiment_list_table_row_last_clicked, ignoreNULL = FALSE, {
 
-    observeEvent(input$experiment_list_table_rows_selected, ignoreNULL = FALSE, {
       sel <- unique(input$experiment_list_table_rows_selected)
-      #persist_sel <- input$experiment_list_table_rows_selected
-
+      #
        if(is.null(sel)){
         sel <- 0
           }
       else {
         sel <- as.numeric(sel)
         # we want the ID of the selected experiment, not the row!
-        dt <- get_comp_prop(state, experiment_list_table)
+        dt <- isolate(get_comp_prop(state, experiment_list_table))
         sel <- dt[sel, id]
+
       }
-
       state$data_scope$selected_experiment <<- sel
-
-      warning("TODEL app selected")
-      warning(sel)
+    #
     })
 
     observeEvent(input$thumbnail_mini_to_fetch, on_thumbnail_mini_to_fetch(state, input))

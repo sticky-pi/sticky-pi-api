@@ -153,10 +153,9 @@ render_experiment_list_table<- function(state){
     #  row <- NULL
     # }
     # column headers renamed/"prettied" in fill_replace_colnames
-    warning("TODEL render selected")
-    warning(row)
+    
     datatable = DT::datatable(dt,
-                              selection = list(mode='single', selected = row),
+                              selection = list(mode='single', target="row", selected = row),
                               editable = FALSE,
                               colnames = fill_replace_colnames(colnames(dt), state$config$PROJECTS_LIST_HEADERS),
                               options = datatable_options(dt,
@@ -181,8 +180,7 @@ experiment_list_table_add_row <- function(state, input){
         notes <- input$new_project_notes
 
         data = list(list(name=name, description=description, notes=notes))
-        #warning("TODEL: putting rows with query: ")
-        #print(data)
+
         rows <- api_put_projects(state, data)
         state$updaters$api_fetch_time <- Sys.time()
         state$data_scope$selected_experiment <- rows[[1]][["id"]]
