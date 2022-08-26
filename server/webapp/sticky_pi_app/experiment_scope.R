@@ -19,8 +19,8 @@ check_var_name <- function(string) {
 }
 
 # ensures user inputs valid col name and returns SQL type corresponding to selected type
-handle_new_series_column_user_specs <- function(dt, name, code){
-    col_dupli <- name %in% colnames(dt)
+handle_new_series_column_user_specs <- function(state, dt, name, code){
+    col_dupli <- name %in% fill_replace_colnames(colnames(dt), state$config$PROJECT_SERIES_HEADERS)
     shinyFeedback::feedbackDanger("series_new_col_name", col_dupli, "Column already exists")
     req(!col_dupli, cancelOutput=TRUE)
     #if (col_dupli) {
@@ -30,7 +30,7 @@ handle_new_series_column_user_specs <- function(dt, name, code){
 
     valid_name <- check_var_name(name)
     shinyFeedback::feedbackDanger("series_new_col_name", !valid_name, "Inputted column name invalid. Must start with a letter and only contain alphanumerics, '.'")
-    req(valid_name, cancelOutput=TRUE)
+    req(valid_name)
     map <- list("lng"= function(name)list("LONGITUDE"=  "DECIMAL(11, 8)"),
               "lat"= function(name)list("LATITUDE"=  "DECIMAL(11, 8)"),
               "char"= function(name){
@@ -299,10 +299,10 @@ project_series_table_add_column <- function(state, input){
 
     proj_id <- state$data_scope$selected_experiment
 
-    SQL_type <- handle_new_series_column_user_specs(get_comp_prop(state, experiment_table), name, type)
+    SQL_type <- handle_new_series_column_user_specs(state, get_comp_prop(state, experiment_table), name, type)
     data <- list(project_id = proj_id,
                  column_name = name,
-                 column_type = type )
+                 column_type = SQL_type )
     # shinyFeedback will block until valid user input
     #if(!is.null(data)){
     # fixme
@@ -312,7 +312,6 @@ project_series_table_add_column <- function(state, input){
     if (!is.null(out))
         state$updaters$api_fetch_time <- Sys.time()
 }
-
 
 #project_series_table_add_row <- function(state, input){
 #  proj_id <-state$data_scope$selected_experiment

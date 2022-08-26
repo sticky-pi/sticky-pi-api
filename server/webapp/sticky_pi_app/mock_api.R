@@ -8,12 +8,32 @@ DATA_HEADERS <- list(
                      datetime = "datetime",
                      id = "id"
 )
-PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP <- list("lng" = numeric(0),
-          "lat" = numeric(0),
-          "char" = character(0),
-          "datetime" = .POSIXct(0)[0],
-          "num" = numeric(0)
+#PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP <- list(
+#          "lng" = numeric(0),
+#          "lat" = numeric(0),
+#          "char" = character(0),
+#          "datetime" = .POSIXct(0)[0],
+#          "num" = numeric(0)
+#          )
+# NOTE: use regex, %like%, etc to match SQL DECIMAL(...,...) types
+SQL_TO_R_TYPES_MAP <- list(
+          "DECIMAL\\([0-9]+(\\s?)+,(\\s?)+[0-9]+\\)" = numeric(0),
+          "CHAR\\([0-9]+\\)" = character(0),
+          "DATETIME" = .POSIXct(0)[0],
+          "DOUBLE" = numeric(0)
           )
+# given a SQL type specified as one of the names of SQL_TO_R_TYPES_MAP (a string), returns an "empty" instance of the corresponding R type
+.SQLtoR_type <- function(SQLt) {
+    matches_lgl <- sapply(names(SQL_TO_R_TYPES_MAP), function(match_to, match_str){ match_str %like% match_to }, match_str = SQLt)
+    map_matches <- SQL_TO_R_TYPES_MAP[matches_lgl]
+    if (length(map_matches) > 1) {
+        warning("SQL type given matches more than one possibility:")
+        print(map_matches)
+    } else if (length(map_matches) == 0) {
+        warning(paste("SQL type given,", SQLt, ", does not match any valid types:", names(SQL_TO_R_TYPES_MAP), '\n'))
+    }
+    return(map_matches[[1]])
+}
 
 # fixme, this is completely broken due to the new api
 trim_ext_json <- function(path) {
@@ -446,15 +466,17 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
         return(data.table())
     }
     spec_col <- data$column_name
-    spec_type <- data$column_type
+    # NOTE: .SQLtoR_type returns an "empty" *instance* of the R type
+    spec_type_R <- .SQLtoR_type(data$column_type)
     seriess_table <- api_get_project_series(state, proj_id)
     # new col or update
     if (spec_col %in% names(seriess_table)) {
         warning("TODEL: TODO: edit existing col name")
     }
     else {
-        seriess_table[, c(spec_col) := PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP[[spec_type]]]
-        return( list(column_name = spec_col, column_type = PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP[[spec_type]]) )
+        seriess_table[, c(spec_col) := spec_type_R]
+                                            # return SQL type as per specifications
+        return( list(column_name = spec_col, column_type = data$column_type) )
     }
 }
 
