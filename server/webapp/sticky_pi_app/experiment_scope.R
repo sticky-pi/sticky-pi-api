@@ -18,34 +18,41 @@ check_var_name <- function(string) {
   return(valid & unreserved)
 }
 
-handle_new_experiment_metavariable <- function(dt,  name, code){
+# ensures user inputs valid col name and returns SQL type corresponding to selected type
+handle_new_series_column_user_specs <- function(dt, name, code){
+    col_dupli <- name %in% colnames(dt)
+    shinyFeedback::feedbackDanger("series_new_col_name", col_dupli, "Column already exists")
+    req(!col_dupli, cancelOutput=TRUE)
+    #if (col_dupli) {
+    #    warning('Column already exists')
+    #    return(NULL)
+    #}
 
-  if(name %in% colnames(dt)){
-    warning('Column already exists')
-    return(NULL)
-  }
-
-  map <- list("lng"= function(name)list("LONGITUDE"=  "DECIMAL(11, 8)"),
+    valid_name <- check_var_name(name)
+    shinyFeedback::feedbackDanger("series_new_col_name", !valid_name, "Inputted column name invalid. Must start with a letter and only contain alphanumerics, '.'")
+    req(valid_name, cancelOutput=TRUE)
+    map <- list("lng"= function(name)list("LONGITUDE"=  "DECIMAL(11, 8)"),
               "lat"= function(name)list("LATITUDE"=  "DECIMAL(11, 8)"),
               "char"= function(name){
                 out = list()
-                if(check_var_name(name)){
+                if (valid_name){
                   out[[name]] <- "CHAR(64)"
                   return(out)
                 }},
               "datetime"= function(name){
                 out = list()
-                if(check_var_name(name)){
+                if (valid_name){
                   out[[name]] <- "DATETIME"
                   return(out)
                 }},
 
               "num"= function(name){
                 out = list()
-                if(check_var_name(name)){
+                if (valid_name){
                   out[[name]] <- "DOUBLE"
                   return(out)
-                }})
+                }}
+            )
   return(map[[code]](name))
 }
 
@@ -190,7 +197,6 @@ experiment_list_table_add_row <- function(state, input){
 }
 
 experiment_table <- function(state, input){
-
   dt_exp_list <- get_comp_prop(state, experiment_list_table)
   images <- get_comp_prop(state, images_in_scope)
   req(images)
@@ -284,24 +290,29 @@ render_experiment_table<- function(state){
 #  #stop(available_annotators)
 #}
 
-#experiment_table_add_column <- function(state, input){
-#  req(state$data_scope$selected_experiment != 0)
-#    req(input$experiment_new_col_type)
-#  req(input$experiment_new_col_type)
-#  name <- input$experiment_new_col_name
-#  type <- input$experiment_new_col_type
-#
-#  experiment_id <-state$data_scope$selected_experiment
-#
-#  data <- handle_new_experiment_metavariable(get_comp_prop(state, experiment_table), name, type)
-#  if(!is.null(data)){
-#    out <- api_alter_experiment_table(state,'add_column', experiment_id, data=data)
-#    if(!is.null(out))
-#      state$updaters$api_fetch_time <- Sys.time()
-#  }
-#
-#}
-#
+project_series_table_add_column <- function(state, input){
+    req(state$data_scope$selected_experiment != 0)
+    req(input$series_new_col_name)
+    req(input$series_new_col_type)
+    name <- input$series_new_col_name
+    type <- input$series_new_col_type
+
+    proj_id <- state$data_scope$selected_experiment
+
+    SQL_type <- handle_new_series_column_user_specs(get_comp_prop(state, experiment_table), name, type)
+    data <- list(project_id = proj_id,
+                 column_name = name,
+                 column_type = type )
+    # shinyFeedback will block until valid user input
+    #if(!is.null(data)){
+    # fixme
+    warning("TODEL: user wants to add a column:")
+    print(as.data.table(data))
+    out <- api_put_project_columns(state, data = list(data))
+    if (!is.null(out))
+        state$updaters$api_fetch_time <- Sys.time()
+}
+
 
 #project_series_table_add_row <- function(state, input){
 #  proj_id <-state$data_scope$selected_experiment

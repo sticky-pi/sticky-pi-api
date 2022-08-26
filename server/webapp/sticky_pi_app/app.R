@@ -64,7 +64,7 @@ server <- function(input, output, session) {
 
     observeEvent(input$experiment_table_cell_edit, series_table_alter_cell(state, input))
     observeEvent(input$add_project_series_table_row, project_series_table_add_row(state, input))
-    #observeEvent(input$experiment_table_add_column, experiment_table_add_column(state, input))
+    observeEvent(input$project_series_table_add_column, project_series_table_add_column(state, input))
     #
     observeEvent(input$create_project_form, show_create_project_form(state, input))
     observeEvent(input$create_project_form_submit, experiment_list_table_add_row(state, input))

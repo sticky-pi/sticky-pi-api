@@ -8,6 +8,13 @@ DATA_HEADERS <- list(
                      datetime = "datetime",
                      id = "id"
 )
+PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP <- list("lng" = numeric(0),
+          "lat" = numeric(0),
+          "char" = character(0),
+          "datetime" = .POSIXct(0)[0],
+          "num" = numeric(0)
+          )
+
 # fixme, this is completely broken due to the new api
 trim_ext_json <- function(path) {
 	sub('\\.json$', '', path) 
@@ -68,7 +75,7 @@ api_get_images <- function(state, dates, dev = "%", what_images="thumbnail-mini"
     state$updaters$api_fetch_time
     #token <- state$user$auth_token
     #url = make_url(state, 'get_image_series', what_images)
-    dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
+    dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='UTC')
     #warning("dates after:")
 
     dt <- jsonlite::fromJSON(MOCK_IMAGES_DATA_PATH)
@@ -228,6 +235,7 @@ api_get_projects <- function(state) {
 }
 
 # get corresponding entries(sub-data.table) in perm. table
+# TODO: simplify output 1-row data.table --> list
 api_get_project_permissions <- function(state, proj_id) {
     if (proj_id == '%') {
         writeLines("\ngetting all projects' permissions")
@@ -430,7 +438,29 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
 }
 
 # TODO: use all columns in existing table including user-created
-#put_project_series_columns <- function(...)?
+.api_put_project_column <- function(data, state) {
+    proj_id <- data$project_id
+    proj_perm <- api_get_project_permissions(state, proj_id)
+    # must have write access
+    if (proj_perm[1, level] < 2) {
+        return(data.table())
+    }
+    spec_col <- data$column_name
+    spec_type <- data$column_type
+    seriess_table <- api_get_project_series(state, proj_id)
+    # new col or update
+    if (spec_col %in% names(seriess_table)) {
+        warning("TODEL: TODO: edit existing col name")
+    }
+    else {
+        seriess_table[, c(spec_col) := PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP[[spec_type]]]
+        return( list(column_name = spec_col, column_type = PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP[[spec_type]]) )
+    }
+}
+
+api_put_project_columns <- function(state, datas_list) {
+    lapply(datas_list, .api_put_project_column, state)
+}
 
 ####### in-mem DB #########
 # current username in state

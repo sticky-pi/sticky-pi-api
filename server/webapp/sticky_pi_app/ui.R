@@ -164,11 +164,11 @@ experiment_table_ui <- function(state) {
         # add a column
         exp_table <- column(12,
             box(width = 12,
-                tags$h2('Experimental metadata'),
+                tags$h2('Project Series Metadata'),
                 fluidRow(
                   column(3, tags$h4('Add a new column')),
-                  column(3, textInput('experiment_new_col_name', "Name", value = "")),
-                  column(3, selectInput('experiment_new_col_type', "Type", choices =
+                  column(3, textInput('series_new_col_name', "Name", value = "")),
+                  column(3, selectInput('series_new_col_type', "Type", choices =
                        list(
                             "longitude (override)" = 'lng',
                             "latitude (override)" = 'lat',
@@ -178,7 +178,7 @@ experiment_table_ui <- function(state) {
                             ), selected='char'
                   )),
 
-                  column(3, actionButton("experiment_table_add_column", "+"))
+                  column(3, actionButton("project_series_table_add_column", "+"))
                 ),
                 # the table
                 DTOutput('experiment_table'),
