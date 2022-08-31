@@ -184,7 +184,7 @@ new_projects_table <- function(db_file_path="") {
 new_permissions_table <- function(db_file_path="") {
     if (db_file_path != "") {
         # TODO: check validity of file data
-        warning("below:")
+        warning("TODEL: loaded permissions table")
         print(as.data.table(fromJSON(file.path(db_file_path))))
         as.data.table(fromJSON(file.path(db_file_path)))
     }
@@ -246,6 +246,10 @@ is_admin <- function(proj_id, usrnm) {
 is_member <- function(proj_id, usrnm) { 
     PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] > 0
 }
+can_write <- function(proj_id, usrnm) {
+    PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] >= 2
+}
+
 ####### API Methods #######
 # return meta-info of all the projects the user has read access to
 api_get_projects <- function(state) {
@@ -392,7 +396,7 @@ api_get_project_series <- function(state, proj_id) {
     row[1, start_datetime := fastPOSIXct(start_datetime)]
     row[1, end_datetime := fastPOSIXct(end_datetime)]
 
-    writeLines("putting")
+    writeLines("TODEL: putting")
     print(row)
 
 
@@ -406,7 +410,7 @@ api_get_project_series <- function(state, proj_id) {
 # if no table found for the `proj_id`, returns NULL <- should at least be a null-initialized one from when the project was created
 # if provided `data` is missing values, returns NULL
 api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
-    #proj_row <- data.table( series_id = numeric(0),
+    #proj_row <- data.table( id = numeric(0),
     #                        device = character(0),
     #                        # just POSIX time objects, value irrelevant
     #                        start_datetime = .POSIXct(0)[0],
@@ -419,6 +423,7 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
 
     # check if `data` valid
     mand_cnames <- c("device", "start_datetime", "end_datetime")
+    put_rows <- data.table()
     lapply(mand_cnames, function(cname) {
                            if (!isTruthy( data[[cname]] )) {
                                warning(paste("api_put_project_series():", cname, "empty in supplied params"))
@@ -429,13 +434,13 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
     #    data[[colhead]] <<- fastPOSIXct(data[[colhead]])
     #})
     
-    writeLines("current column types")
-    print(SERIESS_TABLE[, lapply(.SD, class)])
+    #writeLines("current column types")
+    #print(SERIESS_TABLE[, lapply(.SD, class)])
 
-    writeLines("data")
-    print(data)
-    writeLines("data column types")
-    print(lapply(data, class))
+    #writeLines("data")
+    #print(data)
+    #writeLines("data column types")
+    #print(lapply(data, class))
 
     if (!is.null(ser_id)) {
         return(.api_update_project_series(state, ser_id, proj_id, data))
@@ -448,13 +453,57 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
             warning("series with same dev ID, start and end as the one to add already in table:")
             #print(matches)
                                         # series ID of found/matching entry
-            return(.api_update_project_series(state, matches[1, id], proj_id, data))
+            put_rows <- rbind(put_rows, .api_update_project_series(state, matches[1, id], proj_id, data))
         } else {
-            return(.api_put_new_project_series(state, proj_id, data))
+            put_rows <- rbind(put_rows, .api_put_new_project_series(state, proj_id, data))
         }
     }
     ## return added/updated row
     #PROJECT_ENTRIES_TABLES_LIST[[proj_id]][id == ser_id]
+    put_rows
+}
+
+.api_delete_single_series <- function(data) {
+    if (!isTruthy(data[["project_id"]])) {
+        warning("project ID not specified, skipping")
+        return(NULL)
+    }
+    if (! can_write(data[["project_id"]], state$config$STICKY_PI_TESTING_USER)) {
+        warning("must have write-level permission to delete a series")
+        return(NULL)
+    }
+    if (!isTruthy(data[["id"]])) {
+        warning("series ID not specified, skipping")
+        return(NULL)
+    }
+    proj_id <- data[["project_id"]]
+    ser_id <- data[["id"]]
+    SERIESS_TABLE <- PROJECT_ENTRIES_TABLES_LIST[[proj_id]]
+
+    matches <- SERIESS_TABLE[id == ser_id]
+    if (matches[, .N] == 0) {
+        warning(paste("No series found for project ID", proj_id, ", series ID", ser_id, ", skipping"))
+        return(NULL)
+    }
+    # delete rows, return deleted
+    # ["[delete rows by reference]'s filed as an issue"](https://stackoverflow.com/a/10791729)
+    #SERIESS_TABLE[id == ser_id, .SD := NULL, by=ser_id]
+    PROJECT_ENTRIES_TABLES_LIST[[proj_id]] <<- PROJECT_ENTRIES_TABLES_LIST[[proj_id]][id != ser_id]
+    return(matches)
+}
+
+#TODO: parallelize?
+    # [subset remaining rows data.table-style](https://stackoverflow.com/a/28002448)
+# deletes the series specified by datas
+# datas is a list of lists, each with {"project_id", "id"}
+api_delete_project_series <- function(state, datas) {
+    deld <- data.table()
+    lapply(datas, function(data) {
+        warning("user wants to delete:")
+        print(data)
+        deld <- rbind(deld, .api_delete_single_series(data))
+    })
+    deld
 }
 
 # TODO: use all columns in existing table including user-created
@@ -543,7 +592,7 @@ PROJECT_ENTRIES_TABLES_LIST <- list(
                                     bait_strength = c(12.4906, 19.1173, 29.3656)
                             )
 ) 
-#print(PROJECT_ENTRIES_TABLES_LIST)
+print(PROJECT_ENTRIES_TABLES_LIST)
 #print(new_entries_table("www/1.json"))
 
 ###### Tests ######

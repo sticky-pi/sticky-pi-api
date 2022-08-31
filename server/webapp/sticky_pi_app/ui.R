@@ -166,20 +166,23 @@ experiment_table_ui <- function(state) {
             box(width = 12,
                 tags$h2('Project Series Metadata'),
                 fluidRow(
-                  column(3, tags$h4('Add a new column')),
-                  column(3, textInput('series_new_col_name', "Name", value = "")),
-                  column(3, selectInput('series_new_col_type', "Type", choices =
-                       list(
-                            "longitude (override)" = 'lng',
-                            "latitude (override)" = 'lat',
-                            "character" = 'char',
-                            "numeric" = 'num',
-                            "datetime" = 'datetime'
-                            ), selected='char'
-                  )),
-
-                  column(3, actionButton("project_series_table_add_column", "+"))
+                    column(3, tags$h4('Add a new column')),
+                    column(3, textInput('series_new_col_name', "Name", value = "")),
+                    column(3, selectInput('series_new_col_type', "Type", choices =
+                         list(
+                              "longitude (override)" = 'lng',
+                              "latitude (override)" = 'lat',
+                              "character" = 'char',
+                              "numeric" = 'num',
+                              "datetime" = 'datetime'
+                              ), selected='char'
+                        )),
+                    column(3, actionButton("project_series_table_add_column", "+")),
                 ),
+                #fluidRow(
+                #    column(3, tags$h4('Delete selected column')),
+                #    column(3, actionButton("project_series_table_delete_column", "-"))
+                #),
                 # the table
                 DTOutput('experiment_table'),
 
@@ -190,6 +193,7 @@ experiment_table_ui <- function(state) {
                     column(3, textInput("new_series_start_datetime", "Series start datetime", placeholder = "Ex: 2017-07-01T09:37:12Z")),
                     column(3, textInput("new_series_end_datetime", "Series end datetime", placeholder = paste("Ex:", strftime(Sys.time(), DATETIME_FORMAT, tz="UTC")) )),
                     column(3, actionButton("add_project_series_table_row", "+")),
+                    column(3, actionButton("delete_project_series_table_row", "-")),
                     downloadButton('download_metadata_handler', 'Download metadata')
                 
                 )

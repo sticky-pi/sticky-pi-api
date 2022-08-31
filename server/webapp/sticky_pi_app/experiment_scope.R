@@ -179,7 +179,7 @@ experiment_list_table_add_row <- function(state, input){
     warning("TODEL: user submitted create project form")
     # should have been inputted by user in modal form
     if (is.null(input$new_project_name) || input$new_project_name == "") {
-        print("TODEL: no name entered")
+        warning("no name entered")
         show_create_project_form(state, input, failed=TRUE)
     } else {
         name <- input$new_project_name
@@ -339,7 +339,7 @@ series_table_alter_cell <- function(state, input){
   # keep all fields except edited same
   edit_col <- colnames(proj_seriess)[[edit_info$col]]
   edited_val <- edit_info$value
-  warning("before edited val:")
+  warning("TODEL: before edited val:")
   print(paste(edited_val, class(edited_val), sep='    '))
 
   ser_id <- proj_seriess[edit_info$row, id]
@@ -350,7 +350,7 @@ series_table_alter_cell <- function(state, input){
     edited_val <- fastPOSIXct(edited_val)
   }
   data <- proj_seriess[id == ser_id, (edit_info$col) := (edited_val)]
-  warning("after edited val:")
+  warning("TODEL: after edited val:")
   print(edited_val)
 
   valid_columns <- grep("^\\.COMP_", colnames(data), value=TRUE, invert=TRUE)
@@ -363,10 +363,9 @@ series_table_alter_cell <- function(state, input){
   if(!is.null(out))
     state$updaters$api_fetch_time <- Sys.time()
   else{
-    warning('Wrong entry in proj table edit? API failed to modify it.')
+    warning("API failed to apply cell edit in underlying database")
   }
 }
-
 
 project_series_table_add_row <- function(state, input){
     proj_id <- state$data_scope$selected_experiment
@@ -375,18 +374,9 @@ project_series_table_add_row <- function(state, input){
     #                    date_range = NULL,
     #                    start_time = NULL,
     #                    end_time = NULL )
-    warning(paste("now user_inputs", user_inputs))
-
-    #user_inputs$date_range <- {
-    #    warning(paste("date range:", strftime(input$new_series_daterange)))
-    #    shinyFeedback::feedbackDanger("new_series_daterange", any(!isTruthy(strftime(input$new_series_daterange))), "Must enter a start and an end date")
-    #    req(input$new_series_daterange, cancelOutput=TRUE)
-    #    input$new_series_daterange
-    #}
+    warning(paste("TODEL: now user_inputs", user_inputs))
 
     user_inputs$start_datetime <- {
-        warning(paste("start:", input$new_series_start_datetime))
-
         start_datetime <- fastPOSIXct(input$new_series_start_datetime)
         # when improper string passed, fastPOSIXct returns NA
         shinyFeedback::feedbackDanger("new_series_start_datetime", !isTruthy(start_datetime), "Must be ISO datetime format")
@@ -395,8 +385,6 @@ project_series_table_add_row <- function(state, input){
         start_datetime
     }
     user_inputs$end_datetime <- {
-        warning(paste("end:", input$new_series_end_datetime))
-
         end_datetime <- fastPOSIXct(input$new_series_end_datetime)
         # when improper string passed, fastPOSIXct returns NA
         shinyFeedback::feedbackDanger("new_series_end_datetime", !isTruthy(end_datetime), "Must be ISO datetime format")
@@ -408,14 +396,13 @@ project_series_table_add_row <- function(state, input){
         end_datetime
     }
     user_inputs$dev_id <- {
-        #warning(paste("dev ID:", input$new_series_device))
         # 8 char hexadec str
         valid <- grepl('^[0-9A-Fa-f]{8}$', input$new_series_device)
         shinyFeedback::feedbackDanger("new_series_device", !valid, "Must be 8-character hexadecimal")
         req(valid, cancelOutput=TRUE)
+
         input$new_series_device
     }
-    #warning("got all vals")
 
     #if (end_datetime < start_datetime)
     #    validate("Start must be before end")
@@ -424,11 +411,15 @@ project_series_table_add_row <- function(state, input){
                 start_datetime = user_inputs$start_datetime,
                 end_datetime = user_inputs$end_datetime
     )
-    writeLines("\nUser wants to add a series:")
-    print(as.data.table(data))
     out <- api_put_project_series(state, proj_id, data=data)
     if(isTruthy(out))
         state$updaters$api_fetch_time <- Sys.time()
+}
+
+project_series_table_delete_row <- function(state, input){
+    req(state$data_scope$selected_experiment != 0)
+    seld_inds_DT <- input$experiment_table_rows_selected
+    req(seld_inds_DT)
 }
 
 download_metadata_handler <- function(state, input){
