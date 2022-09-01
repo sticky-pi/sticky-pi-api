@@ -15,7 +15,7 @@ api_verify_passwd <- function(state, u, p){
     Sys.sleep(1)
     return("")
   }
-  token <- content(o, as='parsed', encoding="UTF-8")
+  token <- content(o, type= "application/json", as='parsed', encoding="UTF-8")
   # also has an `expiration field`
   return(token$token)
 }
@@ -28,7 +28,7 @@ api_get_users <- function(state){
   payload = "[{}]"
   o <- POST(url, body=payload,
             authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text', encoding="UTF-8")
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   users <- as.data.table(dt)
 }
@@ -41,12 +41,27 @@ api_get_projects <- function(state){
   payload = "[{}]"
   o <- POST(url, body=payload,
             authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text', encoding="UTF-8")
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   users <- as.data.table(dt)
 }
 
 
+api_get_project_permissions <- function(state, proj_id = NULL){
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'get_project_permisions')
+  if (!isTruthy(proj_id))
+    payload = '[{name= "%"}]'
+  else
+    payload = jsonlite::toJSON(list(list(project_id=proj_id)))
+
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  users <- as.data.table(dt)
+}
 
 
 
@@ -69,7 +84,7 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
 
   o <- POST(url, body=post,
             authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text', encoding="UTF-8")
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
 
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
@@ -79,7 +94,7 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
   #url  =sprintf('%s://%s:%s/%s/%s', state$config$API_PROTOCOL, state$config$API_ROOT_URL,state$config$API_PORT, api_entry, what_annotations)
   url = make_url(state, 'get_uid_annotations', what_annotations)
   o = POST(url, body=post, authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text', encoding="UTF-8")
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
   if(nrow(annotations) == 0){
@@ -116,14 +131,14 @@ api_get_images <- function(state, dates, dev="%", what_images="thumbnail-mini", 
 
   dates <- strftime(as.POSIXct(dates), DATETIME_FORMAT, tz='GMT')
 
-  post <- jsonlite::toJSON(list(list(device=device,
+  post <- jsonlite::toJSON(list(list(device=dev,
                                      start_datetime=dates[1],
                                      end_datetime=dates[2] )),
                            auto_unbox = TRUE)
 
 
   o = POST(url, body=post,  authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text', encoding="UTF-8")
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   images <- as.data.table(dt)
 
@@ -136,7 +151,7 @@ api_get_images <- function(state, dates, dev="%", what_images="thumbnail-mini", 
   url = make_url(state, 'get_uid_annotations_series', what_annotations)
   o = POST(url, body=post,
           authenticate(token, "", type = "basic"), content_type("application/json"))
-  ct <- content(o, as='text', encoding="UTF-8")
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
   annotations <- as.data.table(dt)
 
