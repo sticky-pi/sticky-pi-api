@@ -114,7 +114,7 @@ experiment_list_table <- function(state, input){
   req(images)
 
 
-  all_permissions_table <- api_get_project_permissions(state, '%')
+  all_permissions_table <- api_get_project_permissions(state)
 
   # first add a column, current user's permission level for each project
   # convert to role in render_...()

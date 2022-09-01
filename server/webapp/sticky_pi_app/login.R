@@ -38,42 +38,42 @@ $(document).on("keyup", function(e) {
 login_fun <- function(state, input){
   is_logged_in <- state$user$is_logged_in
   no_password_test  <- state$config$STICKY_PI_TESTING_RSHINY_BYPASS_LOGGIN
+      if (is_logged_in == FALSE) {
+        # this is when running without a container for instance. no db, so no password
+        if(no_password_test){
+          state$user$is_logged_in <- TRUE
+          state$user$username <- "MOCK USER"
+          }
 
-        if (is_logged_in == FALSE) {
-          # this is when running without a container for instance. no db, so no password
-          if(no_password_test){
-            state$user$is_logged_in <- TRUE
-            state$user$username <- "MOCK USER"
+        # if STICKY_PI_TESTING_USER is defined at runtime of container, it logs in directly
+
+          else if(state$config$STICKY_PI_TESTING_RSHINY_AUTOLOGIN){
+              token <- api_verify_passwd(state, state$config$STICKY_PI_TESTING_USER, state$config$STICKY_PI_TESTING_PASSWORD)
+              if(token != ""){
+                state$user$auth_token <- token
+                state$user$is_logged_in <- TRUE
+                state$user$username <- state$config$STICKY_PI_TESTING_USER
+
+              }
             }
 
-          # if STICKY_PI_TESTING_USER is defined at runtime of container, it logs in directly
-            else if(state$config$STICKY_PI_TESTING_RSHINY_AUTOLOGIN){
-                token <- api_verify_passwd(state, state$config$STICKY_PI_TESTING_USER, state$config$STICKY_PI_TESTING_PASSWORD)
-                if(token != ""){
-                  state$user$auth_token <- token
-                  state$user$is_logged_in <- TRUE
-                  state$user$username <- state$config$STICKY_PI_TESTING_USER
+        else if (!is.null(input$login)) {
+          if (input$login > 0) {
+              Username <- isolate(input$userName)
+              Password <- isolate(input$passwd)
+              token <- api_verify_passwd(state,Username, Password)
 
-                }
+              if(!is.null (token) & token != ""){
+                state$user$auth_token <- token
+                state$user$is_logged_in <- TRUE
+                state$user$username <- Username
               }
 
-          else if (!is.null(input$login)) {
-            if (input$login > 0) {
-                Username <- isolate(input$userName)
-                Password <- isolate(input$passwd)
-                token <- api_verify_passwd(state,Username, Password)
-
-                if(token != ""){
-                  state$user$auth_token <- token
-                  state$user$is_logged_in <- TRUE
-                  state$user$username <- Username
-
-                }
-            else{
-              shinyjs::toggle(id = "nomatch", anim = TRUE, time = 1, animType = "fade")
-              shinyjs::delay(3000, shinyjs::toggle(id = "nomatch", anim = TRUE, time = 1, animType = "fade"))
-            }
-            }
+              else{
+                shinyjs::toggle(id = "nomatch", anim = TRUE, time = 1, animType = "fade")
+                shinyjs::delay(3000, shinyjs::toggle(id = "nomatch", anim = TRUE, time = 1, animType = "fade"))
+           }
           }
         }
-    }
+      }
+  }
