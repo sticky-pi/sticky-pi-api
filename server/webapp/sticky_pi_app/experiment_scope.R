@@ -118,12 +118,12 @@ experiment_list_table <- function(state, input){
 
   # first add a column, current user's permission level for each project
   # convert to role in render_...()
-  curr_user_perms <- all_permissions_table[username == state$config$STICKY_PI_TESTING_USER, .(project_id, level)]
+  curr_user_perms <- all_permissions_table[parent_user_id == state$user$user_id, .(parent_project_id, level)]
 
   # thanks to [merging in another table's column on common key](https://stackoverflow.com/a/34600831)
   # and [get data.table to use variable for name of **new** column]
   #fixme
-  projs_table[curr_user_perms, on=c(id = "project_id"), level := i.level]
+  projs_table[curr_user_perms, on=c(id = "parent_project_id"), level := i.level]
 
   projs_table
 #
@@ -176,7 +176,6 @@ show_create_project_form <- function(state, input, failed=FALSE) {
     showModal(create_project_modal_ui(state, failed))
 }
 experiment_list_table_add_row <- function(state, input){
-    warning("TODEL: user submitted create project form")
     # should have been inputted by user in modal form
     if (is.null(input$new_project_name) || input$new_project_name == "") {
         warning("no name entered")
@@ -190,7 +189,7 @@ experiment_list_table_add_row <- function(state, input){
 
         rows <- api_put_projects(state, data)
         state$updaters$api_fetch_time <- Sys.time()
-        state$data_scope$selected_experiment <- rows[[1]][["id"]]
+        state$data_scope$selected_experiment <- rows[1, id]
 
         removeModal()
     }
@@ -219,6 +218,10 @@ experiment_table <- function(state, input){
 
   if(nrow(images) > 0){
     dt[, .COMP_N_MATCHES := comp_n_matches(.SD$device, .SD$start_datetime, .SD$end_datetime),
+                  by=id]
+  }
+  else{
+    dt[, .COMP_N_MATCHES := 0,
                   by=id]
   }
   return(dt)
@@ -302,12 +305,10 @@ project_series_table_add_column <- function(state, input){
     SQL_type <- handle_new_series_column_user_specs(state, get_comp_prop(state, experiment_table), name, type)
     data <- list(project_id = proj_id,
                  column_name = name,
-                 column_type = SQL_type )
+                 column_SQL_type = SQL_type[[1]] )
     # shinyFeedback will block until valid user input
     #if(!is.null(data)){
-    # fixme
-    warning("TODEL: user wants to add a column:")
-    print(as.data.table(data))
+
     out <- api_put_project_columns(state, data = list(data))
     if (!is.null(out))
         state$updaters$api_fetch_time <- Sys.time()
@@ -332,15 +333,12 @@ series_table_alter_cell <- function(state, input){
   #v = edit_info$value
   proj_id <- state$data_scope$selected_experiment
 
-  dt <- get_comp_prop(state, experiment_list_table)
+  # dt <- get_comp_prop(state, experiment_list_table)
   proj_seriess <- api_get_project_series(state, proj_id)
   #print(proj_seriess)
-
   # keep all fields except edited same
-  edit_col <- colnames(proj_seriess)[[edit_info$col]]
+  edit_col <- colnames(proj_seriess)[edit_info$col]
   edited_val <- edit_info$value
-  warning("TODEL: before edited val:")
-  print(paste(edited_val, class(edited_val), sep='    '))
 
   ser_id <- proj_seriess[edit_info$row, id]
   #data[, id := NULL]
@@ -349,12 +347,12 @@ series_table_alter_cell <- function(state, input){
   if (edit_col %in% state$config$DATETIME_COLS_HEADERS) {
     edited_val <- fastPOSIXct(edited_val)
   }
-  data <- proj_seriess[id == ser_id, (edit_info$col) := (edited_val)]
-  warning("TODEL: after edited val:")
-  print(edited_val)
+  data <- proj_seriess[id == ser_id]
+  data[[edit_info$col]] <- edited_val
+
 
   valid_columns <- grep("^\\.COMP_", colnames(data), value=TRUE, invert=TRUE)
-  data <- dt[ ,colnames(dt) %in% valid_columns, with=FALSE]
+  data <- data[ ,colnames(data) %in% valid_columns, with=FALSE]
   # pass API the state$exp_table colname of index j, PROJECT_ID of index i
   out <- api_put_project_series(state, proj_id, data=data, ser_id=ser_id)
   #out <- api_alter_proj_table(state, 'alter_cell', proj_id, data=data)
@@ -374,7 +372,6 @@ project_series_table_add_row <- function(state, input){
     #                    date_range = NULL,
     #                    start_time = NULL,
     #                    end_time = NULL )
-    warning(paste("TODEL: now user_inputs", user_inputs))
 
     user_inputs$start_datetime <- {
         start_datetime <- fastPOSIXct(input$new_series_start_datetime)
@@ -407,7 +404,7 @@ project_series_table_add_row <- function(state, input){
     #if (end_datetime < start_datetime)
     #    validate("Start must be before end")
 
-    data = list(device = user_inputs$dev_id,
+    data = data.table(device = user_inputs$dev_id,
                 start_datetime = user_inputs$start_datetime,
                 end_datetime = user_inputs$end_datetime
     )
