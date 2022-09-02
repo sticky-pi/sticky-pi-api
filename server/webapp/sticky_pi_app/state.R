@@ -11,6 +11,7 @@ make_state <- function(input, config){
                   scope_test=1),
     user = rv(is_logged_in=FALSE,
               username="",
+              user_id="",
               role="user",
               auth_token="",
               selected_timezone="UTC"),
