@@ -1,13 +1,16 @@
 TEST_DATA_DIR_PATH <- "www/test"
-MOCK_PROJECTS_TABLE_PATH <- file.path(TEST_DATA_DIR_PATH, "projects.json")
-MOCK_PERMISSIONS_TABLE_PATH <- file.path(TEST_DATA_DIR_PATH, "permissions.json")
-MOCK_ENTRIES_TABLES_DIR_PATH <- file.path(TEST_DATA_DIR_PATH, "project-entries-tables")
+# MOCK_PROJECTS_TABLE_PATH <- file.path(TEST_DATA_DIR_PATH, "projects.json")
+# MOCK_PERMISSIONS_TABLE_PATH <- file.path(TEST_DATA_DIR_PATH, "permissions.json")
+# MOCK_ENTRIES_TABLES_DIR_PATH <- file.path(TEST_DATA_DIR_PATH, "project-entries-tables")
 MOCK_IMAGES_DATA_PATH <- file.path(TEST_DATA_DIR_PATH, "data.json")
 
 DATA_HEADERS <- list(
                      datetime = "datetime",
                      id = "id"
 )
+
+TESTING_USER_ID <- 1
+
 #PROJECT_SERIES_COLUMN_TO_R_TYPES_MAP <- list(
 #          "lng" = numeric(0),
 #          "lat" = numeric(0),
@@ -239,34 +242,42 @@ new_entries_tables_list <- function(db_files_dir_path="") {
 	}
 }
 
+
+
+.level <- function(proj_id, usr_id, lev) {
+    PERMISSIONS_TABLE[parent_project_id == proj_id & parent_user_id == usr_id, level] >= lev
+}
+
 # permission check utils
-is_admin <- function(proj_id, usrnm) {
-    PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] >= 3
-}
-is_member <- function(proj_id, usrnm) { 
-    PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] > 0
-}
-can_write <- function(proj_id, usrnm) {
-    PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] >= 2
-}
+is_admin <- function(proj_id, usr_id) .level(proj_id , usr_id, lev=3)
+can_write <- function(proj_id, usr_id) .level(proj_id , usr_id, lev=2)
+is_member <- function(proj_id, usr_id) .level(proj_id , usr_id, lev=1)
+
+    #
+    # is_member <- function(proj_id, usrnm) {
+    #     PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] > 0
+    # }
+# can_write <- function(proj_id, usrnm) {
+#     PERMISSIONS_TABLE[project_id == proj_id & username == usrnm, level] >= 2
+# }
 
 ####### API Methods #######
 # return meta-info of all the projects the user has read access to
 api_get_projects <- function(state) {
-    accessible_projs_ids <- PERMISSIONS_TABLE[username == state$config$STICKY_PI_TESTING_USER & level >= 1, project_id]
+    accessible_projs_ids <- PERMISSIONS_TABLE[parent_user_id == TESTING_USER_ID & level >= 1, parent_project_id]
 
     PROJECTS_RECORD[id %in% accessible_projs_ids]
 }
 
 # get corresponding entries(sub-data.table) in perm. table
 # TODO: simplify output 1-row data.table --> list
-api_get_project_permissions <- function(state, proj_id) {
-    if (proj_id == '%') {
+api_get_project_permissions <- function(state, proj_id=NULL) {
+    if (! isTruthy(proj_id)) {
         writeLines("\ngetting all projects' permissions")
         writeLines(paste( "user =", "testing"))
-        PERMISSIONS_TABLE[username == "testing" & level > 0]
-    } else if (is_member(proj_id, "testing")) {
-        PERMISSIONS_TABLE[project_id == proj_id]
+        PERMISSIONS_TABLE[parent_user_id == TESTING_USER_ID & level > 0]
+    } else if (is_member(proj_id, TESTING_USER_ID)) {
+        PERMISSIONS_TABLE[parent_project_id == proj_id]
     }
 }
 
@@ -287,6 +298,7 @@ api_get_project_permissions <- function(state, proj_id) {
         # update join, [src](https://stackoverflow.com/questions/44433451/r-data-table-update-join)
         # fixme id on projects_dt and project_id on premission_dt
         PROJECTS_RECORD[data, on=c(id = "project_id"), (upd_cols) := mget(paste0("i.", upd_cols))]
+        return(PROJECTS_RECORD[id == proj_id, ])
     }
     else if (n_match_entries > 1) {
         warning(paste("multiple project metadata table entries found for project ID", proj_id))
@@ -311,8 +323,8 @@ api_get_project_permissions <- function(state, proj_id) {
 
     # creator must be an admin
     PERMISSIONS_TABLE <<- rbind(PERMISSIONS_TABLE,
-                                data.table(project_id = proj_id,
-                                           username = "testing",
+                                data.table(parent_project_id = proj_id,
+                                           parent_user_id = TESTING_USER_ID,
                                            level = 3 )
     )
     # init blank entries table
@@ -348,7 +360,7 @@ api_put_projects <- function(state, datas_list) {
         }
     })
     warning("TODEL: rows added:")
-    print(added_rows)
+    added_rows <- rbindlist(added_rows)
     added_rows
 }
 
@@ -468,7 +480,7 @@ api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
         warning("project ID not specified, skipping")
         return(NULL)
     }
-    if (! can_write(data[["project_id"]], state$config$STICKY_PI_TESTING_USER)) {
+    if (! can_write(data[["project_id"]], TESTING_USER_ID)) {
         warning("must have write-level permission to delete a series")
         return(NULL)
     }
@@ -516,7 +528,7 @@ api_delete_project_series <- function(state, datas) {
     }
     spec_col <- data$column_name
     # NOTE: .SQLtoR_type returns an "empty" *instance* of the R type
-    spec_type_R <- .SQLtoR_type(data$column_type)
+    spec_type_R <- .SQLtoR_type(data$column_SQL_type)
     seriess_table <- api_get_project_series(state, proj_id)
     # new col or update
     if (spec_col %in% names(seriess_table)) {
@@ -525,7 +537,7 @@ api_delete_project_series <- function(state, datas) {
     else {
         seriess_table[, c(spec_col) := spec_type_R]
                                             # return SQL type as per specifications
-        return( list(column_name = spec_col, column_type = data$column_type) )
+        return( list(column_name = spec_col, column_SQL_type = data$column_SQL_type) )
     }
 }
 
@@ -550,8 +562,8 @@ PROJECTS_RECORD <- data.table(
 #print(PROJECTS_RECORD)
 #PERMISSIONS_TABLE <- new_permissions_table(MOCK_PERMISSIONS_TABLE_PATH)
 PERMISSIONS_TABLE <- data.table(
-                      project_id = 1:2,
-                      username = c("testing", "testing"),
+                      parent_project_id = 1:2,
+                      parent_user_id = c(1,1),
                       level = c(2, 3)
 )
 #PERMISSIONS_TABLE[, username := ..state$config$STICKY_PI_TESTING_USER]
