@@ -564,6 +564,15 @@ class RemoteAPIConnector(BaseAPISpec):
     def get_uid_annotations_series(self, info: InfoType, what: str = 'metadata', client_info: Dict[str, Any] = None) -> MetadataType:
         return self._default_client_to_api('get_uid_annotations_series', info, what=what)
 
+    def delete_project_columns(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('delete_project_columns', info)
+
+    def delete_project_series(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('delete_project_series', info)
+
+    def put_project_columns(self, info: InfoType, client_info: Dict[str, Any] = None) -> MetadataType:
+        return self._default_client_to_api('put_project_columns', info)
+
     def get_tiled_tuboid_series(self, info: InfoType, what: str = "metadata", client_info: Dict[str, Any] = None) \
             -> MetadataType:
         return self._default_client_to_api('get_tiled_tuboid_series', info=info, what=what)
