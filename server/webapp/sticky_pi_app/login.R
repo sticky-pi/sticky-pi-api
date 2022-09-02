@@ -43,6 +43,8 @@ login_fun <- function(state, input){
         if(no_password_test){
           state$user$is_logged_in <- TRUE
           state$user$username <- "MOCK USER"
+          state$user$user_id <- 1
+
           }
 
         # if STICKY_PI_TESTING_USER is defined at runtime of container, it logs in directly
@@ -53,6 +55,7 @@ login_fun <- function(state, input){
                 state$user$auth_token <- token
                 state$user$is_logged_in <- TRUE
                 state$user$username <- state$config$STICKY_PI_TESTING_USER
+                state$user$user_id <- 1
 
               }
             }
@@ -62,11 +65,13 @@ login_fun <- function(state, input){
               Username <- isolate(input$userName)
               Password <- isolate(input$passwd)
               token <- api_verify_passwd(state,Username, Password)
-
               if(!is.null (token) & token != ""){
                 state$user$auth_token <- token
                 state$user$is_logged_in <- TRUE
                 state$user$username <- Username
+                users <- api_get_users(state)
+                state$user$user_id <- users[username == state$user$username, id]
+
               }
 
               else{
