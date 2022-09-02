@@ -43,30 +43,139 @@ api_get_projects <- function(state){
             authenticate(token, "", type = "basic"), content_type("application/json"))
   ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
-  users <- as.data.table(dt)
+
+  if(length(dt) == 0){
+    return(data.table(
+                id = numeric(0),
+                name = character(0),
+                description = character(0),
+                notes = character(0)
+     ))
+  }
+
+
+  out <- as.data.table(dt)
 }
 
 
 api_get_project_permissions <- function(state, proj_id = NULL){
   state$updaters$api_fetch_time
   token <- state$user$auth_token
-  url = make_url(state, 'get_project_permisions')
+  url = make_url(state, 'get_project_permissions')
   if (!isTruthy(proj_id))
-    payload = '[{name= "%"}]'
+    payload = '[{"name": "%"}]'
   else
     payload = jsonlite::toJSON(list(list(project_id=proj_id)))
 
+
   o <- POST(url, body=payload,
             authenticate(token, "", type = "basic"), content_type("application/json"))
+
   ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
   dt <- jsonlite::fromJSON(ct)
-  users <- as.data.table(dt)
+  if(length(dt) == 0){
+    return(data.table(
+                parent_project_id = numeric(0),
+                parent_user_id = numeric(0),
+                level = numeric(0)
+     ))
+  }
+
+  out <- as.data.table(dt)
 }
 
 
 
+api_put_project_series <- function(state, proj_id, data, ser_id=NULL) {
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'put_project_series')
+  data[, project_id := proj_id]
+  data$id <- ser_id
+  payload = jsonlite::toJSON(data, dataframe='row')
+
+  message("TODEL put api series")
+  message(payload)
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+
+  message(o)
+  message(ct)
+  if(length(dt) == 0){
+    return(data.table(
+                id=numeric(0),
+                device = character(0),
+                start_datetime =  .POSIXct(0)[0],
+                end_datetime =  .POSIXct(0)[0]
+     ))
+  }
+
+  out <- as.data.table(dt)
+
+}
 
 
+
+api_put_projects <- function(state, datas_list) {
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'put_projects')
+  payload = jsonlite::toJSON(datas_list)
+
+
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  out <- as.data.table(dt)
+  out
+}
+
+
+
+api_get_project_series <- function(state, proj_id) {
+    if (! class(proj_id) %in% c("numeric", "integer")) {
+        warning("`proj_id` must be an integer")
+        warning(class(proj_id))
+    }
+
+
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'get_project_series')
+  payload = jsonlite::toJSON(list(list(project_id=proj_id)))
+
+
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  out <- as.data.table(dt)
+  out
+
+}
+
+api_put_project_columns <- function(state, data) {
+
+  state$updaters$api_fetch_time
+  token <- state$user$auth_token
+  url = make_url(state, 'put_project_columns')
+  payload = jsonlite::toJSON(data, auto_unbox=TRUE)
+  message ("TODEL api_put_project_columns")
+  message (payload)
+  o <- POST(url, body=payload,
+            authenticate(token, "", type = "basic"), content_type("application/json"))
+
+  ct <- content(o, type= "application/json", as='text', encoding="UTF-8")
+  dt <- jsonlite::fromJSON(ct)
+  out <- as.data.table(dt)
+  out
+}
 
 api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_annotations="data"){
 
@@ -77,8 +186,7 @@ api_fetch_download_s3 <- function(state, ids, what_images="thumbnail", what_anno
   query = dt[id %in% ids, .(device, datetime)]
   query[, datetime:=strftime(as.POSIXct(datetime), DATETIME_FORMAT, tz='GMT')]
   post <- jsonlite::toJSON(query)
-  print(post)
-  write(post, "sticky_pi_app/www/thumbnail_post.json")
+  # write(post, "sticky_pi_app/www/thumbnail_post.json")
 
   url = make_url(state, 'get_images', what_images)
 
