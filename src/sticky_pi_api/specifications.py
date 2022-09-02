@@ -1031,7 +1031,7 @@ class BaseAPI(BaseAPISpec, ABC):
             for data in info:
                 api_user_id = client_info['id'] if client_info is not None else None
                 project = Projects(**data, api_user_id=api_user_id)
-                out.append(project.to_dict())
+
                 try:
                     session.add(project)
                     session.commit()
@@ -1048,6 +1048,8 @@ class BaseAPI(BaseAPISpec, ABC):
                     command = project.create_table_mysql_statement(self._db_engine.dialect.name == "sqlite")
                     session.execute(command)
                     session.commit()
+                    out.append(project.to_dict())
+
                 except Exception as e:
                     session.rollback()
                     raise e
@@ -1176,14 +1178,14 @@ class BaseAPI(BaseAPISpec, ABC):
                     values.append(v)
 
                 if id:
-                    set_statement = ", ".join([f'{c}  = "{v}"' for c, v in zip(colnames, values)])
+                    set_statement = ", ".join([f'`{c}`  = "{v}"' for c, v in zip(colnames, values)])
                     command = f" UPDATE  {table_name} SET {set_statement} WHERE id = {id}"
                 else:
                     command = f" INSERT INTO {table_name} ({', '.join(colnames)}) VALUES {tuple(values)}"
 
                 session.execute(command)
                 session.commit()
-                conditions = " AND ". join([f"{c} = '{v}'"for c, v in  zip(colnames, values)])
+                conditions = " AND ". join([f"`{c}` = '{v}'"for c, v in  zip(colnames, values)])
                 command = f"SELECT * FROM {projects[0].series_table_name()} WHERE {conditions}"
                 q = session.execute(command)
                 keys = q._metadata.keys
@@ -1251,11 +1253,11 @@ class BaseAPI(BaseAPISpec, ABC):
                 colname = inf["column_name"]
                 if "old_column_name" in inf:
                     old_colname = inf["old_column_name"]
-                    command = f"ALTER TABLE {table_name} RENAME COLUMN {old_colname} TO {colname}  "
+                    command = f"ALTER TABLE {table_name} RENAME COLUMN `{old_colname}` TO `{colname}`  "
                     coltype  = None
                 else:
                     coltype = inf["column_SQL_type"]
-                    command = f"ALTER TABLE {table_name} ADD {colname} {coltype}"
+                    command = f"ALTER TABLE {table_name} ADD `{colname}` {coltype}"
                 session.execute(command)
                 # o = session.execute(f"PRAGMA table_info({table_name})")
                 # for r in o:
