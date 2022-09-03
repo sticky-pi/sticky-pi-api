@@ -4,9 +4,9 @@ services:
   spi_db:
     volumes:
       - ${LOCAL_VOLUME_ROOT}/mysql:/var/lib/mysql
-  spi_uid:
-      env_file:
-        - .prod.env
+#  spi_uid:
+#      env_file:
+#        - .prod.env
 
   spi_nginx:
     ports:

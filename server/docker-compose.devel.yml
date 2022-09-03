@@ -44,10 +44,10 @@ services:
       env_file:
         - .devel.env
 
-
-  spi_uid:
-    env_file:
-      - .devel.env
+#
+#  spi_uid:
+#    env_file:
+#      - .devel.env
 
   # used to test the mock s3 'spi_s3'
 

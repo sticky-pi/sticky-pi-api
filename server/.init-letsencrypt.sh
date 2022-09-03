@@ -43,7 +43,7 @@ docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entr
   openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1\
     -keyout '$path/privkey.pem' \
     -out '$path/fullchain.pem' \
-    -subj '/CN=localhost'" certbot
+    -subj '/CN=localhost'" spi_certbot
 echo
 
 
@@ -55,7 +55,7 @@ echo "### Deleting dummy certificate for $domains ..."
 docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entrypoint "\
   rm -Rf /etc/letsencrypt/live/$domains && \
   rm -Rf /etc/letsencrypt/archive/$domains && \
-  rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
+  rm -Rf /etc/letsencrypt/renewal/$domains.conf" spi_certbot
 echo
 
 
@@ -82,7 +82,7 @@ docker-compose -f docker-compose.yml  -f docker-compose.prod.yml run --rm --entr
     $domain_args \
     --rsa-key-size $rsa_key_size \
     --agree-tos \
-    --force-renewal" certbot
+    --force-renewal" spi_certbot
 echo
 
 echo "### Reloading nginx ..."
