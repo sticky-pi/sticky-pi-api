@@ -4,11 +4,23 @@ services:
   spi_db:
     volumes:
       - ${LOCAL_VOLUME_ROOT}/mysql:/var/lib/mysql
-#  spi_uid:
-#      env_file:
-#        - .prod.env
+
+  spi_api:
+    env_file:
+      - .prod.env
+
+
+  spi_webapp:
+      env_file:
+        - .prod.env
+
+  spi_s3:
+    env_file:
+        - .prod.env
 
   spi_nginx:
+    env_file:
+      - .prod.env
     ports:
       - "80:80"
       - "443:443"
@@ -24,3 +36,5 @@ services:
     volumes:
       - ${LOCAL_VOLUME_ROOT}/data/certbot/conf:/etc/letsencrypt
       - ${LOCAL_VOLUME_ROOT}/data/certbot/www:/var/www/certbot
+    env_file:
+      - .prod.env
