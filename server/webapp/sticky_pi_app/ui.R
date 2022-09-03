@@ -67,7 +67,7 @@ date_selector <- function(state){
     message <- "Scoping all devices in:"
     if(state$data_scope$selected_experiment > 0){
         o <- disabled(o)
-        message <- "Unselect experiment to use date range"
+        message <- "Unselect project to use date range instead"
     }
     div(h3(message),o)
 }
@@ -161,13 +161,16 @@ experiment_table_ui <- function(state) {
         fields_names <- state$config$PROJECT_SERIES_HEADERS
         fields_names[["device_id"]] <- "Device ID"
 
+         colname_input <- textInput('series_new_col_name', "Name", value = "")
+
+
         # add a column
         exp_table <- column(12,
             box(width = 12,
                 tags$h2('Project Series Metadata'),
                 fluidRow(
                     column(3, tags$h4('Add a new column')),
-                    column(3, textInput('series_new_col_name', "Name", value = "")),
+                    column(3, colname_input),
                     column(3, selectInput('series_new_col_type', "Type", choices =
                          list(
                               "longitude (override)" = 'lng',

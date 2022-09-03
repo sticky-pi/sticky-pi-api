@@ -69,6 +69,19 @@ server <- function(input, output, session) {
     #
     observeEvent(input$create_project_form, show_create_project_form(state, input))
     observeEvent(input$create_project_form_submit, experiment_list_table_add_row(state, input))
+    observeEvent(input$series_new_col_type, {
+      ct <- input$series_new_col_type
+      m <- list(lng="Longitude",
+           lat="Latitude")
+      if(ct %in% names(m)){
+        updateTextInput(session, "series_new_col_name", value=m[[ct]])
+        disable("series_new_col_name")
+      }
+      else{
+        updateTextInput(session, "series_new_col_name", value="")
+        enable("series_new_col_name")
+      }
+    })
     #
     observeEvent(input$experiment_list_table_row_last_clicked, ignoreNULL = FALSE, {
 

@@ -35,6 +35,8 @@ config_vars <- list(
                      device = "Device ID",
                      start_datetime = "Start",
                      end_datetime = "End",
+                     lng = "Longitude",
+                     lat = "Latitude",
                      .COMP_N_MATCHES = "N_images"
                  ),
                  DATETIME_COLS_HEADERS = c(
