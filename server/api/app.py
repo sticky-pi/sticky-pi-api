@@ -27,7 +27,7 @@ def jsonify(obj):
         orjson.dumps(obj, option=orjson.OPT_NAIVE_UTC | orjson.OPT_UTC_Z | orjson.OPT_OMIT_MICROSECONDS,
                      default=json_default) +
         b"\n",
-        mimetype=app.config["JSONIFY_MIMETYPE"],
+        mimetype=app.json.mimetype,
     )
 
 

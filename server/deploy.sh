@@ -50,7 +50,7 @@ case "$1" in
       mysql-prompt)
           source ./.env
           source ./.secret.env
-          docker exec -it spi_db mysql --password=$MYSQL_PASSWORD -u $MYSQL_USER $MYSQL_DATABASE
+          docker exec -it spi_db mariadb --password=$MYSQL_PASSWORD -u $MYSQL_USER $MYSQL_DATABASE
           ;;
       mysql-backup)
           source ./.env

@@ -9,7 +9,7 @@ services:
       - .env
       - .secret.env
       - .prod.env
-    command: mysqld --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL_SIZE} --skip-name-resolve
+    command: --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL_SIZE} --skip-name-resolve
   spi_api:
     container_name: spi_api
     restart: always
@@ -51,11 +51,11 @@ services:
 #      - BUNDLE_ROOT_DIR=/opt/ml_bundle_dir/ # - ${LOCAL_VOLUME_ROOT}/client/ml/
 #      - LOCAL_CLIENT_DIR=/opt/api_api_client/ #${LOCAL_VOLUME_ROOT}/client/
 
-    depends_on:
-      - spi_api
-    env_file:
-      - .env
-      - .secret.env
+#    depends_on:
+#      - spi_api
+#    env_file:
+#      - .env
+#      - .secret.env
 
   spi_nginx:
     container_name: spi_nginx

@@ -4,7 +4,7 @@ import logging
 import os
 import json
 import sqlalchemy
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, text
 from sqlalchemy.orm import sessionmaker
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from itsdangerous import BadSignature, SignatureExpired
@@ -639,8 +639,8 @@ class BaseAPI(BaseAPISpec, ABC):
             #full_query = full_query.replace('%', '%%')
             # with self._db_engine.connect() as connection:
 
-            full_results = session.execute(full_query)
-            for row in full_results:
+            full_results = session.execute(text(full_query))
+            for row in full_results.mappings().all():
                 img_dict = dict(row)
                 img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
                 del img_dict["filename"]
@@ -660,13 +660,13 @@ class BaseAPI(BaseAPISpec, ABC):
                 conditions = [f"datetime >= \"{str(i['start_datetime'])}\"",
                               f"datetime < \"{str(i['end_datetime'])}\"",
                               f"device like \"{i['device']}\""]
-                              # f"device like \"{i['device'].replace('%', '%')}\""]
+                # f"device like \"{i['device'].replace('%', '%')}\""]
 
                 full_query = f"SELECT {sql_select} FROM {Images.table_name()} WHERE {' AND '.join(conditions)}"
                 img_dict = None
                 # with self._db_engine.connect() as connection:
-                full_results = session.execute(full_query)
-                for row in full_results:
+                full_results = session.execute(text(full_query))
+                for row in full_results.mappings().all():
                     img_dict = dict(row)
                     img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
                     del img_dict["filename"]
@@ -708,8 +708,8 @@ class BaseAPI(BaseAPISpec, ABC):
 
 
                 img_dict = None
-                full_results = session.execute(full_query)
-                for row in full_results:
+                full_results = session.execute(text(full_query))
+                for row in full_results.mappings().all():
                     img_dict = dict(row)
                     img_dict["url"] = self._storage.get_url_for_image(img_dict, what=what)
                     del img_dict["filename"]
@@ -739,6 +739,7 @@ class BaseAPI(BaseAPISpec, ABC):
                              (i * self._get_image_chunk_size,
                               i * self._get_image_chunk_size + len(info_chunk),
                               len(info)))
+
 
                 conditions = [and_(Images.datetime == inf['datetime'], Images.device == inf['device'])
                               for inf in info_chunk]
@@ -858,8 +859,8 @@ class BaseAPI(BaseAPISpec, ABC):
                 full_query = f"SELECT {sql_select} from {UIDAnnotations.table_name()} WHERE EXISTS (Select 1 FROM {Images.table_name()} WHERE {' AND '.join(conditions)}) "
                 row_dict = None
                 # with self._db_engine.connect() as connection:
-                full_results = session.execute(full_query)
-                for row in full_results:
+                full_results = session.execute(text(full_query))
+                for row in full_results.mappings().all():
                     row_dict = dict(row)
                     out.append(row_dict)
                 if row_dict is None:
@@ -981,7 +982,10 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         try:
             for inf in info:
-                conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                if  inf:
+                    conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                else:
+                    conditions = []
                 if client_info is None or client_info['is_admin']:
                     q = session.query(Projects).filter(*conditions)
                 else:
@@ -1003,7 +1007,11 @@ class BaseAPI(BaseAPISpec, ABC):
 
         try:
             for inf in info:
-                conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                if  inf:
+                    conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                else:
+                    conditions = []
+
                 if client_info is None or client_info['is_admin']:
                     q = session.query(Projects).join(Projects.project_permissions).filter(*conditions)
                 else:
@@ -1014,7 +1022,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 for project in q.all():
                     project_dict = project.to_dict()
                     command = f"DROP TABLE {project.series_table_name()}"
-                    session.execute(command)
+                    session.execute(text(command))
                     session.delete(project)
                     session.commit()
                     out.append(project_dict)
@@ -1046,7 +1054,7 @@ class BaseAPI(BaseAPISpec, ABC):
                         logging.warning("Cannot create default permission for this project. No user id was provided")
 
                     command = project.create_table_mysql_statement(self._db_engine.dialect.name == "sqlite")
-                    session.execute(command)
+                    session.execute(text(command))
                     session.commit()
                     out.append(project.to_dict())
 
@@ -1067,7 +1075,12 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         try:
             for inf in info:
-                conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                if inf:
+                    conditions = [and_(getattr(Projects, k).like(inf[k]) for k in inf.keys())]
+                else:
+                    conditions = []
+
+
                 if client_info is None or client_info['is_admin']:
                     q = session.query(Projects).filter(*conditions)
                 else:
@@ -1138,7 +1151,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 assert len(projects) == 1
 
                 command = f"SELECT * FROM {projects[0].series_table_name()}"
-                q = session.execute(command)
+                q = session.execute(text(command))
                 keys = q._metadata.keys
                 for r in q:
                     d = {k: v for k, v in zip(keys, r)}
@@ -1183,11 +1196,11 @@ class BaseAPI(BaseAPISpec, ABC):
                 else:
                     command = f" INSERT INTO {table_name} ({', '.join(colnames)}) VALUES {tuple(values)}"
 
-                session.execute(command)
+                session.execute(text(command))
                 session.commit()
                 conditions = " AND ". join([f"`{c}` = '{v}'"for c, v in  zip(colnames, values)])
                 command = f"SELECT * FROM {projects[0].series_table_name()} WHERE {conditions}"
-                q = session.execute(command)
+                q = session.execute(text(command))
                 keys = q._metadata.keys
                 for r in q:
                     d = {k: v for k, v in zip(keys, r)}
@@ -1220,7 +1233,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 id = inf["id"]
                 out.append(self.get_project_series([inf], client_info)[0])
                 command = f" DELETE FROM  {table_name}  WHERE id = {id}"
-                session.execute(command)
+                session.execute(text(command))
 
             session.commit()
             return out
@@ -1258,7 +1271,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 else:
                     coltype = inf["column_SQL_type"]
                     command = f"ALTER TABLE {table_name} ADD `{colname}` {coltype}"
-                session.execute(command)
+                session.execute(text(command))
                 # o = session.execute(f"PRAGMA table_info({table_name})")
                 # for r in o:
                 #     print(r)
@@ -1298,7 +1311,7 @@ class BaseAPI(BaseAPISpec, ABC):
                 table_name = projects[0].series_table_name()
 
                 command = f"ALTER TABLE {table_name} DROP COLUMN {inf['column_name']}"
-                session.execute(command)
+                session.execute(text(command))
 
                 out.append({"column_name": inf["column_name"],
                             })
@@ -1334,7 +1347,10 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         try:
             for inf in info:
-                conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]
+                if  inf:
+                    conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]
+                else:
+                    conditions = []
                 q = session.query(Users).filter(*conditions)
 
                 for user in q.all():
@@ -1351,7 +1367,12 @@ class BaseAPI(BaseAPISpec, ABC):
         session = sessionmaker(bind=self._db_engine)()
         try:
             for inf in info:
-                conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]
+
+                if inf:
+                    conditions = [and_(getattr(Users, k).like(inf[k]) for k in inf.keys())]
+                else:
+                    conditions = []
+
                 q = session.query(Users).filter(*conditions)
                 for user in q.all():
                     user.password_hash = "***********"
@@ -1409,7 +1430,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     if not isinstance(dbapi_connection, sqlite3.Connection):
         return
     cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute(text("PRAGMA foreign_keys=ON"))
     cursor.close()
 
 
@@ -1436,7 +1457,7 @@ class LocalAPI(BaseAPI):
         with self._db_engine.connect() as connection:
             q = "PRAGMA table_info(%s);" % \
                 table.table_name()
-            result = connection.execute(q)
+            result = connection.execute(text(q))
             out = [(r[1], r[2].lower()) for r in result]
             return out
 
@@ -1493,13 +1514,13 @@ class RemoteAPI(BaseAPI):
     def _engine_specific_hooks(self):
         command = f"alter table {UIDAnnotations.table_name()} change json json TEXT(4294000000) compressed;"
         with self._db_engine.connect() as connection:
-            connection.execute(command)
+            connection.execute(text(command))
 
     def _columns_name_types(self, table: BaseCustomisations):
         with self._db_engine.connect() as connection:
             q = "select column_name, data_type from information_schema.columns where table_name = '%s';" % \
                 table.table_name()
-            result = connection.execute(q)
+            result = connection.execute(text(q))
             return [(c_name, c_type) for c_name, c_type in result]
 
     def _sql_select_fields(self, col_name_types: List[Tuple[str, str]], make_filename: bool = False):
@@ -1516,7 +1537,7 @@ class RemoteAPI(BaseAPI):
         return ', '.join(cols)
 
     def _create_db_engine(self):
-        engine_url = "mysql+mysqldb://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
+        engine_url = "mysql+pymysql://%s:%s@%s/%s?charset=utf8mb4" % (self._configuration.MYSQL_USER,
                                                                       self._configuration.MYSQL_PASSWORD,
                                                                       self._configuration.MYSQL_HOST,
                                                                       self._configuration.MYSQL_DATABASE
